@@ -106,7 +106,9 @@
   function targets(s, type, R, from) {
     const p = s.turn, out = [];
     if (type === 'move') {
-      const cand = s.cells[R].o === p ? neighbors(from) : (neighbors(from).includes(R) ? [R] : []);
+      // בסיס מהטריטוריה של המשבצת שהוטלה יכול לפעול לכל יעד; בסיס צמוד אליה שמחוץ לטריטוריה (למשל מעבר לנהר ללא גשר) – רק אל R
+      const inTerritory = s.cells[R].o === p && territory(s, R).includes(from);
+      const cand = inTerritory ? neighbors(from) : (neighbors(from).includes(R) ? [R] : []);
       for (const n of cand) {
         const cr = crossing(s, p, from, n);
         if (!cr) continue;
@@ -142,8 +144,10 @@
     const p = s.turn, c = s.cells[R];
     if (type === 'land') return [];
     let base;
-    if (c.o === p) base = territory(s, R);
-    else if (type === 'move') base = neighbors(R).filter((n) => s.cells[n].o === p);
+    if (c.o === p) {
+      base = territory(s, R);
+      if (type === 'move') for (const n of neighbors(R)) if (s.cells[n].o === p && !base.includes(n)) base.push(n);
+    } else if (type === 'move') base = neighbors(R).filter((n) => s.cells[n].o === p);
     else return [];
     if (type === 'withdraw') return base;
     return base.filter((b) => targets(s, type, R, b).length > 0);
@@ -180,6 +184,14 @@
   function skipTurn(s) {
     const ns = clone(s);
     ns.log.push(`${NAMES[ns.turn]}: אין מהלך אפשרי, התור עובר`);
+    endTurn(ns);
+    return ns;
+  }
+
+  // דילוג מרצון על התור (תמיד מותר, גם כשיש מהלכים חוקיים)
+  function passTurn(s) {
+    const ns = clone(s);
+    ns.log.push(`${NAMES[ns.turn]}: דילג על התור`);
     endTurn(ns);
     return ns;
   }
@@ -250,7 +262,7 @@
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
     roll, crossing, territory, targets, sources, actionTypes, hasAnyMove, maxCount,
-    apply, skipTurn, clone,
+    apply, skipTurn, passTurn, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Rules;
   else root.Rules = Rules;

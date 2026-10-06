@@ -236,6 +236,26 @@ test('שימור חיילים: 36 לכל שחקן בכל מצב', () => {
   }
 });
 
+test('הוטל בסיס שלי: אפשר להזיז אליו מבסיס צמוד מעבר לנהר ללא גשר', () => {
+  const s = setup({ '1,0': [0, 2], '2,0': [0, 5] }, 0, [1, 0]);
+  eq(R.territory(s, I(1, 0)), [I(1, 0)]);
+  eq(R.sources(s, 'move', I(1, 0)).sort((a, b) => a - b), [I(1, 0), I(2, 0)]);
+  eq(R.targets(s, 'move', I(1, 0), I(2, 0)).map((t) => t.to), [I(1, 0)]);
+  const t = R.apply(s, { type: 'move', R: I(1, 0), from: I(2, 0), to: I(1, 0), count: 3 });
+  eq(t.cells[I(1, 0)], { o: 0, n: 5 }); eq(t.cells[I(2, 0)], { o: 0, n: 2 });
+  eq(t.bridges[R.bridgeKey(I(1, 0), I(2, 0))], 0);
+});
+test('בסיס צמוד מחוץ לטריטוריה לא יכול לפעול ליעדים אחרים', () => {
+  const s = setup({ '1,0': [0, 2], '2,0': [0, 5] }, 0, [1, 0]);
+  eq(R.targets(s, 'move', I(1, 0), I(2, 0)).length, 1);
+});
+test('דילוג מרצון מותר גם כשיש מהלכים', () => {
+  const s = setup({ '0,0': [0, 3] }, 0, [0, 0]);
+  eq(R.hasAnyMove(s), true);
+  const t = R.passTurn(s);
+  eq(t.turn, 1); eq(t.roll, null); eq(t.cells[I(0, 0)].n, 3);
+});
+
 out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;
 document.title = `Province tests: ${pass} pass, ${fail} fail`;
 </script>

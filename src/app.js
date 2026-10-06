@@ -81,6 +81,7 @@
     afterRoll(); ui.rolled = true; save(); render();
   }
   function doSkip() { history.push(state); state = R.skipTurn(state); resetUiFromState(); save(); render(); }
+  function doPass() { history.push(state); state = R.passTurn(state); resetUiFromState(); save(); render(); }
   function undo() {
     if (!history.length) return;
     state = history.pop(); resetUiFromState(); save(); render();
@@ -166,8 +167,9 @@
     }
     // טבעות הדגשה
     const ring = (i, cls, r, extra) => add(svgEl('circle', Object.assign({ cx: cellX(i), cy: cellY(i), r, class: 'ring ' + cls }, extra)));
-    if (ui.phase === 'choose' || (ui.phase === 'skip' && state.roll)) {
-      state.roll.cells.forEach((c) => ring(c, 'roll', 31, { stroke: 'white', opacity: pl.includes(c) || ui.phase === 'skip' ? 1 : 0.35 }));
+    if (state.roll && state.winner === null) {
+      // שתי המשבצות שהוטלו מסומנות תמיד, גם אם אי אפשר לשחק באחת מהן
+      state.roll.cells.forEach((c) => ring(c, 'roll', 31, { stroke: 'white' }));
       pl.forEach((c) => ring(c, 'roll pulse', 36, { stroke: state.turn === 0 ? '#ff6b5b' : '#6fa0ff' }));
     }
     if (ui.R !== null && ui.phase !== 'choose') ring(ui.R, 'sel', 32);
@@ -295,7 +297,7 @@
           <div class="row"><input type="range" id="rng" min="1" max="${max}" value="${ui.count}"></div>
           <div class="quick"><button id="q1">1</button><button id="qh">חצי</button><button id="qa">הכל (${max})</button></div>`;
         ctl.appendChild(box);
-        const set = (v) => { ui.count = Math.max(1, Math.min(max, v)); renderDock(); };
+        const set = (v) => { ui.count = Math.max(1, Math.min(max, v)); renderDock(); renderPass(); };
         box.querySelector('#minus').onclick = () => set(ui.count - 1);
         box.querySelector('#plus').onclick = () => set(ui.count + 1);
         box.querySelector('#rng').oninput = (e) => set(+e.target.value);
@@ -311,13 +313,20 @@
     }
   }
 
+  function renderPass() {
+    if (!['choose', 'action', 'source', 'target', 'count', 'confirm'].includes(ui.phase)) return;
+    const b = document.createElement('button');
+    b.textContent = 'דלג על התור'; b.className = 'ghost pass'; b.onclick = doPass;
+    $('controls').appendChild(b);
+  }
+
   function renderLog() {
     const box = $('logBox');
     box.innerHTML = state.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>אין עדיין מהלכים</div>';
   }
 
   function render() {
-    renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog();
+    renderPanels(); renderBoard(); renderDice(); renderDock(); renderPass(); renderLog();
     $('undoBtn').disabled = history.length === 0;
     const o = $('overlay');
     if (state.winner !== null && !ui.dismissWin) {

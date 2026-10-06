@@ -60,7 +60,7 @@ body {
 
 /* דוק */
 #dock { background: var(--panel); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 150px; }
-#dice { display: flex; gap: 12px; justify-content: center; align-items: center; min-height: 52px; }
+#dice { direction: ltr; display: flex; gap: 12px; justify-content: center; align-items: center; min-height: 52px; }
 .die {
   width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center;
   font: 800 26px system-ui, sans-serif; box-shadow: 0 2px 0 rgba(0,0,0,.4);
@@ -69,7 +69,7 @@ body {
 .die.brown { background: #7a4a22; color: #fff; border: 2px solid #4b2c12; }
 .die.roll { animation: tumble .45s ease-out; }
 @keyframes tumble { 0% { transform: rotate(-200deg) scale(.5); opacity: 0; } 100% { transform: none; opacity: 1; } }
-.dice-note { font-size: 12px; color: var(--muted); }
+.dice-note { direction: rtl; font-size: 12px; color: var(--muted); }
 #msg { text-align: center; font-size: 15px; line-height: 1.35; min-height: 22px; }
 #msg .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
 #msg .good { color: var(--green); } #msg .bad { color: var(--orange); } #msg .br { color: var(--cyan); }
@@ -94,6 +94,7 @@ button.ghost { background: transparent; border: 1px solid #6b5640; color: var(--
 .stepper .quick button { padding: 6px 12px; min-height: 36px; background: #4a3624; }
 .btnrow { display: flex; gap: 8px; width: 100%; }
 
+button.pass { flex: 1 1 100%; }
 #bar { display: flex; gap: 8px; justify-content: space-between; }
 #logBox { background: var(--panel); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--muted); max-height: 180px; overflow: auto; }
 #logBox div { padding: 2px 0; border-bottom: 1px dashed #4b3a29; }
