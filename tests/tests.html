@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Province tests</title>
+<style>body{font:14px monospace;padding:12px}.ok{color:#176}.bad{color:#b00;font-weight:bold}</style>
+</head>
+<body>
+<h3>בדיקות לוגיקה</h3>
+<pre id="out"></pre>
+<script src="../src/rules.js"></script>
+<script>
+const R = window.Rules, out = document.getElementById('out');
+let pass = 0, fail = 0;
+function test(name, fn) {
+  try { fn(); pass++; out.innerHTML += `<span class="ok">PASS</span> ${name}\n`; }
+  catch (e) { fail++; out.innerHTML += `<span class="bad">FAIL</span> ${name}: ${e.message}\n`; }
+}
+function eq(a, b, m) { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error((m || '') + ` expected ${JSON.stringify(b)} got ${JSON.stringify(a)}`); }
+function throws(fn) { try { fn(); } catch (e) { return; } throw new Error('expected throw'); }
+
+// בונה מצב: p = שחקן בתור, board = {x,y: [owner,n]} (קואורדינטות 0-based), roll בתא R
+function setup(board, turn, rollCell, extra) {
+  const s = R.newGame();
+  for (const [k, [o, n]] of Object.entries(board)) { const [x, y] = k.split(',').map(Number); s.cells[R.idx(x, y)] = { o, n }; }
+  s.turn = turn;
+  s.roll = { w: 0, b: 0, cells: [R.idx(...rollCell), R.idx(...rollCell)] };
+  return Object.assign(s, extra || {});
+}
+const I = (x, y) => R.idx(x, y);
+
+test('הלוח: 36 משבצות, 9 פרובינציות', () => {
+  eq(R.newGame().cells.length, 36);
+  eq(new Set(R.newGame().cells.map((_, i) => R.provinceOf(i))).size, 9);
+  eq(R.provinceOf(I(1, 1)), 0); eq(R.provinceOf(I(2, 1)), 1); eq(R.provinceOf(I(5, 5)), 8);
+});
+test('נהרות בין עמודות 1|2 ו-3|4 ושורות 1|2 ו-3|4', () => {
+  eq(R.crossesRiver(I(1, 0), I(2, 0)), true); eq(R.crossesRiver(I(0, 0), I(1, 0)), false);
+  eq(R.crossesRiver(I(3, 2), I(4, 2)), true); eq(R.crossesRiver(I(2, 0), I(3, 0)), false);
+  eq(R.crossesRiver(I(0, 1), I(0, 2)), true); eq(R.crossesRiver(I(0, 3), I(0, 4)), true);
+});
+test('קוביות: שתי משבצות נגדיות', () => {
+  const s = R.roll(R.newGame(), 2, 5);
+  eq(s.roll.cells, [I(1, 4), I(4, 1)]);
+  const t = R.roll(R.newGame(), 6, 6);
+  eq(t.roll.cells, [I(5, 5), I(0, 0)]);
+});
+test('הנחתה במשבצת ריקה ובבסיס קיים', () => {
+  let s = setup({}, 0, [2, 2]);
+  eq(R.actionTypes(s, I(2, 2)), ['land']);
+  s = R.apply(s, { type: 'land', R: I(2, 2), count: 5 });
+  eq(s.cells[I(2, 2)], { o: 0, n: 5 }); eq(R.camp(s, 0), 31); eq(s.turn, 1);
+});
+test('הנחתה: מגבלת מחנה', () => {
+  const s = setup({}, 0, [2, 2]);
+  throws(() => R.apply(s, { type: 'land', R: I(2, 2), count: 37 }));
+  throws(() => R.apply(s, { type: 'land', R: I(2, 2), count: 0 }));
+});
+test('אי אפשר להנחית בבסיס יריב', () => {
+  const s = setup({ '2,2': [1, 3] }, 0, [2, 2]);
+  eq(R.actionTypes(s, I(2, 2)), []);
+});
+test('תזוזה בתוך פרובינציה', () => {
+  let s = setup({ '0,0': [0, 4] }, 0, [0, 0]);
+  s = R.apply(s, { type: 'move', R: I(0, 0), from: I(0, 0), to: I(1, 0), count: 3 });
+  eq(s.cells[I(0, 0)], { o: 0, n: 1 }); eq(s.cells[I(1, 0)], { o: 0, n: 3 });
+});
+test('תזוזה של כל החיילים מרוקנת את המקור', () => {
+  let s = setup({ '0,0': [0, 2] }, 0, [0, 0]);
+  s = R.apply(s, { type: 'move', R: I(0, 0), from: I(0, 0), to: I(0, 1), count: 2 });
+  eq(s.cells[I(0, 0)], { o: null, n: 0 });
+});
+test('אלכסון לא נחשב צמוד', () => {
+  const s = setup({ '0,0': [0, 4] }, 0, [0, 0]);
+  eq(R.targets(s, 'move', I(0, 0), I(0, 0)).map((t) => t.to).sort(), [I(1, 0), I(0, 1)].sort());
+});
+test('תזוזה מעבר לנהר דורשת גשר ומניחה אותו', () => {
+  let s = setup({ '1,0': [0, 4] }, 0, [1, 0]);
+  const t = R.targets(s, 'move', I(1, 0), I(1, 0)).find((x) => x.to === I(2, 0));
+  eq(t.cross, 'place');
+  s = R.apply(s, { type: 'move', R: I(1, 0), from: I(1, 0), to: I(2, 0), count: 2 });
+  eq(s.bridges[R.bridgeKey(I(1, 0), I(2, 0))], 0); eq(s.bridgesLeft, [7, 8]);
+});
+test('בלי גשרים בנמצא אי אפשר לחצות נהר', () => {
+  const s = setup({ '1,0': [0, 4] }, 0, [1, 0], { bridgesLeft: [0, 8] });
+  eq(R.targets(s, 'move', I(1, 0), I(1, 0)).some((t) => t.to === I(2, 0)), false);
+});
+test('גשר שלי קיים: חצייה בלי עלות', () => {
+  const s = setup({ '1,0': [0, 4] }, 0, [1, 0], { bridges: { [R.bridgeKey(I(1, 0), I(2, 0))]: 0 }, bridgesLeft: [0, 8] });
+  const t = R.targets(s, 'move', I(1, 0), I(1, 0)).find((x) => x.to === I(2, 0));
+  eq(t.cross, 'none');
+});
+test('גשר יריב: חסום; החלפה רק כשיש חיילים משני הצדדים', () => {
+  const key = R.bridgeKey(I(1, 0), I(2, 0));
+  let s = setup({ '1,0': [0, 4] }, 0, [1, 0], { bridges: { [key]: 1 } });
+  eq(R.targets(s, 'move', I(1, 0), I(1, 0)).some((t) => t.to === I(2, 0)), false);
+  s = setup({ '1,0': [0, 4], '2,0': [0, 2] }, 0, [1, 0], { bridges: { [key]: 1 } });
+  const t = R.targets(s, 'move', I(1, 0), I(1, 0)).find((x) => x.to === I(2, 0));
+  eq(t.cross, 'replace');
+  s = R.apply(s, { type: 'bridge', R: I(1, 0), from: I(1, 0), to: I(2, 0), count: 0 });
+  eq(s.bridges[key], 0);
+});
+test('הנחת גשר בלי להזיז חיילים', () => {
+  let s = setup({ '1,0': [0, 4] }, 0, [1, 0]);
+  s = R.apply(s, { type: 'bridge', R: I(1, 0), from: I(1, 0), to: I(2, 0), count: 0 });
+  eq(s.cells[I(1, 0)].n, 4); eq(s.cells[I(2, 0)].n, 0); eq(s.bridgesLeft[0], 7);
+});
+test('התקפה: תוקפים > מגינים (עודפים נשארים, ההרוגים בבית קברות)', () => {
+  let s = setup({ '0,0': [0, 6], '1,0': [1, 4] }, 0, [0, 0]);
+  s = R.apply(s, { type: 'move', R: I(0, 0), from: I(0, 0), to: I(1, 0), count: 6 });
+  eq(s.cells[I(1, 0)], { o: 0, n: 2 }); eq(s.graveyard, [0, 4]); eq(R.camp(s, 0), 34); // 36 פחות 2 שנשארו על הלוח
+});
+test('התקפה: תוקפים < מגינים', () => {
+  let s = setup({ '0,0': [0, 3], '1,0': [1, 5] }, 0, [0, 0]);
+  s = R.apply(s, { type: 'move', R: I(0, 0), from: I(0, 0), to: I(1, 0), count: 3 });
+  eq(s.cells[I(1, 0)], { o: 1, n: 2 }); eq(s.graveyard, [0, 3]); eq(s.cells[I(0, 0)].o, null);
+  eq(R.camp(s, 0), 36);
+});
+test('התקפה: שווה משאיר משבצת ריקה', () => {
+  let s = setup({ '0,0': [0, 3], '1,0': [1, 3] }, 0, [0, 0]);
+  s = R.apply(s, { type: 'move', R: I(0, 0), from: I(0, 0), to: I(1, 0), count: 3 });
+  eq(s.cells[I(1, 0)], { o: null, n: 0 }); eq(s.graveyard, [0, 3]);
+});
+test('הוטל בסיס יריב צמוד לבסיס שלי (גם מעבר לנהר)', () => {
+  const s = setup({ '1,0': [0, 3], '2,0': [1, 2] }, 0, [2, 0]);
+  eq(R.actionTypes(s, I(2, 0)), ['move']);
+  eq(R.sources(s, 'move', I(2, 0)), [I(1, 0)]);
+});
+test('הוטל בסיס יריב לא צמוד: אין מהלך', () => {
+  const s = setup({ '0,0': [0, 3], '4,4': [1, 2] }, 0, [4, 4]);
+  eq(R.actionTypes(s, I(4, 4)), []);
+});
+test('הוטלה משבצת ריקה צמודה: הנחתה או תזוזה אליה', () => {
+  const s = setup({ '0,0': [0, 3] }, 0, [1, 0]);
+  eq(R.actionTypes(s, I(1, 0)), ['land', 'move']);
+});
+test('הוטלה משבצת ריקה: תזוזה רק אליה, לא ליעדים אחרים', () => {
+  const s = setup({ '0,0': [0, 3] }, 0, [1, 0]);
+  eq(R.targets(s, 'move', I(1, 0), I(0, 0)).map((t) => t.to), [I(1, 0)]);
+});
+test('טריטוריה: שרשרת וגשרים', () => {
+  const key = R.bridgeKey(I(1, 0), I(2, 0));
+  let s = setup({ '0,0': [0, 1], '1,0': [0, 1], '2,0': [0, 1] }, 0, [0, 0]);
+  eq(R.territory(s, I(0, 0)).sort((a, b) => a - b), [I(0, 0), I(1, 0)]);
+  s.bridges[key] = 0;
+  eq(R.territory(s, I(0, 0)).length, 3);
+  s.bridges[key] = 1;
+  eq(R.territory(s, I(0, 0)).length, 2);
+});
+test('מנדט טריטוריה: פעולה מבסיס אחר, יעד כלשהו', () => {
+  let s = setup({ '0,0': [0, 2], '1,0': [0, 5] }, 0, [0, 0]);
+  eq(R.sources(s, 'move', I(0, 0)).sort((a, b) => a - b), [I(0, 0), I(1, 0)]);
+  s = R.apply(s, { type: 'move', R: I(0, 0), from: I(1, 0), to: I(1, 1), count: 2 });
+  eq(s.cells[I(1, 1)], { o: 0, n: 2 });
+});
+test('הנחתה רק במשבצת שהוטלה', () => {
+  const s = setup({ '0,0': [0, 2], '1,0': [0, 5] }, 0, [0, 0]);
+  const types = R.actionTypes(s, I(0, 0));
+  eq(types.includes('land'), true);
+  throws(() => R.apply(s, { type: 'land', R: I(1, 0), count: 1 }));
+});
+test('נסיגה מבסיס בטריטוריה', () => {
+  let s = setup({ '0,0': [0, 2], '1,0': [0, 5] }, 0, [0, 0]);
+  s = R.apply(s, { type: 'withdraw', R: I(0, 0), from: I(1, 0), count: 5 });
+  eq(s.cells[I(1, 0)], { o: null, n: 0 }); eq(R.camp(s, 0), 34);
+});
+test('נסיגה לא זמינה כשהמשבצת הריקה הוטלה', () => {
+  const s = setup({ '0,0': [0, 2] }, 0, [3, 3]);
+  eq(R.actionTypes(s, I(3, 3)), ['land']);
+});
+test('שינוע כוחות בקו ישר על פני כמה בסיסים', () => {
+  let s = setup({ '0,0': [0, 5], '1,0': [0, 1], '0,1': [0, 1] }, 0, [0, 0]);
+  // קו אופקי: 0,0 -> 1,0 ; גשר נדרש לחצות לעמודה 2 - אין
+  eq(R.targets(s, 'transport', I(0, 0), I(0, 0)).map((t) => t.to).sort((a, b) => a - b), [I(1, 0), I(0, 1)].sort((a, b) => a - b));
+  s = setup({ '0,0': [0, 5], '0,1': [0, 1], '0,2': [0, 1], '0,3': [0, 1] }, 0, [0, 0], {
+    bridges: { [R.bridgeKey(I(0, 1), I(0, 2))]: 0 } });
+  eq(R.targets(s, 'transport', I(0, 0), I(0, 0)).map((t) => t.to).sort((a, b) => a - b), [I(0, 1), I(0, 2), I(0, 3)]);
+  s = R.apply(s, { type: 'transport', R: I(0, 0), from: I(0, 0), to: I(0, 3), count: 5 });
+  eq(s.cells[I(0, 3)], { o: 0, n: 6 }); eq(s.cells[I(0, 0)].o, null);
+});
+test('שינוע נעצר בחסימה: משבצת ריקה, יריב, או נהר בלי גשר', () => {
+  let s = setup({ '0,0': [0, 5], '0,1': [0, 1], '0,3': [0, 1] }, 0, [0, 0]);
+  eq(R.targets(s, 'transport', I(0, 0), I(0, 0)).map((t) => t.to), [I(0, 1)]);
+  s = setup({ '0,0': [0, 5], '0,1': [0, 1], '0,2': [1, 1], '0,3': [0, 1] }, 0, [0, 0]);
+  eq(R.targets(s, 'transport', I(0, 0), I(0, 0)).map((t) => t.to), [I(0, 1)]);
+});
+test('שינוע רק מתוך טריטוריה (לא כשהוטלה משבצת ריקה)', () => {
+  const s = setup({ '0,0': [0, 5], '0,1': [0, 1] }, 0, [3, 3]);
+  eq(R.actionTypes(s, I(3, 3)).includes('transport'), false);
+});
+test('שליטה בפרובינציה: רק מי שיש לו חיילים', () => {
+  let s = setup({ '0,0': [0, 1], '1,1': [0, 1] }, 0, [0, 0]);
+  eq(R.provinceControl(s)[0], 0);
+  s.cells[I(0, 1)] = { o: 1, n: 1 };
+  eq(R.provinceControl(s)[0], null);
+  eq(R.provinceControl(s)[4], null);
+});
+test('ניצחון ב-5 פרובינציות בסוף התור', () => {
+  const board = {};
+  [[0, 0], [2, 0], [4, 0], [0, 2], [2, 2]].forEach(([x, y]) => { board[`${x},${y}`] = [0, 1]; });
+  let s = setup(board, 0, [4, 4]);
+  eq(s.winner, null);
+  s = R.apply(s, { type: 'land', R: I(4, 4), count: 1 });
+  eq(s.winner, 0);
+  throws(() => R.apply(R.roll(s, 1, 1), { type: 'land', R: I(0, 0), count: 1 }));
+});
+test('דילוג על תור כשאין מהלך', () => {
+  // לשחקן 0 אין חיילים במחנה ואין בסיסים - ושתי המשבצות הן בסיסי יריב
+  const s = setup({ '1,1': [1, 3] }, 0, [1, 1], { graveyard: [36, 0] });
+  eq(R.hasAnyMove(s), false);
+  const t = R.skipTurn(s);
+  eq(t.turn, 1); eq(t.roll, null);
+});
+test('לא ניתן לשחק במשבצת שלא הוטלה', () => {
+  const s = setup({}, 0, [2, 2]);
+  throws(() => R.apply(s, { type: 'land', R: I(3, 3), count: 1 }));
+});
+test('שימור חיילים: 36 לכל שחקן בכל מצב', () => {
+  let s = R.newGame();
+  for (let i = 0; i < 400 && s.winner === null; i++) {
+    s = R.roll(s, 1 + (Math.random() * 6 | 0), 1 + (Math.random() * 6 | 0));
+    if (!R.hasAnyMove(s)) { s = R.skipTurn(s); continue; }
+    const Rc = s.roll.cells.filter((c) => R.actionTypes(s, c).length)[0];
+    const types = R.actionTypes(s, Rc), type = types[Math.random() * types.length | 0];
+    let a = { type, R: Rc, count: 1 };
+    if (type !== 'land') {
+      const srcs = R.sources(s, type, Rc); a.from = srcs[Math.random() * srcs.length | 0];
+      if (type !== 'withdraw') { const ts = R.targets(s, type, Rc, a.from); a.to = ts[Math.random() * ts.length | 0].to; }
+      a.count = 1 + (Math.random() * R.maxCount(s, type, a.from) | 0);
+    } else a.count = 1 + (Math.random() * Math.min(5, R.camp(s, s.turn)) | 0);
+    s = R.apply(s, a);
+    for (const p of [0, 1]) {
+      const tot = R.onBoard(s, p) + R.camp(s, p) + s.graveyard[p];
+      if (tot !== 36 || R.camp(s, p) < 0) throw new Error('חיילים לא נשמרו אחרי מהלך ' + i);
+    }
+  }
+});
+
+out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;
+document.title = `Province tests: ${pass} pass, ${fail} fail`;
+</script>
+</body>
+</html>
