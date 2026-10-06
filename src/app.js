@@ -71,7 +71,7 @@
   function commit() {
     const a = { type: ui.type, R: ui.R, from: ui.from, to: ui.to, count: ui.type === 'bridge' ? 0 : ui.count };
     let ns;
-    try { ns = R.apply(state, a); } catch (e) { alert(e.message); return; }
+    try { ns = R.apply(state, a); } catch (e) { console.error(e); return; }
     history.push(state); state = ns;
     ui = fresh(); if (state.winner !== null) ui.phase = 'over';
     save(); render();
@@ -85,8 +85,16 @@
     if (!history.length) return;
     state = history.pop(); resetUiFromState(); save(); render();
   }
+  // אישור בתוך הדף (חלונות confirm לא זמינים בכל סביבה): לחיצה ראשונה מבקשת אישור, שנייה מבצעת
+  let newArmed = null;
   function newGame() {
-    if (state.log.length && !confirm('להתחיל משחק חדש? ההתקדמות הנוכחית תימחק.')) return;
+    const btn = $('newBtn');
+    if (state.log.length && state.winner === null && !newArmed) {
+      btn.textContent = 'לחץ שוב למחיקת המשחק';
+      newArmed = setTimeout(() => { newArmed = null; btn.textContent = 'משחק חדש'; }, 3000);
+      return;
+    }
+    clearTimeout(newArmed); newArmed = null; btn.textContent = 'משחק חדש';
     state = R.newGame(); history = []; resetUiFromState(); save(); render();
   }
 
