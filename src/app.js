@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const R = window.Rules;
-  const SAVE_KEY = 'province.save.v1';
+  const SAVE_KEY = 'province.save.v2';
   const COLOR = ['var(--p0)', 'var(--p1)'];
   const NAME = R.NAMES;
 
