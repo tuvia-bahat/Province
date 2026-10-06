@@ -4,6 +4,9 @@
 
 - חוקי המשחק (מקור האמת, כולל יומן שינויים): [RULES.md](RULES.md)
 - `src/rules.js` – לוגיקת המשחק, ללא תלות בתצוגה
+- `src/ai.js` – יריב מחשב (הערכת מצב + חיפוש expectimax)
+- `tools/bundle.py` – בונה קובץ HTML בודד לפרסום כ-Artifact
+- `tests/bench2.html` – טורניר משחק מול עצמו לכוונון המחשב
 - `src/app.js`, `index.html`, `style.css` – הממשק
 - `tests/tests.html` – בדיקות לוגיקה (לפתוח בדפדפן)
 

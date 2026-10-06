@@ -30,6 +30,30 @@
   <div id="logBox" hidden></div>
 </div>
 
+<div id="newModal" hidden>
+  <div class="modal">
+    <h2>משחק חדש</h2>
+    <div class="grp" id="grpMode">
+      <button data-v="pvp">שני שחקנים על המכשיר</button>
+      <button data-v="ai">נגד המחשב</button>
+    </div>
+    <div id="grpSideWrap"><div class="lbl">אני משחק</div>
+      <div class="grp" id="grpSide">
+        <button data-v="0">אדום (מתחיל)</button>
+        <button data-v="1">כחול</button>
+      </div>
+    </div>
+    <div id="grpLevelWrap"><div class="lbl">רמת המחשב</div>
+      <div class="grp" id="grpLevel">
+        <button data-v="easy">קל</button>
+        <button data-v="strong">חזק</button>
+      </div>
+    </div>
+    <button id="newStart" class="primary">התחל</button>
+    <button id="newCancel" class="ghost">ביטול</button>
+  </div>
+</div>
+
 <div id="overlay" hidden>
   <div class="modal">
     <h2 id="winTitle"></h2>
@@ -39,6 +63,7 @@
 </div>
 
 <script src="src/rules.js"></script>
+<script src="src/ai.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

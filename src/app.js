@@ -1,8 +1,8 @@
-/* Province – ממשק משתמש (שני שחקנים על מכשיר אחד). הלוגיקה כולה ב-rules.js */
+/* Province – ממשק משתמש (שני שחקנים על מכשיר אחד, או נגד המחשב). הלוגיקה ב-rules.js, המחשב ב-ai.js */
 (function () {
   'use strict';
   const R = window.Rules;
-  const SAVE_KEY = 'province.save.v3';
+  const SAVE_KEY = 'province.save.v4';
   const COLOR = ['var(--p0)', 'var(--p1)'];
   const NAME = R.NAMES;
 
@@ -15,18 +15,21 @@
 
   // ---------- מצב ----------
   let state, history, ui;
+  let settings = { mode: 'pvp', human: 0, level: 'strong' };   // mode: pvp | ai
+  let lastMove = null, lastRoll = null, aiTimer = null;
+  const isAiTurn = () => settings.mode === 'ai' && state.winner === null && state.turn !== settings.human;
   const $ = (id) => document.getElementById(id);
   const fresh = () => ({ phase: 'roll', R: null, type: null, from: null, to: null, tgt: null, count: 1, stack: [] });
 
   function load() {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
-      if (raw) { const d = JSON.parse(raw); if (d && d.state && d.state.cells.length === R.CELLS) { state = d.state; history = d.history || []; return; } }
+      if (raw) { const d = JSON.parse(raw); if (d && d.state && d.state.cells.length === R.CELLS) { state = d.state; history = d.history || []; settings = Object.assign(settings, d.settings || {}); return; } }
     } catch (e) { /* ignore */ }
     state = R.newGame(); history = [];
   }
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60) })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
   function resetUiFromState() {
     ui = fresh();
@@ -72,36 +75,75 @@
     const a = { type: ui.type, R: ui.R, from: ui.from, to: ui.to, count: ui.type === 'bridge' ? 0 : ui.count };
     let ns;
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return; }
-    history.push(state); state = ns;
+    history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = fresh(); if (state.winner !== null) ui.phase = 'over';
     save(); render();
   }
   function doRoll() {
     state = R.roll(state, 1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
+    lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     afterRoll(); ui.rolled = true; save(); render();
   }
-  function doSkip() { history.push(state); state = R.skipTurn(state); resetUiFromState(); save(); render(); }
-  function doPass() { history.push(state); state = R.passTurn(state); resetUiFromState(); save(); render(); }
+  function doSkip() { history.push(state); lastMove = null; state = R.skipTurn(state); resetUiFromState(); save(); render(); }
+  function doPass() { history.push(state); lastMove = null; state = R.passTurn(state); resetUiFromState(); save(); render(); }
   function undo() {
     if (!history.length) return;
-    state = history.pop(); resetUiFromState(); save(); render();
+    clearTimeout(aiTimer); aiTimer = null;
+    state = history.pop();
+    // נגד המחשב: חוזרים אחורה עד לתור האדם (ביטול מהלך המחשב יחד עם מהלך האדם)
+    while (isAiTurn() && history.length) state = history.pop();
+    lastMove = null; resetUiFromState(); save(); render();
   }
-  // אישור בתוך הדף (חלונות confirm לא זמינים בכל סביבה): לחיצה ראשונה מבקשת אישור, שנייה מבצעת
-  let newArmed = null;
-  function newGame() {
-    const btn = $('newBtn');
-    if (state.log.length && state.winner === null && !newArmed) {
-      btn.textContent = 'לחץ שוב למחיקת המשחק';
-      newArmed = setTimeout(() => { newArmed = null; btn.textContent = 'משחק חדש'; }, 3000);
-      return;
+
+  // ---------- יריב מחשב ----------
+  function scheduleAi() {
+    if (aiTimer || !isAiTurn()) return;
+    aiTimer = setTimeout(aiStep, state.roll ? 1000 : 700);
+  }
+  function aiStep() {
+    aiTimer = null;
+    if (!isAiTurn()) return;
+    if (!state.roll) { doRoll(); return; }
+    const p = state.turn;
+    let a = { type: 'pass' };
+    if (R.hasAnyMove(state)) {
+      try { a = AI.chooseAction(state, settings.level); } catch (e) { console.error(e); }
     }
-    clearTimeout(newArmed); newArmed = null; btn.textContent = 'משחק חדש';
-    state = R.newGame(); history = []; resetUiFromState(); save(); render();
+    history.push(state);
+    if (!R.hasAnyMove(state)) state = R.skipTurn(state);
+    else if (a.type === 'pass') state = R.passTurn(state);
+    else {
+      try { state = R.apply(state, a); } catch (e) { console.error(e); state = R.passTurn(state); a = { type: 'pass' }; }
+    }
+    lastMove = a.type === 'pass' ? null : { p, a };
+    resetUiFromState(); save(); render();
+  }
+
+  // ---------- משחק חדש ----------
+  let pending = null;
+  function openNew() {
+    pending = Object.assign({}, settings);
+    renderNewModal(); $('newModal').hidden = false;
+  }
+  function renderNewModal() {
+    const groups = { grpMode: 'mode', grpSide: 'human', grpLevel: 'level' };
+    for (const id in groups) {
+      $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
+    }
+    $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
+  }
+  function startNew() {
+    clearTimeout(aiTimer); aiTimer = null;
+    settings = Object.assign({}, pending); settings.human = +settings.human;
+    state = R.newGame(); history = []; lastMove = lastRoll = null;
+    $('newModal').hidden = true;
+    resetUiFromState(); save(); render();
   }
 
   // ---------- עזרי תצוגה ----------
   function tappable() {
     const set = new Map();
+    if (isAiTurn()) return set;
     if (ui.phase === 'choose') playableCells().forEach((c) => set.set(c, 'R'));
     else if (ui.phase === 'source') R.sources(state, ui.type, ui.R).forEach((c) => set.set(c, 'S'));
     else if (ui.phase === 'target') R.targets(state, ui.type, ui.R, ui.from).forEach((t) => set.set(t.to, 'T'));
@@ -177,6 +219,12 @@
     if (ui.from !== null) ring(ui.from, 'src', 31);
     if (ui.phase === 'target') R.targets(state, ui.type, ui.R, ui.from).forEach((t) => ring(t.to, 't-' + t.kind + ' pulse', 31));
     if (ui.to !== null) ring(ui.to, 't-' + (ui.tgt ? ui.tgt.kind : 'move'), 31);
+    // המהלך האחרון (של שני השחקנים)
+    if (lastMove) {
+      const la = lastMove.a, col = lastMove.p === 0 ? '#ff6b5b' : '#6fa0ff';
+      const cells = la.type === 'land' ? [la.R] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
+      cells.forEach((c) => { if (c !== null && c !== undefined) ring(c, 'last', 31, { stroke: col }); });
+    }
     // אזורי לחיצה
     for (let i = 0; i < R.CELLS; i++) {
       const h = svgEl('circle', { cx: cellX(i), cy: cellY(i), r: 31, class: 'hit' + (tap.has(i) ? ' tap' : ''), 'data-i': i });
@@ -189,7 +237,7 @@
       const el = $('panel' + p);
       el.style.setProperty('--c', COLOR[p]);
       el.classList.toggle('active', state.turn === p && state.winner === null);
-      el.innerHTML = `<div class="name"><span>${NAME[p]}</span><small>${p === 0 ? 'למטה' : 'למעלה'}${state.turn === p && state.winner === null ? ' · בתור' : ''}</small></div>
+      el.innerHTML = `<div class="name"><span>${NAME[p]}</span><small>${settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : (p === 0 ? 'למטה' : 'למעלה')}${state.turn === p && state.winner === null ? ' · בתור' : ''}</small></div>
         <div class="stats">
           <span>מחנה <b>${R.camp(state, p)}</b></span><span>גשרים <b>${state.bridgesLeft[p]}</b></span>
           <span>בית קברות <b>${state.graveyard[p]}</b></span><span class="prov">פרובינציות <b>${R.provincesHeld(state, p)}/${R.WIN_PROVINCES}</b></span>
@@ -199,10 +247,13 @@
 
   function renderDice() {
     const box = $('dice');
-    if (!state.roll) { box.innerHTML = '<span class="dice-note">הקוביות עדיין לא הוטלו</span>'; return; }
-    const { w, b } = state.roll, cls = ui.rolled ? ' roll' : '';
-    box.innerHTML = `<div class="die white${cls}" title="ציר X">${w}</div><div class="die brown${cls}" title="ציר Y">${b}</div>
-      <span class="dice-note">לבנה = X · חומה = Y<br><bdi dir="ltr">(${w},${b})</bdi> ו-<bdi dir="ltr">(${7 - w},${7 - b})</bdi></span>`;
+    const info = state.roll || lastRoll;
+    if (!info) { box.innerHTML = '<span class="dice-note">הקוביות עדיין לא הוטלו</span>'; return; }
+    const { w, b } = info, cls = (ui.rolled ? ' roll' : '') + (state.roll ? '' : ' old');
+    const note = state.roll
+      ? `לבנה = X · חומה = Y<br><bdi dir="ltr">(${w},${b})</bdi> ו-<bdi dir="ltr">(${7 - w},${7 - b})</bdi>`
+      : `הטלה אחרונה (${NAME[info.p]})`;
+    box.innerHTML = `<div class="die white${cls}" title="ציר X">${w}</div><div class="die brown${cls}" title="ציר Y">${b}</div><span class="dice-note">${note}</span>`;
     ui.rolled = false;
   }
 
@@ -248,14 +299,19 @@
     ctl.style.removeProperty('--c');
     ctl.style.setProperty('--c', COLOR[p]);
 
+    if (isAiTurn()) {
+      msg.innerHTML = `<b style="color:${COLOR[p]}">${NAME[p]}</b> (המחשב) ${state.roll ? 'חושב…' : 'מטיל קוביות…'}`;
+      return;
+    }
+
     switch (ui.phase) {
       case 'over': {
         msg.innerHTML = `<b style="color:${COLOR[state.winner]}">${NAME[state.winner]}</b> ניצח!`;
-        btn('משחק חדש', 'primary', newGame);
+        btn('משחק חדש', 'primary', openNew);
         break;
       }
       case 'roll':
-        msg.innerHTML = `תור ${nm}`;
+        msg.innerHTML = `תור ${nm}` + (state.log.length ? `<span class="sub">${state.log[state.log.length - 1]}</span>` : '');
         btn('הטל קוביות', 'primary', doRoll);
         break;
       case 'skip':
@@ -314,7 +370,7 @@
   }
 
   function renderPass() {
-    if (!['choose', 'action', 'source', 'target', 'count', 'confirm'].includes(ui.phase)) return;
+    if (isAiTurn() || !['choose', 'action', 'source', 'target', 'count', 'confirm'].includes(ui.phase)) return;
     const b = document.createElement('button');
     b.textContent = 'דלג על התור'; b.className = 'ghost pass'; b.onclick = doPass;
     $('controls').appendChild(b);
@@ -328,9 +384,10 @@
   function render() {
     renderPanels(); renderBoard(); renderDice(); renderDock(); renderPass(); renderLog();
     $('undoBtn').disabled = history.length === 0;
+    scheduleAi();
     const o = $('overlay');
     if (state.winner !== null && !ui.dismissWin) {
-      $('winTitle').innerHTML = `<span style="color:${COLOR[state.winner]}">${NAME[state.winner]}</span> ניצח!`;
+      $('winTitle').innerHTML = `<span style="color:${COLOR[state.winner]}">${NAME[state.winner]}</span> ${settings.mode === 'ai' ? (state.winner === settings.human ? 'ניצחת!' : 'המחשב ניצח') : 'ניצח!'}`;
       o.hidden = false;
     } else o.hidden = true;
   }
@@ -345,9 +402,14 @@
     render();
   });
   $('undoBtn').onclick = undo;
-  $('newBtn').onclick = newGame;
+  $('newBtn').onclick = openNew;
+  $('newCancel').onclick = () => { $('newModal').hidden = true; };
+  $('newStart').onclick = startNew;
+  for (const [id, key] of [['grpMode', 'mode'], ['grpSide', 'human'], ['grpLevel', 'level']]) {
+    $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
+  }
   $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
-  $('winNew').onclick = () => { state = R.newGame(); history = []; resetUiFromState(); save(); render(); };
+  $('winNew').onclick = () => { $('overlay').hidden = true; openNew(); };
   $('winClose').onclick = () => { ui.dismissWin = true; render(); };
 
   load(); resetUiFromState(); render();

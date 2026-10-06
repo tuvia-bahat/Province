@@ -9,6 +9,7 @@
 <h3>בדיקות לוגיקה</h3>
 <pre id="out"></pre>
 <script src="../src/rules.js"></script>
+<script src="../src/ai.js"></script>
 <script>
 const R = window.Rules, out = document.getElementById('out');
 let pass = 0, fail = 0;
@@ -254,6 +255,38 @@ test('דילוג מרצון מותר גם כשיש מהלכים', () => {
   eq(R.hasAnyMove(s), true);
   const t = R.passTurn(s);
   eq(t.turn, 1); eq(t.roll, null); eq(t.cells[I(0, 0)].n, 3);
+});
+
+test('מחשב: לוקח ניצחון מיידי', () => {
+  const board = {};
+  [[0, 0], [2, 0], [4, 0], [0, 2]].forEach(([x, y]) => { board[`${x},${y}`] = [0, 1]; });
+  const s = setup(board, 0, [2, 2]);
+  const a = AI.chooseAction(s, 'strong');
+  eq(R.apply(s, a).winner, 0);
+});
+test('מחשב: מונע ניצחון מיידי של היריב כשאפשר', () => {
+  // ליריב 4 פרובינציות; אם הוא מטיל את (4,2)/(1,3) הוא ינצח בנחיתה. למחשב יש חיילים לתקוף איתם.
+  const board = {};
+  [[0, 0], [2, 0], [4, 0], [0, 2]].forEach(([x, y]) => { board[`${x},${y}`] = [1, 1]; });
+  board['3,3'] = [0, 3];
+  let s = setup(board, 0, [3, 3]);
+  const a = AI.chooseAction(s, 'strong');
+  const ns = R.apply(s, a);
+  eq(ns.winner, null);
+});
+test('מחשב: תמיד מחזיר פעולה חוקית (משחק מלא מול עצמו)', () => {
+  let s = R.newGame();
+  for (let i = 0; i < 60 && s.winner === null; i++) {
+    s = R.roll(s, 1 + (Math.random() * 6 | 0), 1 + (Math.random() * 6 | 0));
+    const a = AI.chooseAction(s, i % 2 ? 'easy' : 'strong');
+    s = a.type === 'pass' ? R.passTurn(s) : R.apply(s, a);   // apply זורק אם הפעולה לא חוקית
+  }
+});
+test('החלפת מצב מהירה זהה לרגילה', () => {
+  let s = setup({ '0,0': [0, 5], '1,0': [1, 3], '2,2': [0, 2] }, 0, [0, 0]);
+  const a = { type: 'move', R: I(0, 0), from: I(0, 0), to: I(1, 0), count: 5 };
+  const slow = R.apply(s, a), fast = R.apply(s, a, true);
+  eq({ ...fast, log: 0 }, { ...slow, log: 0 });
 });
 
 out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;

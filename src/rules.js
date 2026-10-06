@@ -170,11 +170,11 @@
     return s.cells[from].n;
   }
 
-  function endTurn(s) {
+  function endTurn(s, fast) {
     const p = s.turn;
     if (provincesHeld(s, p) >= WIN_PROVINCES) {
       s.winner = p;
-      s.log.push(`${NAMES[p]} שולט ב-${provincesHeld(s, p)} פרובינציות וניצח!`);
+      if (!fast) s.log.push(`${NAMES[p]} שולט ב-${provincesHeld(s, p)} פרובינציות וניצח!`);
     } else {
       s.turn = 1 - p;
     }
@@ -196,14 +196,29 @@
     return ns;
   }
 
-  // ביצוע פעולה: { type, R, from, to, count }. זורק שגיאה אם הפעולה לא חוקית.
-  function apply(s, a) {
-    const p = s.turn, q = 1 - p;
-    if (s.winner !== null) throw new Error('המשחק הסתיים');
-    if (!s.roll || !s.roll.cells.includes(a.R)) throw new Error('המשבצת לא הוטלה');
-    if (!actionTypes(s, a.R).includes(a.type)) throw new Error('פעולה לא אפשרית: ' + a.type);
+  // שכפול מהיר למנוע החיפוש של המחשב (היומן משותף, ולכן אסור לכתוב אליו במצב מהיר)
+  function fastClone(s) {
+    return {
+      cells: s.cells.map((c) => ({ o: c.o, n: c.n })),
+      bridges: Object.assign({}, s.bridges),
+      bridgesLeft: s.bridgesLeft.slice(),
+      graveyard: s.graveyard.slice(),
+      turn: s.turn, roll: s.roll, winner: s.winner, log: s.log,
+    };
+  }
+  function passFast(s) { const ns = fastClone(s); endTurn(ns, true); return ns; }
 
-    const ns = clone(s), cells = ns.cells;
+  // ביצוע פעולה: { type, R, from, to, count }. זורק שגיאה אם הפעולה לא חוקית.
+  // fast=true: ללא בדיקות חוקיות (לפעולות שנוצרו ע"י מחולל המהלכים של המחשב) וללא יומן.
+  function apply(s, a, fast) {
+    const p = s.turn, q = 1 - p;
+    if (!fast) {
+      if (s.winner !== null) throw new Error('המשחק הסתיים');
+      if (!s.roll || !s.roll.cells.includes(a.R)) throw new Error('המשבצת לא הוטלה');
+      if (!actionTypes(s, a.R).includes(a.type)) throw new Error('פעולה לא אפשרית: ' + a.type);
+    }
+
+    const ns = fast ? fastClone(s) : clone(s), cells = ns.cells;
     const count = a.count | 0;
     let msg;
 
@@ -212,14 +227,14 @@
       cells[a.R].o = p; cells[a.R].n += count;
       msg = `הנחית ${count} חיילים ב-${cellLabel(a.R, p)}`;
     } else {
-      if (!sources(s, a.type, a.R).includes(a.from)) throw new Error('בסיס מקור לא חוקי');
+      if (!fast && !sources(s, a.type, a.R).includes(a.from)) throw new Error('בסיס מקור לא חוקי');
       const src = cells[a.from];
       if (a.type === 'withdraw') {
         if (count < 1 || count > src.n) throw new Error('מספר חיילים לא חוקי');
         src.n -= count;
         msg = `משך ${count} חיילים מ-${cellLabel(a.from, p)} למחנה`;
       } else {
-        const t = targets(s, a.type, a.R, a.from).find((x) => x.to === a.to);
+        const t = (fast && a.tgt) || targets(s, a.type, a.R, a.from).find((x) => x.to === a.to);
         if (!t) throw new Error('יעד לא חוקי');
         if (a.type !== 'bridge' && (count < 1 || count > src.n)) throw new Error('מספר חיילים לא חוקי');
 
@@ -252,8 +267,8 @@
       if (src.n === 0) src.o = null;
     }
 
-    ns.log.push(`${NAMES[p]}: ${msg}`);
-    endTurn(ns);
+    if (!fast) ns.log.push(`${NAMES[p]}: ${msg}`);
+    endTurn(ns, fast);
     return ns;
   }
 
@@ -262,7 +277,7 @@
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
     roll, crossing, territory, targets, sources, actionTypes, hasAnyMove, maxCount,
-    apply, skipTurn, passTurn, clone,
+    apply, skipTurn, passTurn, passFast, fastClone, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Rules;
   else root.Rules = Rules;

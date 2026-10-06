@@ -99,7 +99,14 @@ button.pass { flex: 1 1 100%; }
 #logBox { background: var(--panel); border-radius: 10px; padding: 8px 12px; font-size: 13px; color: var(--muted); max-height: 180px; overflow: auto; }
 #logBox div { padding: 2px 0; border-bottom: 1px dashed #4b3a29; }
 
-#overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: grid; place-items: center; z-index: 10; }
-#overlay[hidden], #logBox[hidden] { display: none; }
+#overlay, #newModal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: grid; place-items: center; z-index: 10; }
+#overlay[hidden], #newModal[hidden], #logBox[hidden], #grpSideWrap[hidden], #grpLevelWrap[hidden] { display: none; }
 .modal { background: var(--panel); padding: 24px; border-radius: 16px; text-align: center; display: flex; flex-direction: column; gap: 12px; min-width: 260px; }
 .modal h2 { margin: 0 0 4px; font-size: 26px; }
+.modal .lbl { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+.grp { display: flex; gap: 8px; }
+.grp button { flex: 1; padding: 10px 8px; font-size: 15px; }
+.grp button.on { background: var(--gold); color: #2b1d12; }
+.modal { max-width: 92vw; }
+.die.old { opacity: .5; }
+.ring.last { stroke-width: 4; stroke-dasharray: 3 5; }

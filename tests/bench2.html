@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>bench2</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/ai.js"></script>
+<script>
+const R=Rules,A=AI;
+function play(levels,maxTurns){ let s=R.newGame(),t=0; while(s.winner===null&&t<maxTurns){ s=R.roll(s,1+Math.random()*6|0,1+Math.random()*6|0); const lv=levels[s.turn]; const a=A.chooseAction(s,lv.level,lv.w); s=a.type==='pass'?R.passTurn(s):R.apply(s,a); t++; } return {winner:s.winner,turns:t}; }
+const q=new URLSearchParams(location.search); const games=+(q.get('g')||16);
+const variants=JSON.parse(q.get('v')||'{}'); const baseLevel=q.get('base')||'strong'; const varLevel=q.get('vl')||'strong';
+const res={};
+for(const [name,w] of Object.entries(variants)){ const r={v:0,b:0,n:0,turns:0}; for(let g=0;g<games;g++){ const base={level:baseLevel}, v={level:varLevel,w}; const lv=g%2?[base,v]:[v,base]; const x=play(lv,200); r.turns+=x.turns; const win=x.winner===null?null:(g%2?1-x.winner:x.winner); if(win===null) r.n++; else if(win===0) r.v++; else r.b++; } r.turns=Math.round(r.turns/games); res[name]=r; }
+document.getElementById('o').textContent='RESULT '+JSON.stringify(res);
+</script>
