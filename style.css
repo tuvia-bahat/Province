@@ -100,11 +100,13 @@ button.pass { flex: 1 1 100%; }
 #logBox div { padding: 2px 0; border-bottom: 1px dashed #4b3a29; }
 
 #overlay, #newModal { position: fixed; inset: 0; background: rgba(0,0,0,.65); display: grid; place-items: center; z-index: 10; }
-#overlay[hidden], #newModal[hidden], #logBox[hidden], #grpSideWrap[hidden], #grpLevelWrap[hidden] { display: none; }
+#overlay[hidden], #newModal[hidden], #logBox[hidden], #grpSideWrap[hidden], #grpLevelWrap[hidden], #grpWatchWrap[hidden], #speedBtn[hidden] { display: none; }
 .modal { background: var(--panel); padding: 24px; border-radius: 16px; text-align: center; display: flex; flex-direction: column; gap: 12px; min-width: 260px; }
 .modal h2 { margin: 0 0 4px; font-size: 26px; }
 .modal .lbl { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
-.grp { display: flex; gap: 8px; }
+.grp { display: flex; gap: 8px; margin-bottom: 6px; }
+#grpWatchWrap { display: flex; flex-direction: column; }
+.modal .grp:first-of-type button { font-size: 14px; }
 .grp button { flex: 1; padding: 10px 8px; font-size: 15px; }
 .grp button.on { background: var(--gold); color: #2b1d12; }
 .modal { max-width: 92vw; }

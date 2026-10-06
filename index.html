@@ -24,6 +24,7 @@
 
   <div id="bar">
     <button id="undoBtn" class="ghost">↶ בטל מהלך</button>
+    <button id="speedBtn" class="ghost" hidden>מהירות: רגילה</button>
     <button id="logBtn" class="ghost">יומן</button>
     <button id="newBtn" class="ghost">משחק חדש</button>
   </div>
@@ -36,6 +37,7 @@
     <div class="grp" id="grpMode">
       <button data-v="pvp">שני שחקנים על המכשיר</button>
       <button data-v="ai">נגד המחשב</button>
+      <button data-v="watch">מחשב נגד מחשב</button>
     </div>
     <div id="grpSideWrap"><div class="lbl">אני משחק</div>
       <div class="grp" id="grpSide">
@@ -48,6 +50,14 @@
         <button data-v="easy">קל</button>
         <button data-v="strong">חזק</button>
       </div>
+    </div>
+    <div id="grpWatchWrap">
+      <div class="lbl">רמת אדום</div>
+      <div class="grp" id="grpLevelR"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
+      <div class="lbl">רמת כחול</div>
+      <div class="grp" id="grpLevelB"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
+      <div class="lbl">מהירות</div>
+      <div class="grp" id="grpSpeed"><button data-v="slow">איטית</button><button data-v="normal">רגילה</button><button data-v="fast">מהירה</button></div>
     </div>
     <button id="newStart" class="primary">התחל</button>
     <button id="newCancel" class="ghost">ביטול</button>

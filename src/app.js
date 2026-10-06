@@ -15,9 +15,14 @@
 
   // ---------- מצב ----------
   let state, history, ui;
-  let settings = { mode: 'pvp', human: 0, level: 'strong' };   // mode: pvp | ai
-  let lastMove = null, lastRoll = null, aiTimer = null;
-  const isAiTurn = () => settings.mode === 'ai' && state.winner === null && state.turn !== settings.human;
+  // mode: pvp (שני שחקנים) | ai (אדם נגד מחשב) | watch (מחשב נגד מחשב)
+  let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal' };
+  let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
+  const SPEED = { slow: 2, normal: 1, fast: 0.12 };
+  const SPEED_LABEL = { slow: 'איטית', normal: 'רגילה', fast: 'מהירה' };
+  const isAiTurn = () => state.winner === null &&
+    (settings.mode === 'watch' || (settings.mode === 'ai' && state.turn !== settings.human));
+  const aiLevel = () => (settings.mode === 'watch' ? (state.turn === 0 ? settings.levelR : settings.levelB) : settings.level);
   const $ = (id) => document.getElementById(id);
   const fresh = () => ({ phase: 'roll', R: null, type: null, from: null, to: null, tgt: null, count: 1, stack: [] });
 
@@ -97,8 +102,18 @@
 
   // ---------- יריב מחשב ----------
   function scheduleAi() {
-    if (aiTimer || !isAiTurn()) return;
-    aiTimer = setTimeout(aiStep, state.roll ? 1000 : 700);
+    if (aiTimer || paused || !isAiTurn()) return;
+    aiTimer = setTimeout(aiStep, (state.roll ? 1000 : 700) * SPEED[settings.speed]);
+  }
+  function togglePause() {
+    paused = !paused;
+    if (paused) { clearTimeout(aiTimer); aiTimer = null; }
+    render();
+  }
+  function cycleSpeed() {
+    const order = ['slow', 'normal', 'fast'];
+    settings.speed = order[(order.indexOf(settings.speed) + 1) % order.length];
+    save(); render();
   }
   function aiStep() {
     aiTimer = null;
@@ -107,7 +122,7 @@
     const p = state.turn;
     let a = { type: 'pass' };
     if (R.hasAnyMove(state)) {
-      try { a = AI.chooseAction(state, settings.level); } catch (e) { console.error(e); }
+      try { a = AI.chooseAction(state, aiLevel()); } catch (e) { console.error(e); }
     }
     history.push(state);
     if (!R.hasAnyMove(state)) state = R.skipTurn(state);
@@ -126,14 +141,15 @@
     renderNewModal(); $('newModal').hidden = false;
   }
   function renderNewModal() {
-    const groups = { grpMode: 'mode', grpSide: 'human', grpLevel: 'level' };
+    const groups = { grpMode: 'mode', grpSide: 'human', grpLevel: 'level', grpLevelR: 'levelR', grpLevelB: 'levelB', grpSpeed: 'speed' };
     for (const id in groups) {
       $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
     }
     $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
+    $('grpWatchWrap').hidden = pending.mode !== 'watch';
   }
   function startNew() {
-    clearTimeout(aiTimer); aiTimer = null;
+    clearTimeout(aiTimer); aiTimer = null; paused = false;
     settings = Object.assign({}, pending); settings.human = +settings.human;
     state = R.newGame(); history = []; lastMove = lastRoll = null;
     $('newModal').hidden = true;
@@ -237,7 +253,7 @@
       const el = $('panel' + p);
       el.style.setProperty('--c', COLOR[p]);
       el.classList.toggle('active', state.turn === p && state.winner === null);
-      el.innerHTML = `<div class="name"><span>${NAME[p]}</span><small>${settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : (p === 0 ? 'למטה' : 'למעלה')}${state.turn === p && state.winner === null ? ' · בתור' : ''}</small></div>
+      el.innerHTML = `<div class="name"><span>${NAME[p]}</span><small>${settings.mode === 'watch' ? 'מחשב' : settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : (p === 0 ? 'למטה' : 'למעלה')}${state.turn === p && state.winner === null ? ' · בתור' : ''}</small></div>
         <div class="stats">
           <span>מחנה <b>${R.camp(state, p)}</b></span><span>גשרים <b>${state.bridgesLeft[p]}</b></span>
           <span>בית קברות <b>${state.graveyard[p]}</b></span><span class="prov">פרובינציות <b>${R.provincesHeld(state, p)}/${R.WIN_PROVINCES}</b></span>
@@ -300,7 +316,9 @@
     ctl.style.setProperty('--c', COLOR[p]);
 
     if (isAiTurn()) {
-      msg.innerHTML = `<b style="color:${COLOR[p]}">${NAME[p]}</b> (המחשב) ${state.roll ? 'חושב…' : 'מטיל קוביות…'}`;
+      const last = state.log.length ? `<span class="sub">${state.log[state.log.length - 1]}</span>` : '';
+      const doing = paused ? 'מושהה' : state.roll ? 'חושב…' : 'מטיל קוביות…';
+      msg.innerHTML = `<b style="color:${COLOR[p]}">${NAME[p]}</b> (המחשב) ${doing}${last}`;
       return;
     }
 
@@ -383,7 +401,11 @@
 
   function render() {
     renderPanels(); renderBoard(); renderDice(); renderDock(); renderPass(); renderLog();
-    $('undoBtn').disabled = history.length === 0;
+    const watch = settings.mode === 'watch';
+    $('undoBtn').textContent = watch ? (paused ? '▶ המשך' : '⏸ השהה') : '↶ בטל מהלך';
+    $('undoBtn').disabled = watch ? state.winner !== null : history.length === 0;
+    $('speedBtn').hidden = !watch;
+    $('speedBtn').textContent = 'מהירות: ' + SPEED_LABEL[settings.speed];
     scheduleAi();
     const o = $('overlay');
     if (state.winner !== null && !ui.dismissWin) {
@@ -401,11 +423,12 @@
     else if (ui.phase === 'target') { snapshot(); ui.tgt = R.targets(state, ui.type, ui.R, ui.from).find((x) => x.to === i); ui.to = i; afterTarget(); }
     render();
   });
-  $('undoBtn').onclick = undo;
+  $('undoBtn').onclick = () => (settings.mode === 'watch' ? togglePause() : undo());
+  $('speedBtn').onclick = cycleSpeed;
   $('newBtn').onclick = openNew;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
   $('newStart').onclick = startNew;
-  for (const [id, key] of [['grpMode', 'mode'], ['grpSide', 'human'], ['grpLevel', 'level']]) {
+  for (const [id, key] of [['grpMode', 'mode'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
     $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
   }
   $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
