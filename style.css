@@ -106,7 +106,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stepper .num small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 4px; }
 .stepper .pm { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--cell); font-size: 24px; line-height: 1; }
 .stepper .pm:active { background: var(--faint); }
-.sheet input[type=range] { width: 100%; max-width: 320px; direction: ltr; accent-color: var(--ink); height: 28px; }
+.sheet .seg.mini { width: min(260px, 100%); }
+.sheet input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 36px; margin: 0; touch-action: pan-y; cursor: pointer; --p: 100%; }
+.sheet input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 8px; background: linear-gradient(to right, var(--ink) var(--p), var(--cell) var(--p)); }
+.sheet input[type=range]::-moz-range-track { height: 8px; border-radius: 8px; background: var(--cell); }
+.sheet input[type=range]::-moz-range-progress { height: 8px; border-radius: 8px; background: var(--ink); }
+.sheet input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -11px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 6px rgba(20,25,40,.4), 0 0 0 1px rgba(20,25,40,.08); }
+.sheet input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 0; box-shadow: 0 1px 6px rgba(20,25,40,.4); }
+.sheet input[type=range] { width: 100%; max-width: 320px; direction: ltr; }
 .sheet .quick { display: flex; gap: 6px; }
 
 #bar { display: flex; justify-content: center; gap: 6px; margin-top: auto; }

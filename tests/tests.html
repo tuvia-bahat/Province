@@ -154,11 +154,21 @@ test('מנדט טריטוריה: פעולה מבסיס אחר, יעד כלשהו
   s = R.apply(s, { type: 'move', R: I(0, 0), from: I(1, 0), to: I(1, 1), count: 2 });
   eq(s.cells[I(1, 1)], { o: 0, n: 2 });
 });
-test('הנחתה רק במשבצת שהוטלה', () => {
+test('תגבור: אפשר בכל בסיס בטריטוריה, לא רק במשבצת שהוטלה', () => {
   const s = setup({ '0,0': [0, 2], '1,0': [0, 5] }, 0, [0, 0]);
-  const types = R.actionTypes(s, I(0, 0));
-  eq(types.includes('land'), true);
-  throws(() => R.apply(s, { type: 'land', R: I(1, 0), count: 1 }));
+  eq(R.landTargets(s, I(0, 0)).sort((x, y) => x - y), [I(0, 0), I(1, 0)]);
+  const t = R.apply(s, { type: 'land', R: I(0, 0), to: I(1, 0), count: 3 });
+  eq(t.cells[I(1, 0)], { o: 0, n: 8 }); eq(t.cells[I(0, 0)], { o: 0, n: 2 });
+});
+test('תגבור: לא בבסיס מחוץ לטריטוריה, ולא במשבצת ריקה אחרת', () => {
+  const s = setup({ '0,0': [0, 2], '4,4': [0, 5] }, 0, [0, 0]);
+  throws(() => R.apply(s, { type: 'land', R: I(0, 0), to: I(4, 4), count: 1 }));
+  throws(() => R.apply(s, { type: 'land', R: I(0, 0), to: I(3, 3), count: 1 }));
+});
+test('הוטלה משבצת ריקה: הנחתה רק בה', () => {
+  const s = setup({ '0,0': [0, 2] }, 0, [3, 3]);
+  eq(R.landTargets(s, I(3, 3)), [I(3, 3)]);
+  throws(() => R.apply(s, { type: 'land', R: I(3, 3), to: I(0, 0), count: 1 }));
 });
 test('נסיגה מבסיס בטריטוריה', () => {
   let s = setup({ '0,0': [0, 2], '1,0': [0, 5] }, 0, [0, 0]);

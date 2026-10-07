@@ -153,6 +153,14 @@
     return base.filter((b) => targets(s, type, R, b).length > 0);
   }
 
+  // משבצות שאפשר להנחית בהן חיילים בהינתן המשבצת שהוטלה: משבצת ריקה – רק היא; בסיס שלי – כל בסיס בטריטוריה שלו
+  function landTargets(s, R) {
+    const c = s.cells[R];
+    if (c.o === null) return [R];
+    if (c.o === s.turn) return territory(s, R);
+    return [];
+  }
+
   function actionTypes(s, R) {
     const p = s.turn, c = s.cells[R], out = [];
     if ((c.o === null || c.o === p) && camp(s, p) > 0) out.push('land');
@@ -223,9 +231,11 @@
     let msg;
 
     if (a.type === 'land') {
+      const to = a.to === undefined || a.to === null ? a.R : a.to;
+      if (!fast && !landTargets(s, a.R).includes(to)) throw new Error('אי אפשר להנחית חיילים במשבצת הזו');
       if (count < 1 || count > camp(s, p)) throw new Error('מספר חיילים לא חוקי');
-      cells[a.R].o = p; cells[a.R].n += count;
-      msg = `הנחית ${count} חיילים ב-${cellLabel(a.R, p)}`;
+      cells[to].o = p; cells[to].n += count;
+      msg = `הנחית ${count} חיילים ב-${cellLabel(to, p)}`;
     } else {
       if (!fast && !sources(s, a.type, a.R).includes(a.from)) throw new Error('בסיס מקור לא חוקי');
       const src = cells[a.from];
@@ -276,7 +286,7 @@
     SIZE, CELLS, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES,
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
-    roll, crossing, territory, targets, sources, actionTypes, hasAnyMove, maxCount,
+    roll, crossing, territory, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,
     apply, skipTurn, passTurn, passFast, fastClone, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Rules;

@@ -94,7 +94,7 @@
     const add = (c, k) => { const e = m.get(c) || {}; e[k] = true; m.set(c, e); };
     if (state.roll) {
       for (const Rc of state.roll.cells) {
-        if (R.actionTypes(state, Rc).includes('land')) add(Rc, 'land');
+        if (R.actionTypes(state, Rc).includes('land')) for (const t of R.landTargets(state, Rc)) add(t, 'land');
         for (const t of ['move', 'transport', 'withdraw', 'bridge']) for (const f of R.sources(state, t, Rc)) add(f, 'source');
       }
     }
@@ -134,7 +134,7 @@
     return { type: plan.type, R: plan.R, from: plan.from, to: plan.to, count };
   }
   const withdrawR = (from) => state.roll.cells.find((Rc) => R.sources(state, 'withdraw', Rc).includes(from));
-  const canReinforce = (c) => state.roll.cells.includes(c) && R.actionTypes(state, c).includes('land');
+  const landR = (c) => state.roll.cells.find((Rc) => R.actionTypes(state, Rc).includes('land') && R.landTargets(state, Rc).includes(c));
 
   // ---------- ביצוע ----------
   function commit(a) {
@@ -170,17 +170,33 @@
     if (sheet.min === sheet.max) { commit(sheet.build(sheet.max)); return; }
     ui.sheet = sheet; render();
   }
-  function startLand(c) {
-    const p = state.turn, max = R.camp(state, p);
-    openSheet({ kind: 'land', cell: c, min: 1, max, count: 1, build: (n) => ({ type: 'land', R: c, count: n }) });
+  // לחיצה קצרה על משבצת: הוספת חיילים מהמחנה (תגבור/הנחתה) ו/או משיכת חיילים בחזרה למחנה
+  function startAdjust(c) {
+    const p = state.turn, cell = state.cells[c], modes = [];
+    const rl = landR(c), rw = cell.o === p ? withdrawR(c) : undefined;
+    if (rl !== undefined && R.camp(state, p) > 0) modes.push('add');
+    if (rw !== undefined) modes.push('withdraw');
+    if (!modes.length) return false;
+    const sh = { kind: 'adjust', cell: c, modes, mode: modes[0], rl, rw };
+    setMode(sh, modes[0]);
+    if (modes.length === 1 && sh.min === sh.max) { commit(sh.build(sh.max)); return true; }
+    ui.sheet = sh; render();
+    return true;
   }
-  function startWithdraw(from) {
-    const Rc = withdrawR(from), max = state.cells[from].n;
-    openSheet({ kind: 'withdraw', from, min: 1, max, count: max, build: (n) => ({ type: 'withdraw', R: Rc, from, count: n }) });
+  function setMode(sh, mode) {
+    const p = state.turn;
+    sh.mode = mode;
+    if (mode === 'add') {
+      sh.min = 1; sh.max = R.camp(state, p); sh.count = 1;
+      sh.build = (n) => ({ type: 'land', R: sh.rl, to: sh.cell, count: n });
+    } else {
+      sh.min = 1; sh.max = state.cells[sh.cell].n; sh.count = sh.max;
+      sh.build = (n) => ({ type: 'withdraw', R: sh.rw, from: sh.cell, count: n });
+    }
   }
   function startMove(from, to) {
     const plan = planFor(from, to);
-    if (!plan) return;
+    if (!plan) { render(); return; }
     openSheet({ kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max, build: (n) => actionFromPlan(plan, n) });
   }
 
@@ -237,8 +253,11 @@
 
   // ---------- תצוגה: לוח ----------
   // צל אחד, חזק וסימטרי מכל הצדדים (בלי היסט), כדי שהעיגול לא ייראה עקום
+  const grad = (id, c0, c1) => `<radialGradient id="${id}" cx="36%" cy="30%" r="85%"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></radialGradient>`;
   const DEFS = `<defs>
-      <filter id="sh" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="0" stdDeviation="6.5" flood-color="#0e1220" flood-opacity=".8"/></filter>
+      <filter id="sh" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="2.5" stdDeviation="5.5" flood-color="#0e1220" flood-opacity=".5"/></filter>
+      ${grad('gG', '#ffffff', '#d4d8e0')}${grad('gC0', '#fdeaeb', '#ebb2b5')}${grad('gC1', '#eaf1ff', '#b3c6f2')}
+      ${grad('gP0', '#f7868a', '#c8353b')}${grad('gP1', '#7da0fb', '#2a52cf')}
     </defs>`;
 
   function renderBoard() {
@@ -263,19 +282,21 @@
       const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR - 2;
       h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
-    // עיגולים
+    // עיגולים: משבצות פעילות "מורמות" (גדולות יותר, עם גוון תלת-ממדי, שפה בהירה וצל), השאר שטוחות
     for (let i = 0; i < R.CELLS; i++) {
       const c = state.cells[i], x = cellX(i), y = cellY(i);
       let lit = false;
       if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
       else if (opts) lit = i === ui.sel || opts.has(i);
       else lit = play.has(i);
-      const fa = lit ? ' filter="url(#sh)"' : '';
-      if (c.o === null) {
-        const ctl = control[R.provinceOf(i)];
-        h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}" cx="${x}" cy="${y}" r="${CR}"${fa}/>`;
+      const ctl = control[R.provinceOf(i)];
+      const flat = c.o === null ? `cell${ctl !== null ? ' c' + ctl : ''}` : `base p${c.o}`;
+      const grad = c.o === null ? (ctl === null ? 'gG' : 'gC' + ctl) : 'gP' + c.o;
+      const num = c.o === null ? '' : `<text class="cnt" x="${lit ? 0 : x}" y="${lit ? 1 : y + 1}">${c.n}</text>`;
+      if (lit) {
+        h += `<g class="lift" transform="translate(${x} ${y}) scale(1.14)" filter="url(#sh)"><circle r="${CR}" fill="url(#${grad})" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>${num}</g>`;
       } else {
-        h += `<circle class="base p${c.o}" cx="${x}" cy="${y}" r="${CR}"${fa}/><text class="cnt" x="${x}" y="${y + 1}">${c.n}</text>`;
+        h += `<circle class="${flat}" cx="${x}" cy="${y}" r="${CR}"/>${num}`;
       }
     }
     // טבעות: משבצות שהוטלו, ומהלך אחרון
@@ -284,7 +305,7 @@
     }
     if (lastMove) {
       const la = lastMove.a;
-      const cells = la.type === 'land' ? [la.R] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
+      const cells = la.type === 'land' ? [la.to === undefined || la.to === null ? la.R : la.to] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
       cells.forEach((c) => { if (c !== null && c !== undefined) h += `<circle class="ring-last" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 5}" stroke="${COLORS[lastMove.p]}"/>`; });
     }
     // בחירת הכמות פתוחה: מסמנים את היעד שאליו גררו (קו מהבסיס + טבעת סביב היעד)
@@ -333,11 +354,13 @@
   const lbl = (c) => R.cellLabel(c, state.turn);
   function sheetText(sh) {
     const n = sh.count, p = state.turn;
-    if (sh.kind === 'land') {
-      const own = state.cells[sh.cell].o === p;
-      return { title: `${own ? 'תגבור' : 'הנחתה'} ב-${lbl(sh.cell)}`, note: `נותרו במחנה ${R.camp(state, p) - n}` };
+    if (sh.kind === 'adjust') {
+      if (sh.mode === 'add') {
+        const own = state.cells[sh.cell].o === p;
+        return { title: `${own ? 'תגבור' : 'הנחתה'} ב-${lbl(sh.cell)}`, note: `נותרו במחנה ${R.camp(state, p) - n}` };
+      }
+      return { title: `נסיגה מ-${lbl(sh.cell)} למחנה`, note: `${state.cells[sh.cell].n - n} יישארו בבסיס` };
     }
-    if (sh.kind === 'withdraw') return { title: `נסיגה מ-${lbl(sh.from)} למחנה`, note: `${state.cells[sh.from].n - n} יישארו בבסיס` };
     const pl = sh.plan, tg = n === 0 ? pl.bridge.tg : pl.tgt;
     const bridge = tg.cross === 'place' ? `גשר חדש (נותרו ${state.bridgesLeft[p] - 1})` : tg.cross === 'replace' ? 'החלפת גשר היריב' : '';
     if (n === 0) return { title: `הנחת גשר אל ${lbl(sh.to)}`, note: bridge };
@@ -387,38 +410,48 @@
     const sh = ui.sheet;
     if (sh) {
       sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
-      const t = sheetText(sh);
       msg.innerHTML = '';
       const box = document.createElement('div'); box.className = 'sheet';
-      box.innerHTML = `<div class="title">${t.title}</div>
-        <div class="stepper"><button class="pm" id="minus" aria-label="פחות">−</button>
-          <div class="num">${sh.count}${sh.count === 0 ? '<small>גשר בלבד</small>' : ''}</div>
-          <button class="pm" id="plus" aria-label="יותר">+</button></div>
-        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" value="${sh.count}" aria-label="כמות חיילים">
+      const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'תגבור' : 'הנחתה';
+      const toggle = sh.modes && sh.modes.length > 1
+        ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'נסיגה'}</button>`).join('')}</div>` : '';
+      box.innerHTML = `${toggle}<div class="title" id="shTitle"></div>
+        <div class="stepper"><button class="pm" id="minus" aria-label="פחות">−</button><div class="num" id="shNum"></div><button class="pm" id="plus" aria-label="יותר">+</button></div>
+        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="כמות חיילים">
         <div class="quick"><button class="btn soft sm" id="qmin">${sh.min === 0 ? 'גשר בלבד' : '1'}</button><button class="btn soft sm" id="qhalf">חצי</button><button class="btn soft sm" id="qall">הכל</button></div>
-        <div class="note">${t.note}</div>`;
+        <div class="note" id="shNote"></div>`;
       ctl.appendChild(box);
-      const set = (v) => { sh.count = Math.max(sh.min, Math.min(sh.max, v)); haptic('tick'); renderDock(); renderBoard(); };
+      const rng = box.querySelector('#rng');
+      // מעדכנים רק את התצוגה (בלי לבנות מחדש את הרכיבים), כדי שגרירת המחוון תמשיך לעבוד
+      const view = () => {
+        const t = sheetText(sh);
+        box.querySelector('#shTitle').textContent = t.title;
+        box.querySelector('#shNum').innerHTML = `${sh.count}${sh.count === 0 ? '<small>גשר בלבד</small>' : ''}`;
+        box.querySelector('#shNote').textContent = t.note;
+        rng.value = sh.count;
+        rng.style.setProperty('--p', (sh.max === sh.min ? 100 : ((sh.count - sh.min) / (sh.max - sh.min)) * 100) + '%');
+      };
+      const set = (v) => {
+        const nv = Math.max(sh.min, Math.min(sh.max, v));
+        if (nv !== sh.count) { sh.count = nv; haptic('tick'); }
+        view();
+      };
       box.querySelector('#minus').onclick = () => set(sh.count - 1);
       box.querySelector('#plus').onclick = () => set(sh.count + 1);
-      box.querySelector('#rng').oninput = (e) => set(+e.target.value);
+      rng.oninput = (e) => set(+e.target.value);
       box.querySelector('#qmin').onclick = () => set(sh.min === 0 ? 0 : 1);
       box.querySelector('#qhalf').onclick = () => set(Math.max(sh.min, Math.ceil(sh.max / 2)));
       box.querySelector('#qall').onclick = () => set(sh.max);
+      const seg = box.querySelector('#modeSeg');
+      if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); haptic('select'); renderDock(); };
+      view();
       const r = row();
       addBtn(r, 'ביטול', 'ghost', () => { ui.sheet = null; haptic('soft'); render(); });
       addBtn(r, 'אישור', '', () => commit(sh.build(sh.count)));
       return;
     }
 
-    if (ui.sel === null) {
-      msg.innerHTML = `${name} · בחר משבצת מודגשת`;
-    } else {
-      msg.innerHTML = `${name} · גרור מ-${lbl(ui.sel)} ליעד<span class="sub">או לחץ על יעד מודגש</span>`;
-      const r = row();
-      if (canReinforce(ui.sel)) addBtn(r, 'תגבור', 'soft sm', () => startLand(ui.sel));
-      if (withdrawR(ui.sel) !== undefined) addBtn(r, 'נסיגה למחנה', 'soft sm', () => startWithdraw(ui.sel));
-    }
+    msg.innerHTML = `${name} · גרור בסיס מודגש ליעד<span class="sub">לחיצה קצרה: הוספה או משיכה של חיילים</span>`;
     addBtn(row(), 'דלג על התור', 'ghost sm', doPass);
   }
 
@@ -473,20 +506,17 @@
     } else ring.setAttribute('visibility', 'hidden');
   }
 
+  // לחיצה על בסיס מודגש "מרימה" אותו ומדליקה את יעדי הגרירה. הזזה/התקפה/גשר/שינוע נעשים רק בגרירה.
+  // לחיצה קצרה (בלי גרירה) פותחת הוספה או משיכה של חיילים.
   svg.addEventListener('pointerdown', (e) => {
     if (!canAct() || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const pos = toSvg(e), c = cellAt(pos, CR + 10);
-    drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null, selectedNow: false };
+    drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null };
     if (c === null) return;
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    const play = playableMap();
-    const opts = ui.sel !== null ? optionsFrom(ui.sel) : null;
-    const isTarget = opts && opts.has(c) && c !== ui.sel;
-    // נגיעה בבסיס מודגש (שאינו יעד של הבסיס שנבחר) בוחרת אותו מיד
-    if (!isTarget && c !== ui.sel && play.get(c) && play.get(c).source) {
-      ui.sel = c; drag.selectedNow = true; haptic('select'); render();
-      // render החליף את ה-SVG; ממשיכים לעקוב אחרי האצבע דרך ה-capture שעל האלמנט הראשי
-    }
+    const pl = playableMap().get(c);
+    if (pl && pl.source) { ui.sel = c; haptic('select'); render(); }
+    else if (pl) haptic('select');
   });
 
   svg.addEventListener('pointermove', (e) => {
@@ -505,27 +535,18 @@
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
     overlay(null);
-    if (cancelled || !canAct()) return;
+    const sel = ui.sel;
+    ui.sel = null;
+    if (cancelled || !canAct()) { if (sel !== null) render(); return; }
+    if (d.moved) {                                              // גרירה
+      if (sel !== null && d.start === sel && d.hover !== null) startMove(sel, d.hover);
+      else if (sel !== null) render();
+      return;
+    }
+    // לחיצה קצרה
     const c = d.start;
-
-    if (d.moved && ui.sel !== null && c === ui.sel) {          // גרירה מהבסיס שנבחר
-      if (d.hover !== null) startMove(ui.sel, d.hover);
-      return;
-    }
-    if (d.moved || c === null) {                                // גרירה לא רלוונטית / לחיצה בחוץ
-      if (!d.moved && c === null && ui.sel !== null) { ui.sel = null; render(); }
-      return;
-    }
-    // לחיצה (בלי גרירה)
-    if (d.selectedNow) return;                                  // נבחר זה עתה בנגיעה
-    const play = playableMap();
-    const opts = ui.sel !== null ? optionsFrom(ui.sel) : null;
-    if (ui.sel !== null) {
-      if (c === ui.sel) { ui.sel = null; haptic('soft'); render(); return; }
-      if (opts.has(c)) { haptic('select'); startMove(ui.sel, c); return; }
-      ui.sel = null; haptic('soft'); render(); return;
-    }
-    if (play.get(c) && play.get(c).land && !play.get(c).source) { haptic('select'); startLand(c); return; }
+    if (c !== null && playableMap().has(c) && startAdjust(c)) return;
+    if (sel !== null) render();
   }
   svg.addEventListener('pointerup', (e) => endPointer(e, false));
   svg.addEventListener('pointercancel', (e) => endPointer(e, true));
