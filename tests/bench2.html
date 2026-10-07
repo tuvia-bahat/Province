@@ -1,7 +1,9 @@
 <!doctype html><meta charset="utf-8"><title>bench2</title><pre id="o">running</pre>
 <script src="../src/rules.js"></script><script src="../src/ai.js"></script>
 <script>
+const __q0 = new URLSearchParams(location.search);
 const R=Rules,A=AI;
+Rules.OPTIONS.provinceTerritory = !__q0.get('v1');
 function play(levels,maxTurns){ let s=R.newGame(),t=0; while(s.winner===null&&t<maxTurns){ s=R.roll(s,1+Math.random()*6|0,1+Math.random()*6|0); const lv=levels[s.turn]; const a=A.chooseAction(s,lv.level,lv.w); s=a.type==='pass'?R.passTurn(s):R.apply(s,a); t++; } return {winner:s.winner,turns:t}; }
 const q=new URLSearchParams(location.search); const games=+(q.get('g')||16);
 const variants=JSON.parse(q.get('v')||'{}'); const bw=JSON.parse(q.get('bw')||'{}'); const baseLevel=q.get('base')||'strong'; const varLevel=q.get('vl')||'strong';

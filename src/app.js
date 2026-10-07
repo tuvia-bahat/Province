@@ -9,7 +9,7 @@
 (function () {
   'use strict';
   const R = window.Rules;
-  const SAVE_KEY = 'province.save.v5';
+  const SAVE_KEY = 'province.save.v6';
   const NAME = R.NAMES;
   const COLORS = ['#e5484d', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
@@ -46,7 +46,7 @@
     } catch (e) { /* ignore */ }
     state = R.newGame(); history = [];
   }
-  // משחק שני שחקנים: כללי גרסה 2 (פרובינציה בשליטה = טריטוריה). מול המחשב: כללי גרסה 1, שעליהם הוא אומן.
+  // משחק שני שחקנים: כללי גרסה 2 (פרובינציה בשליטה = טריטוריה). מול המחשב: כללי גרסה 1, שעליהם הוא אומן (עד שיאומן על גרסה 2).
   function applyRules() { R.OPTIONS.provinceTerritory = settings.mode === 'pvp'; }
   function save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }

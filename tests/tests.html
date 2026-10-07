@@ -80,7 +80,7 @@ test('תזוזה מעבר לנהר דורשת גשר ומניחה אותו', () 
   const t = R.targets(s, 'move', I(1, 0), I(1, 0)).find((x) => x.to === I(2, 0));
   eq(t.cross, 'place');
   s = R.apply(s, { type: 'move', R: I(1, 0), from: I(1, 0), to: I(2, 0), count: 2 });
-  eq(s.bridges[R.bridgeKey(I(1, 0), I(2, 0))], 0); eq(s.bridgesLeft, [4, 5]);
+  eq(s.bridges[R.bridgeKey(I(1, 0), I(2, 0))], 0); eq(s.bridgesLeft, [5, 6]);
 });
 test('בלי גשרים בנמצא אי אפשר לחצות נהר', () => {
   const s = setup({ '1,0': [0, 4] }, 0, [1, 0], { bridgesLeft: [0, 8] });
@@ -104,7 +104,7 @@ test('גשר יריב: חסום; החלפה רק כשיש חיילים משני 
 test('הנחת גשר בלי להזיז חיילים', () => {
   let s = setup({ '1,0': [0, 4] }, 0, [1, 0]);
   s = R.apply(s, { type: 'bridge', R: I(1, 0), from: I(1, 0), to: I(2, 0), count: 0 });
-  eq(s.cells[I(1, 0)].n, 4); eq(s.cells[I(2, 0)].n, 0); eq(s.bridgesLeft[0], 4);
+  eq(s.cells[I(1, 0)].n, 4); eq(s.cells[I(2, 0)].n, 0); eq(s.bridgesLeft[0], 5);
 });
 test('התקפה: תוקפים > מגינים (עודפים נשארים, ההרוגים בבית קברות)', () => {
   let s = setup({ '0,0': [0, 6], '1,0': [1, 4] }, 0, [0, 0]);

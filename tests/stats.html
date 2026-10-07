@@ -1,7 +1,9 @@
 <!doctype html><meta charset="utf-8"><title>stats</title><pre id="o">running</pre>
 <script src="../src/rules.js"></script><script src="../src/ai.js"></script>
 <script>
+const __q0 = new URLSearchParams(location.search);
 const R=Rules,A=AI; const q=new URLSearchParams(location.search);
+Rules.OPTIONS.provinceTerritory = !__q0.get('v1');
 const GAMES=+(q.get('g')||40); Object.assign(R.OPTIONS, JSON.parse(q.get('opt')||'{}'));
 const T=[10,20,30]; // תורות לכל שחקן שבהן נדגם המצב
 const agg={games:0,turns:0,p0wins:0,draws:0,landings:0,landSoldiers:0,landSingle:0,reinf:0,reinfSoldiers:0,attacks:0,attackSoldiers:0,moves:0,moveSoldiers:0,bridges:0,passes:0,
