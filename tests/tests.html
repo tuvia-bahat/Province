@@ -371,6 +371,16 @@ test('גרסה 1 (ברירת מחדל) לא השתנתה: שליטה ב-5 פרו
   eq(R.apply(s, { type: 'land', R: I(5, 5), count: 1 }).winner, 0);
 });
 
+test('גרסה 2 ללא דרישת חיבור: 5 פרובינציות בשליטה מנצחות גם כשהן לא מחוברות', () => v2(() => {
+  const old = R.OPTIONS.winConnected; R.OPTIONS.winConnected = false;
+  try {
+    const board = { '0,0': [0, 1], '2,0': [0, 1], '4,0': [0, 1], '0,2': [0, 1], '2,2': [0, 1] };
+    const s = setup(board, 0, [5, 5]);
+    eq(R.winProgress(s, 0), 5);
+    eq(R.apply(s, { type: 'land', R: I(5, 5), count: 1 }).winner, 0);
+  } finally { R.OPTIONS.winConnected = old; }
+}));
+
 out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;
 document.title = `Province tests: ${pass} pass, ${fail} fail`;
 </script>

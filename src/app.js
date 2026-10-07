@@ -47,7 +47,7 @@
     state = R.newGame(); history = [];
   }
   // משחק שני שחקנים: כללי גרסה 2 (פרובינציה בשליטה = טריטוריה). מול המחשב: כללי גרסה 1, שעליהם הוא אומן (עד שיאומן על גרסה 2).
-  function applyRules() { R.OPTIONS.provinceTerritory = settings.mode === 'pvp'; }
+  function applyRules() { R.OPTIONS.provinceTerritory = settings.mode === 'pvp'; R.OPTIONS.winConnected = false; }
   function save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
@@ -244,7 +244,7 @@
     for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
     $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
     $('grpWatchWrap').hidden = pending.mode !== 'watch';
-    $('ruleNote').textContent = pending.mode === 'pvp' ? 'כללי טריטוריה חדשים: פרובינציה בשליטתך היא חלק מהטריטוריה, והניצחון הוא 5 פרובינציות מחוברות.' : 'המחשב משחק לפי הכללים הקודמים (טריטוריה = בסיסים מחוברים, ניצחון ב-5 פרובינציות).';
+    $('ruleNote').textContent = pending.mode === 'pvp' ? 'כללי טריטוריה חדשים: פרובינציה בשליטתך היא חלק מהטריטוריה שלך. ניצחון: שליטה ב-5 פרובינציות.' : 'המחשב משחק לפי הכללים הקודמים (טריטוריה = בסיסים מחוברים, ניצחון ב-5 פרובינציות).';
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false;

@@ -21,7 +21,8 @@
   // אפשרויות חוקים (לניסויים בלבד; ברירת המחדל = החוקים המקוריים ב-RULES.md)
   //   reinforceAnywhere – תגבור בכל בסיס בטריטוריה (גרסה 1, ברירת מחדל; משחק מול המחשב)
   //   provinceTerritory – גרסה 2: פרובינציה בשליטתך (כולל משבצות ריקות) היא חלק מהטריטוריה שלך; ניצחון = 5 פרובינציות מחוברות
-  const OPTIONS = { reinforceAnywhere: true, provinceTerritory: false };
+  //   winConnected – בגרסה 2: האם הניצחון דורש 5 פרובינציות מחוברות בטריטוריה אחת (כבוי = מספיק לשלוט ב-5)
+  const OPTIONS = { reinforceAnywhere: true, provinceTerritory: false, winConnected: true };
   const idx = (x, y) => y * SIZE + x;
   const xy = (i) => [i % SIZE, Math.floor(i / SIZE)];
   const provinceOf = (i) => { const [x, y] = xy(i); return Math.floor(y / 2) * 3 + Math.floor(x / 2); };
@@ -120,7 +121,7 @@
 
   // התקדמות לקראת ניצחון: גרסה 1 – מספר פרובינציות בשליטה; גרסה 2 – הכי הרבה פרובינציות בשליטה שמחוברות בטריטוריה אחת
   function winProgress(s, p) {
-    if (!OPTIONS.provinceTerritory) return provincesHeld(s, p);
+    if (!OPTIONS.provinceTerritory || !OPTIONS.winConnected) return provincesHeld(s, p);
     const ctl = provinceControl(s), nodes = territoryNodes(s, p), done = new Set();
     let best = 0;
     for (let k = 0; k < 9; k++) {
@@ -219,7 +220,7 @@
     const p = s.turn;
     if (winProgress(s, p) >= WIN_PROVINCES) {
       s.winner = p;
-      if (!fast) s.log.push(`${NAMES[p]} שולט ב-${winProgress(s, p)} פרובינציות${OPTIONS.provinceTerritory ? ' מחוברות' : ''} וניצח!`);
+      if (!fast) s.log.push(`${NAMES[p]} שולט ב-${winProgress(s, p)} פרובינציות${OPTIONS.provinceTerritory && OPTIONS.winConnected ? ' מחוברות' : ''} וניצח!`);
     } else {
       s.turn = 1 - p;
     }
