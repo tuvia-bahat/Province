@@ -2,73 +2,76 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#2b1d12">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#ffffff">
 <title>Province</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div id="app">
-  <div id="hud">
-    <div class="panel" id="panel1"></div>
-    <div class="panel" id="panel0"></div>
-  </div>
+  <header id="hud">
+    <div class="pl" id="pl1"></div>
+    <div class="pl" id="pl0"></div>
+  </header>
 
   <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg"></svg></div>
 
-  <div id="dock">
+  <section id="dock">
     <div id="dice"></div>
     <div id="msg"></div>
     <div id="controls"></div>
-  </div>
+  </section>
 
-  <div id="bar">
-    <button id="undoBtn" class="ghost">↶ בטל מהלך</button>
-    <button id="speedBtn" class="ghost" hidden>מהירות: רגילה</button>
-    <button id="logBtn" class="ghost">יומן</button>
-    <button id="newBtn" class="ghost">משחק חדש</button>
-  </div>
+  <nav id="bar">
+    <button id="undoBtn" class="link">בטל מהלך</button>
+    <button id="speedBtn" class="link" hidden>מהירות</button>
+    <button id="logBtn" class="link">יומן</button>
+    <button id="newBtn" class="link">משחק חדש</button>
+  </nav>
   <div id="logBox" hidden></div>
 </div>
 
-<div id="newModal" hidden>
+<div id="newModal" class="overlay" hidden>
   <div class="modal">
     <h2>משחק חדש</h2>
-    <div class="grp" id="grpMode">
-      <button data-v="pvp">שני שחקנים על המכשיר</button>
+    <div class="seg" id="grpMode">
+      <button data-v="pvp">שני שחקנים</button>
       <button data-v="ai">נגד המחשב</button>
-      <button data-v="watch">מחשב נגד מחשב</button>
+      <button data-v="watch">צפייה</button>
     </div>
-    <div id="grpSideWrap"><div class="lbl">אני משחק</div>
-      <div class="grp" id="grpSide">
-        <button data-v="0">אדום (מתחיל)</button>
-        <button data-v="1">כחול</button>
-      </div>
+    <div id="grpSideWrap">
+      <div class="lbl">אני משחק</div>
+      <div class="seg" id="grpSide"><button data-v="0">אדום · מתחיל</button><button data-v="1">כחול</button></div>
     </div>
-    <div id="grpLevelWrap"><div class="lbl">רמת המחשב</div>
-      <div class="grp" id="grpLevel">
-        <button data-v="easy">קל</button>
-        <button data-v="strong">חזק</button>
-      </div>
+    <div id="grpLevelWrap">
+      <div class="lbl">רמת המחשב</div>
+      <div class="seg" id="grpLevel"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
     </div>
     <div id="grpWatchWrap">
       <div class="lbl">רמת אדום</div>
-      <div class="grp" id="grpLevelR"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
+      <div class="seg" id="grpLevelR"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
       <div class="lbl">רמת כחול</div>
-      <div class="grp" id="grpLevelB"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
+      <div class="seg" id="grpLevelB"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
       <div class="lbl">מהירות</div>
-      <div class="grp" id="grpSpeed"><button data-v="slow">איטית</button><button data-v="normal">רגילה</button><button data-v="fast">מהירה</button></div>
+      <div class="seg" id="grpSpeed"><button data-v="slow">איטית</button><button data-v="normal">רגילה</button><button data-v="fast">מהירה</button></div>
     </div>
-    <button id="newStart" class="primary">התחל</button>
-    <button id="newCancel" class="ghost">ביטול</button>
+    <div class="modal-actions">
+      <button id="newCancel" class="btn ghost">ביטול</button>
+      <button id="newStart" class="btn">התחל</button>
+    </div>
   </div>
 </div>
 
-<div id="overlay" hidden>
+<div id="overlay" class="overlay" hidden>
   <div class="modal">
     <h2 id="winTitle"></h2>
-    <button id="winNew" class="primary">משחק חדש</button>
-    <button id="winClose" class="ghost">הצג את הלוח</button>
+    <div class="modal-actions">
+      <button id="winClose" class="btn ghost">הצג את הלוח</button>
+      <button id="winNew" class="btn">משחק חדש</button>
+    </div>
   </div>
 </div>
 

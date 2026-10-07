@@ -1,103 +1,173 @@
-/* Province – ממשק משתמש (שני שחקנים על מכשיר אחד, או נגד המחשב). הלוגיקה ב-rules.js, המחשב ב-ai.js */
+/* Province – ממשק משתמש.
+ * מצבי משחק: שני שחקנים על מכשיר אחד / אדם נגד מחשב / צפייה במחשב נגד מחשב.
+ * הלוגיקה ב-rules.js, המחשב ב-ai.js.
+ *
+ * אינטראקציה (בלי תפריטים): אחרי הטלה המשבצות שאפשר לפעול מהן מודגשות בצל.
+ *   לחיצה על משבצת ריקה מודגשת = הנחתת חיילים.
+ *   לחיצה על בסיס = בחירה (צל חזק), ומשבצות היעד מודגשות. גרירה (או לחיצה) ליעד = תנועה / התקפה / גשר / שינוע.
+ */
 (function () {
   'use strict';
   const R = window.Rules;
-  const SAVE_KEY = 'province.save.v4';
-  const COLOR = ['var(--p0)', 'var(--p1)'];
+  const SAVE_KEY = 'province.save.v5';
   const NAME = R.NAMES;
+  const COLORS = ['#e5484d', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
-  // ---------- גיאומטריה של הלוח ----------
-  const P = 64, G = 28, M = 34, W = 2 * M + 6 * P + 2 * G;
+  // ---------- גיאומטריה ----------
+  const P = 64, G = 26, M = 22, CR = 26, W = 2 * M + 6 * P + 2 * G;
   const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
   const cy = (y) => { const r = 5 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
   const cellX = (i) => cx(R.xy(i)[0]);
   const cellY = (i) => cy(R.xy(i)[1]);
 
   // ---------- מצב ----------
-  let state, history, ui;
-  // mode: pvp (שני שחקנים) | ai (אדם נגד מחשב) | watch (מחשב נגד מחשב)
+  const $ = (id) => document.getElementById(id);
+  let state, history;
+  // mode: pvp | ai | watch
   let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal' };
   let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
+  let ui = freshUi();
+  function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
   const SPEED_LABEL = { slow: 'איטית', normal: 'רגילה', fast: 'מהירה' };
   const isAiTurn = () => state.winner === null &&
     (settings.mode === 'watch' || (settings.mode === 'ai' && state.turn !== settings.human));
   const aiLevel = () => (settings.mode === 'watch' ? (state.turn === 0 ? settings.levelR : settings.levelB) : settings.level);
-  const $ = (id) => document.getElementById(id);
-  const fresh = () => ({ phase: 'roll', R: null, type: null, from: null, to: null, tgt: null, count: 1, stack: [] });
+  const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
+  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null;
 
   function load() {
     try {
       const raw = localStorage.getItem(SAVE_KEY);
-      if (raw) { const d = JSON.parse(raw); if (d && d.state && d.state.cells.length === R.CELLS) { state = d.state; history = d.history || []; settings = Object.assign(settings, d.settings || {}); return; } }
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && d.state && d.state.cells.length === R.CELLS) { state = d.state; history = d.history || []; settings = Object.assign(settings, d.settings || {}); return; }
+      }
     } catch (e) { /* ignore */ }
     state = R.newGame(); history = [];
   }
   function save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
-  function resetUiFromState() {
-    ui = fresh();
-    if (state.winner !== null) ui.phase = 'over';
-    else if (!state.roll) ui.phase = 'roll';
-    else afterRoll();
+
+  // ---------- משוב מישוש ----------
+  // אנדרואיד: navigator.vibrate. אייפון: מתג מערכת נסתר (iOS 17.4+), בשיטה הכי טובה שקיימת בדפדפן.
+  const tickEl = (() => {
+    const l = document.createElement('label');
+    l.setAttribute('aria-hidden', 'true');
+    l.style.cssText = 'position:fixed;left:-99px;top:-99px;opacity:0;pointer-events:none';
+    l.innerHTML = '<input type="checkbox" switch tabindex="-1">';
+    document.body.appendChild(l);
+    return l;
+  })();
+  const PATTERNS = { select: 14, tick: 8, soft: 5, confirm: [12, 36, 18], error: [18, 40, 18] };
+  function haptic(kind) {
+    try {
+      if (navigator.vibrate) { navigator.vibrate(PATTERNS[kind]); return; }
+      tickEl.click();
+    } catch (e) { /* ignore */ }
   }
 
-  // ---------- זרימת מהלך ----------
-  const playableCells = () => state.roll.cells.filter((c) => R.actionTypes(state, c).length > 0);
+  // ---------- חישובי אפשרויות ----------
+  let memo = { state: null, play: null, opts: new Map() };
+  function ensureMemo() { if (memo.state !== state) memo = { state, play: null, opts: new Map() }; }
 
-  function afterRoll() {
-    ui = fresh();
-    const pl = playableCells();
-    if (pl.length === 0) ui.phase = 'skip';
-    else if (pl.length === 1) selectR(pl[0]);
-    else ui.phase = 'choose';
+  // כל המשבצות שאפשר לפעול מהן: משבצות הנחתה, ובסיסים שאפשר להזיז/לתקוף/לשנע/למשוך/להניח גשר מהם
+  function playableMap() {
+    ensureMemo();
+    if (memo.play) return memo.play;
+    const m = new Map();
+    const add = (c, k) => { const e = m.get(c) || {}; e[k] = true; m.set(c, e); };
+    if (state.roll) {
+      for (const Rc of state.roll.cells) {
+        if (R.actionTypes(state, Rc).includes('land')) add(Rc, 'land');
+        for (const t of ['move', 'transport', 'withdraw', 'bridge']) for (const f of R.sources(state, t, Rc)) add(f, 'source');
+      }
+    }
+    return (memo.play = m);
   }
-  function snapshot() { const { stack, ...rest } = ui; ui.stack.push(rest); }
-  function back() { if (ui.stack.length) { const prev = ui.stack.pop(); Object.assign(ui, prev); render(); } }
 
-  function selectR(c) {
-    ui.R = c;
-    const types = R.actionTypes(state, c);
-    if (types.length === 1) startAction(types[0]);
-    else ui.phase = 'action';
+  // יעדים אפשריים מבסיס נתון: to -> { move, transport, bridge } (כל אחד עם tgt ו-R)
+  function optionsFrom(from) {
+    ensureMemo();
+    if (memo.opts.has(from)) return memo.opts.get(from);
+    const opts = new Map();
+    for (const Rc of state.roll.cells) {
+      for (const t of ['move', 'transport', 'bridge']) {
+        if (!R.sources(state, t, Rc).includes(from)) continue;
+        for (const tg of R.targets(state, t, Rc, from)) {
+          const o = opts.get(tg.to) || { to: tg.to };
+          if (!o[t]) o[t] = { tg, R: Rc };
+          opts.set(tg.to, o);
+        }
+      }
+    }
+    memo.opts.set(from, opts);
+    return opts;
   }
-  function startAction(type) {
-    ui.type = type; ui.from = ui.to = ui.tgt = null;
-    if (type === 'land') { ui.phase = 'count'; ui.count = 1; return; }
-    const srcs = R.sources(state, type, ui.R);
-    if (srcs.length === 1) { ui.from = srcs[0]; afterSource(); } else ui.phase = 'source';
-  }
-  function afterSource() {
-    if (ui.type === 'withdraw') { toCount(); return; }
-    const ts = R.targets(state, ui.type, ui.R, ui.from);
-    if (ts.length === 1) { ui.to = ts[0].to; ui.tgt = ts[0]; afterTarget(); } else ui.phase = 'target';
-  }
-  function afterTarget() { if (ui.type === 'bridge') ui.phase = 'confirm'; else toCount(); }
-  function toCount() { ui.phase = 'count'; ui.count = R.maxCount(state, ui.type, ui.from); }
 
-  function commit() {
-    const a = { type: ui.type, R: ui.R, from: ui.from, to: ui.to, count: ui.type === 'bridge' ? 0 : ui.count };
+  // תוכנית פעולה לגרירה/לחיצה מבסיס אל יעד
+  function planFor(from, to) {
+    const o = optionsFrom(from).get(to);
+    if (!o) return null;
+    const n = state.cells[from].n;
+    if (o.move) return { type: 'move', R: o.move.R, tgt: o.move.tg, from, to, min: o.bridge ? 0 : 1, max: n, bridge: o.bridge || null };
+    if (o.transport) return { type: 'transport', R: o.transport.R, tgt: o.transport.tg, from, to, min: 1, max: n, bridge: null };
+    return { type: 'bridge', R: o.bridge.R, tgt: o.bridge.tg, from, to, min: 0, max: 0, bridge: o.bridge };
+  }
+  function actionFromPlan(plan, count) {
+    if (count === 0) return { type: 'bridge', R: plan.bridge.R, from: plan.from, to: plan.to, count: 0 };
+    return { type: plan.type, R: plan.R, from: plan.from, to: plan.to, count };
+  }
+  const withdrawR = (from) => state.roll.cells.find((Rc) => R.sources(state, 'withdraw', Rc).includes(from));
+  const canReinforce = (c) => state.roll.cells.includes(c) && R.actionTypes(state, c).includes('land');
+
+  // ---------- ביצוע ----------
+  function commit(a) {
     let ns;
-    try { ns = R.apply(state, a); } catch (e) { console.error(e); return; }
+    try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
-    ui = fresh(); if (state.winner !== null) ui.phase = 'over';
+    ui = freshUi();
+    haptic('confirm');
     save(); render();
+    return true;
   }
   function doRoll() {
     state = R.roll(state, 1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
-    afterRoll(); ui.rolled = true; save(); render();
+    ui = freshUi(); ui.rolled = true;
+    haptic('soft'); save(); render();
   }
-  function doSkip() { history.push(state); lastMove = null; state = R.skipTurn(state); resetUiFromState(); save(); render(); }
-  function doPass() { history.push(state); lastMove = null; state = R.passTurn(state); resetUiFromState(); save(); render(); }
+  function passOrSkip(fn) { history.push(state); lastMove = null; state = fn(state); ui = freshUi(); save(); render(); }
+  const doSkip = () => passOrSkip(R.skipTurn);
+  const doPass = () => passOrSkip(R.passTurn);
+
   function undo() {
     if (!history.length) return;
     clearTimeout(aiTimer); aiTimer = null;
     state = history.pop();
-    // נגד המחשב: חוזרים אחורה עד לתור האדם (ביטול מהלך המחשב יחד עם מהלך האדם)
+    // נגד המחשב: חוזרים עד לתור האדם (ביטול מהלך המחשב יחד עם מהלך האדם)
     while (isAiTurn() && history.length) state = history.pop();
-    lastMove = null; resetUiFromState(); save(); render();
+    lastMove = null; ui = freshUi(); save(); render();
+  }
+
+  // פתיחת בחירת כמות, או ביצוע מיידי כשאין מה לבחור
+  function openSheet(sheet) {
+    if (sheet.min === sheet.max) { commit(sheet.build(sheet.max)); return; }
+    ui.sheet = sheet; render();
+  }
+  function startLand(c) {
+    const p = state.turn, max = R.camp(state, p);
+    openSheet({ kind: 'land', cell: c, min: 1, max, count: 1, build: (n) => ({ type: 'land', R: c, count: n }) });
+  }
+  function startWithdraw(from) {
+    const Rc = withdrawR(from), max = state.cells[from].n;
+    openSheet({ kind: 'withdraw', from, min: 1, max, count: max, build: (n) => ({ type: 'withdraw', R: Rc, from, count: n }) });
+  }
+  function startMove(from, to) {
+    const plan = planFor(from, to);
+    if (!plan) return;
+    openSheet({ kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max, build: (n) => actionFromPlan(plan, n) });
   }
 
   // ---------- יריב מחשב ----------
@@ -131,310 +201,328 @@
       try { state = R.apply(state, a); } catch (e) { console.error(e); state = R.passTurn(state); a = { type: 'pass' }; }
     }
     lastMove = a.type === 'pass' ? null : { p, a };
-    resetUiFromState(); save(); render();
+    ui = freshUi(); save(); render();
   }
 
   // ---------- משחק חדש ----------
   let pending = null;
-  function openNew() {
-    pending = Object.assign({}, settings);
-    renderNewModal(); $('newModal').hidden = false;
-  }
+  function openNew() { pending = Object.assign({}, settings); renderNewModal(); $('newModal').hidden = false; }
   function renderNewModal() {
     const groups = { grpMode: 'mode', grpSide: 'human', grpLevel: 'level', grpLevelR: 'levelR', grpLevelB: 'levelB', grpSpeed: 'speed' };
-    for (const id in groups) {
-      $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
-    }
+    for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
     $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
     $('grpWatchWrap').hidden = pending.mode !== 'watch';
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false;
     settings = Object.assign({}, pending); settings.human = +settings.human;
-    state = R.newGame(); history = []; lastMove = lastRoll = null;
-    $('newModal').hidden = true;
-    resetUiFromState(); save(); render();
+    state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
+    $('newModal').hidden = true; $('overlay').dataset.dismissed = '';
+    save(); render();
   }
 
-  // ---------- עזרי תצוגה ----------
-  function tappable() {
-    const set = new Map();
-    if (isAiTurn()) return set;
-    if (ui.phase === 'choose') playableCells().forEach((c) => set.set(c, 'R'));
-    else if (ui.phase === 'source') R.sources(state, ui.type, ui.R).forEach((c) => set.set(c, 'S'));
-    else if (ui.phase === 'target') R.targets(state, ui.type, ui.R, ui.from).forEach((t) => set.set(t.to, 'T'));
-    return set;
-  }
-  const svgEl = (tag, attrs, text) => {
-    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    if (text !== undefined) e.textContent = text;
-    return e;
-  };
+  // ---------- תצוגה: לוח ----------
+  const DEFS = `<defs>
+      <filter id="sh1" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="4" stdDeviation="4.5" flood-color="#1b2233" flood-opacity=".38"/></filter>
+      <filter id="sh2" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#1b2233" flood-opacity=".62"/></filter>
+    </defs>`;
 
   function renderBoard() {
     const svg = $('board');
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
-    svg.textContent = '';
-    const add = (e) => { svg.appendChild(e); return e; };
     const control = R.provinceControl(state);
+    const play = canAct() ? playableMap() : new Map();
+    const opts = canAct() && ui.sel !== null ? optionsFrom(ui.sel) : null;
+    const sheet = ui.sheet;
+    const turnColor = COLORS[state.turn];
+    let h = DEFS;
 
-    add(svgEl('rect', { x: 0, y: 0, width: W, height: W, rx: 18, fill: '#a8733a' }));
-    for (let py = 0; py < 3; py++) for (let px = 0; px < 3; px++) {
-      const x = M + 2 * px * P + px * G, y = M + 2 * py * P + py * G;
-      add(svgEl('rect', { x, y, width: 2 * P, height: 2 * P, rx: 12, fill: '#c99b5e' }));
-      const owner = control[(2 - py) * 3 + px];   // שורה 0 למעלה בתצוגה = שורת פרובינציות 2
-      if (owner !== null) add(svgEl('rect', { x, y, width: 2 * P, height: 2 * P, rx: 12, fill: owner === 0 ? '#c0392b' : '#2a5db0', opacity: 0.28 }));
-    }
     // נהרות
     for (let k = 1; k <= 2; k++) {
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
-      add(svgEl('line', { x1: pos, y1: 10, x2: pos, y2: W - 10, stroke: '#fff', 'stroke-width': 7, 'stroke-linecap': 'round', opacity: 0.92 }));
-      add(svgEl('line', { x1: 10, y1: pos, x2: W - 10, y2: pos, stroke: '#fff', 'stroke-width': 7, 'stroke-linecap': 'round', opacity: 0.92 }));
-    }
-    // תוויות צירים: שחקן 0 (אדום) למטה ומשמאל, שחקן 1 (כחול) למעלה ומימין
-    for (let i = 0; i < 6; i++) {
-      add(svgEl('text', { x: cx(i), y: W - 13, class: 'axis a0' }, i + 1));
-      add(svgEl('text', { x: cx(i), y: 14, class: 'axis a1' }, 6 - i));
-      add(svgEl('text', { x: 14, y: cy(i), class: 'axis a0' }, i + 1));
-      add(svgEl('text', { x: W - 14, y: cy(i), class: 'axis a1' }, 6 - i));
+      h += `<line class="river" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
     }
     // גשרים
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
-      const horiz = ay === by;
-      const len = horiz ? Math.abs(bx - ax) - 44 : Math.abs(by - ay) - 44;
-      const mx = (ax + bx) / 2, my = (ay + by) / 2;
-      add(svgEl('rect', {
-        x: horiz ? mx - len / 2 : mx - 8, y: horiz ? my - 8 : my - len / 2,
-        width: horiz ? len : 16, height: horiz ? 16 : len, rx: 4,
-        fill: state.bridges[key] === 0 ? '#c0392b' : '#2a5db0', stroke: '#fff', 'stroke-width': 2.5,
-      }));
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR - 2;
+      h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
-    // משבצות
-    const tap = tappable();
-    const pl = ui.phase === 'choose' ? playableCells() : [];
+    // עיגולים
     for (let i = 0; i < R.CELLS; i++) {
-      const x = cellX(i), y = cellY(i), c = state.cells[i];
-      if (c.o === null) add(svgEl('circle', { cx: x, cy: y, r: 7, class: 'dot' }));
-      else {
-        add(svgEl('circle', { cx: x, cy: y, r: 25, class: 'base p' + c.o }));
-        add(svgEl('text', { x, y: y + 1, class: 'cnt' }, c.n));
+      const c = state.cells[i], x = cellX(i), y = cellY(i);
+      let f = '';
+      if (sheet) { if (i === sheet.from || i === sheet.cell) f = 'sh2'; else if (i === sheet.to) f = 'sh1'; }
+      else if (opts) { if (i === ui.sel) f = 'sh2'; else if (opts.has(i)) f = 'sh1'; }
+      else if (play.has(i)) f = 'sh1';
+      const fa = f ? ` filter="url(#${f})"` : '';
+      if (c.o === null) {
+        const ctl = control[R.provinceOf(i)];
+        h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}" cx="${x}" cy="${y}" r="${CR}"${fa}/>`;
+      } else {
+        h += `<circle class="base p${c.o}" cx="${x}" cy="${y}" r="${CR}"${fa}/><text class="cnt" x="${x}" y="${y + 1}">${c.n}</text>`;
       }
     }
-    // טבעות הדגשה
-    const ring = (i, cls, r, extra) => add(svgEl('circle', Object.assign({ cx: cellX(i), cy: cellY(i), r, class: 'ring ' + cls }, extra)));
+    // טבעות: משבצות שהוטלו, ומהלך אחרון
     if (state.roll && state.winner === null) {
-      // שתי המשבצות שהוטלו מסומנות תמיד, גם אם אי אפשר לשחק באחת מהן
-      state.roll.cells.forEach((c) => ring(c, 'roll', 31, { stroke: 'white' }));
-      pl.forEach((c) => ring(c, 'roll pulse', 36, { stroke: state.turn === 0 ? '#ff6b5b' : '#6fa0ff' }));
+      state.roll.cells.forEach((c) => { h += `<circle class="ring-roll" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 8}" stroke="${turnColor}"/>`; });
     }
-    if (ui.R !== null && ui.phase !== 'choose') ring(ui.R, 'sel', 32);
-    if (ui.phase === 'source') R.sources(state, ui.type, ui.R).forEach((c) => ring(c, 'src pulse', 31));
-    if (ui.from !== null) ring(ui.from, 'src', 31);
-    if (ui.phase === 'target') R.targets(state, ui.type, ui.R, ui.from).forEach((t) => ring(t.to, 't-' + t.kind + ' pulse', 31));
-    if (ui.to !== null) ring(ui.to, 't-' + (ui.tgt ? ui.tgt.kind : 'move'), 31);
-    // המהלך האחרון (של שני השחקנים)
     if (lastMove) {
-      const la = lastMove.a, col = lastMove.p === 0 ? '#ff6b5b' : '#6fa0ff';
+      const la = lastMove.a;
       const cells = la.type === 'land' ? [la.R] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
-      cells.forEach((c) => { if (c !== null && c !== undefined) ring(c, 'last', 31, { stroke: col }); });
+      cells.forEach((c) => { if (c !== null && c !== undefined) h += `<circle class="ring-last" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 5}" stroke="${COLORS[lastMove.p]}"/>`; });
     }
-    // אזורי לחיצה
-    for (let i = 0; i < R.CELLS; i++) {
-      const h = svgEl('circle', { cx: cellX(i), cy: cellY(i), r: 31, class: 'hit' + (tap.has(i) ? ' tap' : ''), 'data-i': i });
-      add(h);
-    }
+    // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
+    h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="12" fill="${turnColor}" visibility="hidden"/><circle id="hoverRing" class="hover-ring" r="${CR + 5}" stroke="${turnColor}" visibility="hidden"/></g>`;
+    svg.innerHTML = h;
   }
 
+  // ---------- תצוגה: שחקנים וקוביות ----------
   function renderPanels() {
     for (const p of [0, 1]) {
-      const el = $('panel' + p);
-      el.style.setProperty('--c', COLOR[p]);
-      el.classList.toggle('active', state.turn === p && state.winner === null);
-      el.innerHTML = `<div class="name"><span>${NAME[p]}</span><small>${settings.mode === 'watch' ? 'מחשב' : settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : (p === 0 ? 'למטה' : 'למעלה')}${state.turn === p && state.winner === null ? ' · בתור' : ''}</small></div>
-        <div class="stats">
-          <span>מחנה <b>${R.camp(state, p)}</b></span><span>גשרים <b>${state.bridgesLeft[p]}</b></span>
-          <span>בית קברות <b>${state.graveyard[p]}</b></span><span class="prov">פרובינציות <b>${R.provincesHeld(state, p)}/${R.WIN_PROVINCES}</b></span>
-        </div>`;
+      const el = $('pl' + p);
+      el.style.setProperty('--c', COLORS[p]);
+      el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
+      const tag = settings.mode === 'watch' ? 'מחשב' : settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : '';
+      const held = R.provincesHeld(state, p);
+      let pips = '';
+      for (let k = 0; k < R.WIN_PROVINCES; k++) pips += `<span class="pip${k < held ? ' on' : ''}"></span>`;
+      el.innerHTML = `<div class="top"><span class="swatch"></span><span>${NAME[p]}</span><span class="tag">${tag}</span><span class="pips" title="פרובינציות">${pips}</span></div>
+        <div class="meta">מחנה ${R.camp(state, p)} · קברות ${state.graveyard[p]} · גשרים ${state.bridgesLeft[p]}</div><div class="under"></div>`;
     }
   }
 
+  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  function dieHtml(n, label, cls) {
+    let cells = '';
+    for (let i = 0; i < 9; i++) cells += `<i${PIPS[n].includes(i) ? ' class="on"' : ''}></i>`;
+    return `<div class="die-wrap${cls.old ? ' old' : ''}"><div class="die${cls.roll ? ' roll' : ''}">${cells}</div><small>${label}</small></div>`;
+  }
   function renderDice() {
     const box = $('dice');
     const info = state.roll || lastRoll;
-    if (!info) { box.innerHTML = '<span class="dice-note">הקוביות עדיין לא הוטלו</span>'; return; }
-    const { w, b } = info, cls = (ui.rolled ? ' roll' : '') + (state.roll ? '' : ' old');
-    const note = state.roll
-      ? `לבנה = X · חומה = Y<br><bdi dir="ltr">(${w},${b})</bdi> ו-<bdi dir="ltr">(${7 - w},${7 - b})</bdi>`
-      : `הטלה אחרונה (${NAME[info.p]})`;
-    box.innerHTML = `<div class="die white${cls}" title="ציר X">${w}</div><div class="die brown${cls}" title="ציר Y">${b}</div><span class="dice-note">${note}</span>`;
+    if (!info) { box.innerHTML = '<span class="dice-empty">הקוביות עדיין לא הוטלו</span>'; return; }
+    const cls = { roll: ui.rolled, old: !state.roll };
+    box.innerHTML = dieHtml(info.w, 'X', cls) + dieHtml(info.b, 'Y', cls);
     ui.rolled = false;
   }
 
-  function targetInfoHtml() {
-    const t = ui.tgt, p = state.turn;
-    let s = '';
-    if (t && t.cross === 'place') s += ` <span class="br">· יונח גשר (נותרו ${state.bridgesLeft[p]})</span>`;
-    if (t && t.cross === 'replace') s += ` <span class="br">· יוחלף גשר היריב</span>`;
-    return s;
-  }
-  function previewHtml() {
-    const p = state.turn, n = ui.count;
-    if (ui.type === 'land') return `הנחתת <b>${n}</b> חיילים ב-${R.cellLabel(ui.R, p)} <span class="sub">נותרו במחנה: ${R.camp(state, p) - n}</span>`;
-    if (ui.type === 'withdraw') return `משיכת <b>${n}</b> חיילים מ-${R.cellLabel(ui.from, p)} למחנה`;
-    if (ui.type === 'transport') return `שינוע <b>${n}</b> חיילים מ-${R.cellLabel(ui.from, p)} אל ${R.cellLabel(ui.to, p)}`;
-    if (ui.tgt && ui.tgt.kind === 'attack') {
-      const d = state.cells[ui.to].n, k = Math.min(n, d);
-      const out = n > d ? `<span class="good">${n - d} יישארו וישלטו במשבצת</span>` : n === d ? 'המשבצת תתרוקן' : `יישארו ${d - n} מגינים`;
-      return `<span class="bad">התקפה</span> עם <b>${n}</b> מול <b>${d}</b> מגינים${targetInfoHtml()}<span class="sub">${k} יהרגו ו-${k} חזרו למחנה · ${out}</span>`;
+  // ---------- תצוגה: דוק ----------
+  const lbl = (c) => R.cellLabel(c, state.turn);
+  function sheetText(sh) {
+    const n = sh.count, p = state.turn;
+    if (sh.kind === 'land') {
+      const own = state.cells[sh.cell].o === p;
+      return { title: `${own ? 'תגבור' : 'הנחתה'} ב-${lbl(sh.cell)}`, note: `נותרו במחנה ${R.camp(state, p) - n}` };
     }
-    return `הזזת <b>${n}</b> חיילים מ-${R.cellLabel(ui.from, p)} אל ${R.cellLabel(ui.to, p)}${targetInfoHtml()}`;
+    if (sh.kind === 'withdraw') return { title: `נסיגה מ-${lbl(sh.from)} למחנה`, note: `${state.cells[sh.from].n - n} יישארו בבסיס` };
+    const pl = sh.plan, tg = n === 0 ? pl.bridge.tg : pl.tgt;
+    const bridge = tg.cross === 'place' ? `גשר חדש (נותרו ${state.bridgesLeft[p] - 1})` : tg.cross === 'replace' ? 'החלפת גשר היריב' : '';
+    if (n === 0) return { title: `הנחת גשר אל ${lbl(sh.to)}`, note: bridge };
+    if (pl.tgt.kind === 'attack') {
+      const d = state.cells[sh.to].n, k = Math.min(n, d);
+      const out = n > d ? `${n - d} יישארו וישלטו` : n === d ? 'המשבצת תתרוקן' : `יישארו ${d - n} מגינים`;
+      return { title: `התקפה על ${lbl(sh.to)}`, note: `${n} מול ${d} · ${k} יהרגו · ${out}` + (bridge ? ` · ${bridge}` : '') };
+    }
+    return { title: `${pl.type === 'transport' ? 'שינוע' : 'תנועה'} אל ${lbl(sh.to)}`, note: bridge };
   }
-
-  const ACTION_LABEL = {
-    land: () => (state.cells[ui.R].o === state.turn ? 'תגבור (הנחתת חיילים)' : 'הנחתת חיילים'),
-    move: () => (state.cells[ui.R].o === state.turn ? 'תנועה / התקפה' : state.cells[ui.R].o === null ? 'תנועה למשבצת' : 'התקפה'),
-    transport: () => 'שינוע כוחות',
-    withdraw: () => 'נסיגה למחנה',
-    bridge: () => 'הנחת גשר',
-  };
 
   function renderDock() {
     const msg = $('msg'), ctl = $('controls');
-    const p = state.turn, nm = `<b style="color:${COLOR[p]}">${NAME[p]}</b>`;
+    const p = state.turn;
+    const name = `<b style="color:${COLORS[p]}">${NAME[p]}</b>`;
     ctl.textContent = '';
-    const btn = (label, cls, fn, disabled) => {
-      const b = document.createElement('button');
-      b.textContent = label; b.className = cls || '';
-      if (disabled) b.disabled = true;
-      b.addEventListener('click', fn); ctl.appendChild(b); return b;
+    $('dock').classList.toggle('sheeting', !!ui.sheet);
+    const addBtn = (parent, text, cls, fn) => {
+      const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = text; b.onclick = fn; parent.appendChild(b); return b;
     };
-    const backBtn = () => { if (ui.stack.length) btn('חזרה', 'ghost', back); };
-    ctl.style.removeProperty('--c');
-    ctl.style.setProperty('--c', COLOR[p]);
+    const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
+    const lastLog = state.log.length ? `<span class="sub">${state.log[state.log.length - 1]}</span>` : '';
 
+    if (state.winner !== null) {
+      msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${NAME[state.winner]}</b> ניצח`;
+      addBtn(row(), 'משחק חדש', 'wide', openNew);
+      return;
+    }
     if (isAiTurn()) {
-      const last = state.log.length ? `<span class="sub">${state.log[state.log.length - 1]}</span>` : '';
       const doing = paused ? 'מושהה' : state.roll ? 'חושב…' : 'מטיל קוביות…';
-      msg.innerHTML = `<b style="color:${COLOR[p]}">${NAME[p]}</b> (המחשב) ${doing}${last}`;
+      msg.innerHTML = `${name} · ${doing}${lastLog}`;
+      return;
+    }
+    const ph = phase();
+    if (ph === 'roll') {
+      msg.innerHTML = `תור ${name}${lastLog}`;
+      addBtn(row(), 'הטל קוביות', 'wide', doRoll);
+      return;
+    }
+    if (ph === 'skip') {
+      msg.innerHTML = `${name} · אין מהלך אפשרי<span class="sub">התור עובר ליריב</span>`;
+      addBtn(row(), 'המשך', 'wide', doSkip);
       return;
     }
 
-    switch (ui.phase) {
-      case 'over': {
-        msg.innerHTML = `<b style="color:${COLOR[state.winner]}">${NAME[state.winner]}</b> ניצח!`;
-        btn('משחק חדש', 'primary', openNew);
-        break;
-      }
-      case 'roll':
-        msg.innerHTML = `תור ${nm}` + (state.log.length ? `<span class="sub">${state.log[state.log.length - 1]}</span>` : '');
-        btn('הטל קוביות', 'primary', doRoll);
-        break;
-      case 'skip':
-        msg.innerHTML = `${nm}: אין מהלך אפשרי באף אחת מהמשבצות<span class="sub">התור עובר ליריב</span>`;
-        btn('המשך', 'primary', doSkip);
-        break;
-      case 'choose':
-        msg.innerHTML = `${nm}: בחר אחת משתי המשבצות המסומנות`;
-        break;
-      case 'action': {
-        msg.innerHTML = `${nm}: משבצת ${R.cellLabel(ui.R, p)} – בחר פעולה`;
-        R.actionTypes(state, ui.R).forEach((t) => btn(ACTION_LABEL[t](), 'act', () => { snapshot(); startAction(t); render(); }));
-        backBtn();
-        break;
-      }
-      case 'source':
-        msg.innerHTML = `${nm}: ${ui.type === 'transport' ? 'בחר בסיס שממנו משנעים' : ui.type === 'bridge' ? 'בחר בסיס שממנו מניחים גשר' : ui.type === 'withdraw' ? 'בחר בסיס למשיכת חיילים' : 'בחר בסיס מקור'}`;
-        backBtn();
-        break;
-      case 'target':
-        msg.innerHTML = `${nm}: ${ui.type === 'bridge' ? 'בחר מעבר לנהר להנחת הגשר' : 'בחר יעד'}` +
-          (ui.type === 'move' ? '<span class="sub"><span class="good">ירוק</span> – תנועה · <span class="bad">כתום</span> – התקפה</span>' : '');
-        backBtn();
-        break;
-      case 'confirm': {
-        const t = ui.tgt;
-        msg.innerHTML = t.cross === 'replace'
-          ? `החלפת גשר היריב בגשר שלך <span class="sub">נותרו לך ${state.bridgesLeft[p]} גשרים</span>`
-          : `הנחת גשר חדש <span class="sub">נותרו לך ${state.bridgesLeft[p]} גשרים (לא ניתן להסיר גשר)</span>`;
-        backBtn(); btn('אישור', 'primary', commit);
-        break;
-      }
-      case 'count': {
-        const max = R.maxCount(state, ui.type, ui.from);
-        ui.count = Math.max(1, Math.min(max, ui.count));
-        msg.innerHTML = previewHtml();
-        const box = document.createElement('div'); box.className = 'stepper';
-        box.innerHTML = `<div class="row"><button class="pm" id="minus">−</button><div class="num" id="num">${ui.count}</div><button class="pm" id="plus">+</button></div>
-          <div class="row"><input type="range" id="rng" min="1" max="${max}" value="${ui.count}"></div>
-          <div class="quick"><button id="q1">1</button><button id="qh">חצי</button><button id="qa">הכל (${max})</button></div>`;
-        ctl.appendChild(box);
-        const set = (v) => { ui.count = Math.max(1, Math.min(max, v)); renderDock(); renderPass(); };
-        box.querySelector('#minus').onclick = () => set(ui.count - 1);
-        box.querySelector('#plus').onclick = () => set(ui.count + 1);
-        box.querySelector('#rng').oninput = (e) => set(+e.target.value);
-        box.querySelector('#q1').onclick = () => set(1);
-        box.querySelector('#qh').onclick = () => set(Math.ceil(max / 2));
-        box.querySelector('#qa').onclick = () => set(max);
-        const row = document.createElement('div'); row.className = 'btnrow'; ctl.appendChild(row);
-        const mk = (label, cls, fn) => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = fn; row.appendChild(b); };
-        if (ui.stack.length) mk('חזרה', 'ghost', back);
-        mk('אישור', 'primary', commit);
-        break;
-      }
+    // ph === 'play'
+    const sh = ui.sheet;
+    if (sh) {
+      sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
+      const t = sheetText(sh);
+      msg.innerHTML = '';
+      const box = document.createElement('div'); box.className = 'sheet';
+      box.innerHTML = `<div class="title">${t.title}</div>
+        <div class="stepper"><button class="pm" id="minus" aria-label="פחות">−</button>
+          <div class="num">${sh.count}${sh.count === 0 ? '<small>גשר בלבד</small>' : ''}</div>
+          <button class="pm" id="plus" aria-label="יותר">+</button></div>
+        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" value="${sh.count}" aria-label="כמות חיילים">
+        <div class="quick"><button class="btn soft sm" id="qmin">${sh.min === 0 ? 'גשר בלבד' : '1'}</button><button class="btn soft sm" id="qhalf">חצי</button><button class="btn soft sm" id="qall">הכל</button></div>
+        <div class="note">${t.note}</div>`;
+      ctl.appendChild(box);
+      const set = (v) => { sh.count = Math.max(sh.min, Math.min(sh.max, v)); haptic('tick'); renderDock(); renderBoard(); };
+      box.querySelector('#minus').onclick = () => set(sh.count - 1);
+      box.querySelector('#plus').onclick = () => set(sh.count + 1);
+      box.querySelector('#rng').oninput = (e) => set(+e.target.value);
+      box.querySelector('#qmin').onclick = () => set(sh.min === 0 ? 0 : 1);
+      box.querySelector('#qhalf').onclick = () => set(Math.max(sh.min, Math.ceil(sh.max / 2)));
+      box.querySelector('#qall').onclick = () => set(sh.max);
+      const r = row();
+      addBtn(r, 'ביטול', 'ghost', () => { ui.sheet = null; haptic('soft'); render(); });
+      addBtn(r, 'אישור', '', () => commit(sh.build(sh.count)));
+      return;
     }
-  }
 
-  function renderPass() {
-    if (isAiTurn() || !['choose', 'action', 'source', 'target', 'count', 'confirm'].includes(ui.phase)) return;
-    const b = document.createElement('button');
-    b.textContent = 'דלג על התור'; b.className = 'ghost pass'; b.onclick = doPass;
-    $('controls').appendChild(b);
+    if (ui.sel === null) {
+      msg.innerHTML = `${name} · בחר משבצת מודגשת`;
+    } else {
+      msg.innerHTML = `${name} · גרור מ-${lbl(ui.sel)} ליעד<span class="sub">או לחץ על יעד מודגש</span>`;
+      const r = row();
+      if (canReinforce(ui.sel)) addBtn(r, 'תגבור', 'soft sm', () => startLand(ui.sel));
+      if (withdrawR(ui.sel) !== undefined) addBtn(r, 'נסיגה למחנה', 'soft sm', () => startWithdraw(ui.sel));
+    }
+    addBtn(row(), 'דלג על התור', 'ghost sm', doPass);
   }
 
   function renderLog() {
-    const box = $('logBox');
-    box.innerHTML = state.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>אין עדיין מהלכים</div>';
+    $('logBox').innerHTML = state.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>אין עדיין מהלכים</div>';
   }
 
   function render() {
-    renderPanels(); renderBoard(); renderDice(); renderDock(); renderPass(); renderLog();
+    renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog();
     const watch = settings.mode === 'watch';
-    $('undoBtn').textContent = watch ? (paused ? '▶ המשך' : '⏸ השהה') : '↶ בטל מהלך';
+    $('undoBtn').textContent = watch ? (paused ? 'המשך' : 'השהה') : 'בטל מהלך';
     $('undoBtn').disabled = watch ? state.winner !== null : history.length === 0;
     $('speedBtn').hidden = !watch;
     $('speedBtn').textContent = 'מהירות: ' + SPEED_LABEL[settings.speed];
-    scheduleAi();
     const o = $('overlay');
-    if (state.winner !== null && !ui.dismissWin) {
-      $('winTitle').innerHTML = `<span style="color:${COLOR[state.winner]}">${NAME[state.winner]}</span> ${settings.mode === 'ai' ? (state.winner === settings.human ? 'ניצחת!' : 'המחשב ניצח') : 'ניצח!'}`;
+    if (state.winner !== null && !o.dataset.dismissed) {
+      const w = state.winner;
+      const word = settings.mode === 'ai' ? (w === settings.human ? 'ניצחת' : 'המחשב ניצח') : 'ניצח';
+      $('winTitle').innerHTML = settings.mode === 'ai' ? `<span style="color:${COLORS[w]}">${word}</span>` : `<span style="color:${COLORS[w]}">${NAME[w]}</span> ${word}`;
       o.hidden = false;
     } else o.hidden = true;
+    scheduleAi();
   }
 
-  // ---------- אירועים ----------
-  $('board').addEventListener('click', (e) => {
-    const t = e.target.closest('.hit.tap'); if (!t) return;
-    const i = +t.getAttribute('data-i');
-    if (ui.phase === 'choose') { snapshot(); selectR(i); }
-    else if (ui.phase === 'source') { snapshot(); ui.from = i; afterSource(); }
-    else if (ui.phase === 'target') { snapshot(); ui.tgt = R.targets(state, ui.type, ui.R, ui.from).find((x) => x.to === i); ui.to = i; afterTarget(); }
-    render();
+  // ---------- אינטראקציה: מגע, לחיצה וגרירה ----------
+  const svg = $('board');
+  let drag = null;   // { id, start, x0, y0, moved, hover, selectedNow }
+
+  function toSvg(e) {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+    return { x: q.x, y: q.y };
+  }
+  function cellAt(pos, r) {
+    let best = null, bd = r;
+    for (let i = 0; i < R.CELLS; i++) {
+      const d = Math.hypot(pos.x - cellX(i), pos.y - cellY(i));
+      if (d <= bd) { best = i; bd = d; }
+    }
+    return best;
+  }
+  function overlay(pos, hover) {
+    const line = $('dragLine'), dot = $('dragDot'), ring = $('hoverRing');
+    if (!line) return;
+    if (!pos) { line.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); ring.setAttribute('visibility', 'hidden'); return; }
+    line.setAttribute('x1', cellX(ui.sel)); line.setAttribute('y1', cellY(ui.sel));
+    line.setAttribute('x2', pos.x); line.setAttribute('y2', pos.y);
+    dot.setAttribute('cx', pos.x); dot.setAttribute('cy', pos.y);
+    line.setAttribute('visibility', 'visible'); dot.setAttribute('visibility', 'visible');
+    if (hover !== null && hover !== undefined) {
+      ring.setAttribute('cx', cellX(hover)); ring.setAttribute('cy', cellY(hover)); ring.setAttribute('visibility', 'visible');
+    } else ring.setAttribute('visibility', 'hidden');
+  }
+
+  svg.addEventListener('pointerdown', (e) => {
+    if (!canAct() || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const pos = toSvg(e), c = cellAt(pos, CR + 10);
+    drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null, selectedNow: false };
+    if (c === null) return;
+    try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    const play = playableMap();
+    const opts = ui.sel !== null ? optionsFrom(ui.sel) : null;
+    const isTarget = opts && opts.has(c) && c !== ui.sel;
+    // נגיעה בבסיס מודגש (שאינו יעד של הבסיס שנבחר) בוחרת אותו מיד
+    if (!isTarget && c !== ui.sel && play.get(c) && play.get(c).source) {
+      ui.sel = c; drag.selectedNow = true; haptic('select'); render();
+      // render החליף את ה-SVG; ממשיכים לעקוב אחרי האצבע דרך ה-capture שעל האלמנט הראשי
+    }
   });
+
+  svg.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const pos = toSvg(e);
+    if (!drag.moved && Math.hypot(pos.x - drag.x0, pos.y - drag.y0) > 9) drag.moved = true;
+    if (!drag.moved || ui.sel === null || drag.start !== ui.sel || ui.sheet) return;
+    const opts = optionsFrom(ui.sel);
+    let hover = cellAt(pos, CR + 12);
+    if (hover === ui.sel || (hover !== null && !opts.has(hover))) hover = null;
+    if (hover !== drag.hover) { drag.hover = hover; if (hover !== null) haptic('tick'); }
+    overlay(pos, hover);
+  });
+
+  function endPointer(e, cancelled) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const d = drag; drag = null;
+    overlay(null);
+    if (cancelled || !canAct()) return;
+    const c = d.start;
+
+    if (d.moved && ui.sel !== null && c === ui.sel) {          // גרירה מהבסיס שנבחר
+      if (d.hover !== null) startMove(ui.sel, d.hover);
+      return;
+    }
+    if (d.moved || c === null) {                                // גרירה לא רלוונטית / לחיצה בחוץ
+      if (!d.moved && c === null && ui.sel !== null) { ui.sel = null; render(); }
+      return;
+    }
+    // לחיצה (בלי גרירה)
+    if (d.selectedNow) return;                                  // נבחר זה עתה בנגיעה
+    const play = playableMap();
+    const opts = ui.sel !== null ? optionsFrom(ui.sel) : null;
+    if (ui.sel !== null) {
+      if (c === ui.sel) { ui.sel = null; haptic('soft'); render(); return; }
+      if (opts.has(c)) { haptic('select'); startMove(ui.sel, c); return; }
+      ui.sel = null; haptic('soft'); render(); return;
+    }
+    if (play.get(c) && play.get(c).land && !play.get(c).source) { haptic('select'); startLand(c); return; }
+  }
+  svg.addEventListener('pointerup', (e) => endPointer(e, false));
+  svg.addEventListener('pointercancel', (e) => endPointer(e, true));
+  svg.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // ---------- כפתורים ----------
   $('undoBtn').onclick = () => (settings.mode === 'watch' ? togglePause() : undo());
   $('speedBtn').onclick = cycleSpeed;
+  $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
   $('newBtn').onclick = openNew;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
   $('newStart').onclick = startNew;
   for (const [id, key] of [['grpMode', 'mode'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
     $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
   }
-  $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
   $('winNew').onclick = () => { $('overlay').hidden = true; openNew(); };
-  $('winClose').onclick = () => { ui.dismissWin = true; render(); };
+  $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  load(); resetUiFromState(); render();
-  window.__province = { get state() { return state; }, get ui() { return ui; } };  // לנוחות בדיקה
+  load(); render();
+  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom };   // לנוחות בדיקה
 })();
