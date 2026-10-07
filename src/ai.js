@@ -130,10 +130,7 @@
       for (const type of R.actionTypes(s, Rc)) {
         if (type === 'land') {
           const camp = R.camp(s, p);
-          let tg = R.landTargets(s, Rc);
-          if (lite && tg.length > 4) {   // טריטוריה גדולה: מגבילים לשיקול של 4 בסיסים (המוטל + החלשים ביותר) כדי לשמור על מהירות
-            tg = tg.slice().sort((x, y) => (x === Rc ? -1 : y === Rc ? 1 : s.cells[x].n - s.cells[y].n)).slice(0, 4);
-          }
+          const tg = R.landTargets(s, Rc);   // כל בסיס בטריטוריה (או המשבצת הריקה שהוטלה)
           for (const to of tg) {
             for (const c of countSet(camp, lite, lite ? [] : [6, 8, 12])) out.push({ type, R: Rc, to, count: c });
           }
