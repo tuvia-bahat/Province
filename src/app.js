@@ -14,7 +14,7 @@
   const COLORS = ['#e5484d', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
-  const P = 64, G = 26, M = 22, CR = 26, W = 2 * M + 6 * P + 2 * G;
+  const P = 64, G = 36, M = 22, CR = 26, W = 2 * M + 6 * P + 2 * G;
   const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
   const cy = (y) => { const r = 5 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
   const cellX = (i) => cx(R.xy(i)[0]);
@@ -46,6 +46,8 @@
     } catch (e) { /* ignore */ }
     state = R.newGame(); history = [];
   }
+  // משחק שני שחקנים: כללי גרסה 2 (פרובינציה בשליטה = טריטוריה). מול המחשב: כללי גרסה 1, שעליהם הוא אומן.
+  function applyRules() { R.OPTIONS.provinceTerritory = settings.mode === 'pvp'; }
   function save() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
@@ -242,10 +244,12 @@
     for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
     $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
     $('grpWatchWrap').hidden = pending.mode !== 'watch';
+    $('ruleNote').textContent = pending.mode === 'pvp' ? 'כללי טריטוריה חדשים: פרובינציה בשליטתך היא חלק מהטריטוריה, והניצחון הוא 5 פרובינציות מחוברות.' : 'המחשב משחק לפי הכללים הקודמים (טריטוריה = בסיסים מחוברים, ניצחון ב-5 פרובינציות).';
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false;
     settings = Object.assign({}, pending); settings.human = +settings.human;
+    applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('newModal').hidden = true; $('overlay').dataset.dismissed = '';
     save(); render();
@@ -253,11 +257,9 @@
 
   // ---------- תצוגה: לוח ----------
   // צל אחד, חזק וסימטרי מכל הצדדים (בלי היסט), כדי שהעיגול לא ייראה עקום
-  const grad = (id, c0, c1) => `<radialGradient id="${id}" cx="36%" cy="30%" r="85%"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></radialGradient>`;
+  // צל חד, סימטרי מכל הצדדים
   const DEFS = `<defs>
-      <filter id="sh" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="2.5" stdDeviation="5.5" flood-color="#0e1220" flood-opacity=".5"/></filter>
-      ${grad('gG', '#ffffff', '#d4d8e0')}${grad('gC0', '#fdeaeb', '#ebb2b5')}${grad('gC1', '#eaf1ff', '#b3c6f2')}
-      ${grad('gP0', '#f7868a', '#c8353b')}${grad('gP1', '#7da0fb', '#2a52cf')}
+      <filter id="sh" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#0b0f1a" flood-opacity=".95"/></filter>
     </defs>`;
 
   function renderBoard() {
@@ -282,21 +284,19 @@
       const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR - 2;
       h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
-    // עיגולים: משבצות פעילות "מורמות" (גדולות יותר, עם גוון תלת-ממדי, שפה בהירה וצל), השאר שטוחות
+    // עיגולים: משבצות פעילות מודגשות בצל חד וברור
     for (let i = 0; i < R.CELLS; i++) {
       const c = state.cells[i], x = cellX(i), y = cellY(i);
       let lit = false;
       if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
       else if (opts) lit = i === ui.sel || opts.has(i);
       else lit = play.has(i);
-      const ctl = control[R.provinceOf(i)];
-      const flat = c.o === null ? `cell${ctl !== null ? ' c' + ctl : ''}` : `base p${c.o}`;
-      const grad = c.o === null ? (ctl === null ? 'gG' : 'gC' + ctl) : 'gP' + c.o;
-      const num = c.o === null ? '' : `<text class="cnt" x="${lit ? 0 : x}" y="${lit ? 1 : y + 1}">${c.n}</text>`;
-      if (lit) {
-        h += `<g class="lift" transform="translate(${x} ${y}) scale(1.14)" filter="url(#sh)"><circle r="${CR}" fill="url(#${grad})" stroke="#fff" stroke-opacity=".85" stroke-width="1.6"/>${num}</g>`;
+      const fa = lit ? ' filter="url(#sh)"' : '';
+      if (c.o === null) {
+        const ctl = control[R.provinceOf(i)];
+        h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}" cx="${x}" cy="${y}" r="${CR}"${fa}/>`;
       } else {
-        h += `<circle class="${flat}" cx="${x}" cy="${y}" r="${CR}"/>${num}`;
+        h += `<circle class="base p${c.o}" cx="${x}" cy="${y}" r="${CR}"${fa}/><text class="cnt" x="${x}" y="${y + 1}">${c.n}</text>`;
       }
     }
     // טבעות: משבצות שהוטלו, ומהלך אחרון
@@ -327,7 +327,7 @@
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
       const tag = settings.mode === 'watch' ? 'מחשב' : settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : '';
-      const held = R.provincesHeld(state, p);
+      const held = R.winProgress(state, p);
       let pips = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) pips += `<span class="pip${k < held ? ' on' : ''}"></span>`;
       el.innerHTML = `<div class="top"><span class="swatch"></span><span>${NAME[p]}</span><span class="tag">${tag}</span><span class="pips" title="פרובינציות">${pips}</span></div>
@@ -566,6 +566,6 @@
   $('winNew').onclick = () => { $('overlay').hidden = true; openNew(); };
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  load(); render();
+  load(); applyRules(); render();
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom };   // לנוחות בדיקה
 })();

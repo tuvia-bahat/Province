@@ -19,7 +19,9 @@
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
   // אפשרויות חוקים (לניסויים בלבד; ברירת המחדל = החוקים המקוריים ב-RULES.md)
-  const OPTIONS = { reinforceAnywhere: true };
+  //   reinforceAnywhere – תגבור בכל בסיס בטריטוריה (גרסה 1, ברירת מחדל; משחק מול המחשב)
+  //   provinceTerritory – גרסה 2: פרובינציה בשליטתך (כולל משבצות ריקות) היא חלק מהטריטוריה שלך; ניצחון = 5 פרובינציות מחוברות
+  const OPTIONS = { reinforceAnywhere: true, provinceTerritory: false };
   const idx = (x, y) => y * SIZE + x;
   const xy = (i) => [i % SIZE, Math.floor(i / SIZE)];
   const provinceOf = (i) => { const [x, y] = xy(i); return Math.floor(y / 2) * 3 + Math.floor(x / 2); };
@@ -89,14 +91,26 @@
     return null;
   }
 
-  // טריטוריה: שרשרת בסיסים צמודים (מעבר לנהר – רק דרך גשר שלי)
-  function territory(s, start) {
-    const p = s.cells[start].o;
+  // צמתי הטריטוריה של שחקן p: הבסיסים שלו, ובגרסה 2 גם כל משבצות הפרובינציות שבשליטתו (כולל ריקות)
+  function territoryNodes(s, p) {
+    const nodes = new Uint8Array(CELLS);
+    for (let i = 0; i < CELLS; i++) if (s.cells[i].o === p) nodes[i] = 1;
+    if (OPTIONS.provinceTerritory) {
+      const ctl = provinceControl(s);
+      for (let i = 0; i < CELLS; i++) if (ctl[provinceOf(i)] === p) nodes[i] = 1;
+    }
+    return nodes;
+  }
+
+  // טריטוריה: רכיב מחובר של צמתים צמודים (מעבר לנהר – רק דרך גשר שלי). מחזיר את כל המשבצות בטריטוריה, כולל ריקות בגרסה 2.
+  function territory(s, start, p, nodes) {
+    if (p === undefined) p = s.cells[start].o !== null ? s.cells[start].o : s.turn;
+    if (!nodes) nodes = territoryNodes(s, p);
     const seen = new Set([start]), q = [start];
     while (q.length) {
       const cur = q.pop();
       for (const n of neighbors(cur)) {
-        if (seen.has(n) || s.cells[n].o !== p) continue;
+        if (seen.has(n) || !nodes[n]) continue;
         if (crossesRiver(cur, n) && s.bridges[bridgeKey(cur, n)] !== p) continue;
         seen.add(n); q.push(n);
       }
@@ -104,12 +118,29 @@
     return [...seen];
   }
 
+  // התקדמות לקראת ניצחון: גרסה 1 – מספר פרובינציות בשליטה; גרסה 2 – הכי הרבה פרובינציות בשליטה שמחוברות בטריטוריה אחת
+  function winProgress(s, p) {
+    if (!OPTIONS.provinceTerritory) return provincesHeld(s, p);
+    const ctl = provinceControl(s), nodes = territoryNodes(s, p), done = new Set();
+    let best = 0;
+    for (let k = 0; k < 9; k++) {
+      if (ctl[k] !== p || done.has(k)) continue;
+      const comp = territory(s, firstCellOf(k), p, nodes);
+      let n = 0;
+      for (let j = 0; j < 9; j++) if (ctl[j] === p && comp.includes(firstCellOf(j))) { n++; done.add(j); }
+      if (n > best) best = n;
+    }
+    return best;
+  }
+  const firstCellOf = (k) => idx((k % 3) * 2, Math.floor(k / 3) * 2);
+
   // יעדים אפשריים לפעולה מבסיס מקור
   function targets(s, type, R, from) {
     const p = s.turn, out = [];
     if (type === 'move') {
       // בסיס מהטריטוריה של המשבצת שהוטלה יכול לפעול לכל יעד; בסיס צמוד אליה שמחוץ לטריטוריה (למשל מעבר לנהר ללא גשר) – רק אל R
-      const inTerritory = s.cells[R].o === p && territory(s, R).includes(from);
+      const nodes = territoryNodes(s, p);
+      const inTerritory = nodes[R] === 1 && territory(s, R, p, nodes).includes(from);
       const cand = inTerritory ? neighbors(from) : (neighbors(from).includes(R) ? [R] : []);
       for (const n of cand) {
         const cr = crossing(s, p, from, n);
@@ -118,6 +149,7 @@
         out.push({ to: n, kind: o === null || o === p ? 'move' : 'attack', cross: cr.kind });
       }
     } else if (type === 'transport') {
+      const nodes = territoryNodes(s, p);
       const [fx, fy] = xy(from);
       for (const [dx, dy] of DIRS) {
         let cx = fx, cy = fy;
@@ -125,7 +157,7 @@
           const nx = cx + dx, ny = cy + dy;
           if (nx < 0 || nx >= SIZE || ny < 0 || ny >= SIZE) break;
           const prev = idx(cx, cy), nxt = idx(nx, ny);
-          if (s.cells[nxt].o !== p) break;
+          if (!nodes[nxt]) break;   // רק דרך בסיסים שלי (ובגרסה 2 גם משבצות ריקות בפרובינציות שבשליטתי)
           if (crossesRiver(prev, nxt) && s.bridges[bridgeKey(prev, nxt)] !== p) break;
           out.push({ to: nxt, kind: 'transport', cross: 'none' });
           cx = nx; cy = ny;
@@ -143,11 +175,12 @@
 
   // בסיסים שמהם מותר לפעול, בהינתן המשבצת שנבחרה R
   function sources(s, type, R) {
-    const p = s.turn, c = s.cells[R];
+    const p = s.turn;
     if (type === 'land') return [];
+    const nodes = territoryNodes(s, p);
     let base;
-    if (c.o === p) {
-      base = territory(s, R);
+    if (nodes[R]) {   // המשבצת שהוטלה בטריטוריה שלי: מנדט לפעול מכל בסיס בטריטוריה
+      base = territory(s, R, p, nodes).filter((i) => s.cells[i].o === p);
       if (type === 'move') for (const n of neighbors(R)) if (s.cells[n].o === p && !base.includes(n)) base.push(n);
     } else if (type === 'move') base = neighbors(R).filter((n) => s.cells[n].o === p);
     else return [];
@@ -156,16 +189,18 @@
   }
 
   // משבצות שאפשר להנחית בהן חיילים בהינתן המשבצת שהוטלה: משבצת ריקה – רק היא; בסיס שלי – כל בסיס בטריטוריה שלו
+  //   בגרסה 2: אי אפשר להנחית בטריטוריה של היריב (גם לא במשבצת ריקה בפרובינציה שבשליטתו), ורק במשבצת שהוטלה.
   function landTargets(s, R) {
-    const c = s.cells[R];
+    const p = s.turn, c = s.cells[R];
+    if (territoryNodes(s, 1 - p)[R]) return [];
     if (c.o === null) return [R];
-    if (c.o === s.turn) return OPTIONS.reinforceAnywhere ? territory(s, R) : [R];
+    if (c.o === p) return OPTIONS.reinforceAnywhere && !OPTIONS.provinceTerritory ? territory(s, R, p).filter((i) => s.cells[i].o === p) : [R];
     return [];
   }
 
   function actionTypes(s, R) {
     const p = s.turn, c = s.cells[R], out = [];
-    if ((c.o === null || c.o === p) && camp(s, p) > 0) out.push('land');
+    if (camp(s, p) > 0 && landTargets(s, R).length > 0) out.push('land');
     for (const t of ['move', 'transport', 'withdraw', 'bridge']) {
       if (sources(s, t, R).length) out.push(t);
     }
@@ -182,9 +217,9 @@
 
   function endTurn(s, fast) {
     const p = s.turn;
-    if (provincesHeld(s, p) >= WIN_PROVINCES) {
+    if (winProgress(s, p) >= WIN_PROVINCES) {
       s.winner = p;
-      if (!fast) s.log.push(`${NAMES[p]} שולט ב-${provincesHeld(s, p)} פרובינציות וניצח!`);
+      if (!fast) s.log.push(`${NAMES[p]} שולט ב-${winProgress(s, p)} פרובינציות${OPTIONS.provinceTerritory ? ' מחוברות' : ''} וניצח!`);
     } else {
       s.turn = 1 - p;
     }
@@ -288,7 +323,7 @@
     SIZE, CELLS, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES, OPTIONS,
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
-    roll, crossing, territory, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,
+    roll, crossing, territory, territoryNodes, winProgress, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,
     apply, skipTurn, passTurn, passFast, fastClone, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Rules;

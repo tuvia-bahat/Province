@@ -299,6 +299,78 @@ test('החלפת מצב מהירה זהה לרגילה', () => {
   eq({ ...fast, log: 0 }, { ...slow, log: 0 });
 });
 
+
+// ---------- גרסה 2: פרובינציה בשליטה = טריטוריה ----------
+function v2(fn) { const old = R.OPTIONS.provinceTerritory; R.OPTIONS.provinceTerritory = true; try { fn(); } finally { R.OPTIONS.provinceTerritory = old; } }
+const bk = (a, b) => R.bridgeKey(a, b);
+
+test('גרסה 2: משבצות ריקות בפרובינציה בשליטה הן טריטוריה', () => v2(() => {
+  const s = setup({ '0,0': [0, 3] }, 0, [1, 1]);          // המשבצת שהוטלה (1,1) ריקה, באותה פרובינציה בשליטתי
+  const nodes = R.territoryNodes(s, 0);
+  eq([I(0, 0), I(1, 0), I(0, 1), I(1, 1)].every((c) => nodes[c] === 1), true);
+  eq(R.actionTypes(s, I(1, 1)).includes('land'), true);
+  eq(R.sources(s, 'move', I(1, 1)), [I(0, 0)]);          // מנדט לפעול מהבסיס בטריטוריה
+}));
+test('גרסה 2: פרובינציות בשליטה מחוברות בגשר הן טריטוריה אחת', () => v2(() => {
+  const s = setup({ '0,0': [0, 2], '2,0': [0, 4] }, 0, [3, 1], { bridges: { [bk(I(1, 0), I(2, 0))]: 0 } });
+  // (3,1) ריקה בפרובינציה 1 שבשליטתי; שני הבסיסים בטריטוריה אחת
+  eq(R.sources(s, 'move', I(3, 1)).sort((a, b) => a - b), [I(0, 0), I(2, 0)]);
+  const t = setup({ '0,0': [0, 2], '2,0': [0, 4] }, 0, [3, 1]);   // בלי גשר: רק הבסיס הצמוד/בפרובינציה
+  eq(R.sources(t, 'move', I(3, 1)), [I(2, 0)]);
+}));
+test('גרסה 2: אי אפשר להנחית בטריטוריה של היריב, גם במשבצת ריקה', () => v2(() => {
+  const s = setup({ '4,4': [1, 2] }, 0, [5, 5]);          // (5,5) ריקה בפרובינציה 8 שבשליטת היריב
+  eq(R.landTargets(s, I(5, 5)), []);
+  eq(R.actionTypes(s, I(5, 5)).includes('land'), false);
+}));
+test('גרסה 2: פלישה קרקעית מבסיס צמוד דרך גשר', () => v2(() => {
+  const s = setup({ '3,4': [0, 3], '4,4': [1, 2] }, 0, [4, 5]);   // (4,5) ריקה בפרובינציה של היריב; (3,4) שלי, מעבר לנהר
+  eq(R.actionTypes(s, I(4, 5)).includes('land'), false);
+  // (3,5) שלי צמוד ל-(4,5) מעבר לנהר – תנועה אליו אפשרית (עם גשר חדש)
+  const t = setup({ '3,5': [0, 3], '4,4': [1, 2] }, 0, [4, 5]);
+  eq(R.actionTypes(t, I(4, 5)), ['move']);
+  const u = R.apply(t, { type: 'move', R: I(4, 5), from: I(3, 5), to: I(4, 5), count: 2 });
+  eq(u.cells[I(4, 5)], { o: 0, n: 2 }); eq(R.provinceControl(u)[8], null);   // הפרובינציה כבר לא בשליטת היריב
+}));
+test('גרסה 2: הנחתה רק במשבצת שהוטלה (לא בכל בסיס בטריטוריה)', () => v2(() => {
+  const s = setup({ '0,0': [0, 2], '1,0': [0, 5] }, 0, [0, 0]);
+  eq(R.landTargets(s, I(0, 0)), [I(0, 0)]);
+  throws(() => R.apply(s, { type: 'land', R: I(0, 0), to: I(1, 0), count: 1 }));
+}));
+test('גרסה 2: שינוע כוחות דרך משבצות ריקות ואל משבצת ריקה בטריטוריה', () => v2(() => {
+  const s = setup({ '0,0': [0, 5] }, 0, [0, 0]);
+  const to = R.targets(s, 'transport', I(0, 0), I(0, 0)).map((t) => t.to).sort((a, b) => a - b);
+  eq(to, [I(1, 0), I(0, 1)]);                              // רק בתוך הפרובינציה (נהר בלי גשר חוסם)
+  const t = setup({ '0,0': [0, 5] }, 0, [0, 0], { bridges: { [bk(I(1, 0), I(2, 0))]: 0 } });
+  const to2 = R.targets(t, 'transport', I(0, 0), I(0, 0)).map((x) => x.to);
+  eq(to2.includes(I(2, 0)), false);                        // (2,0) ריקה בפרובינציה שאינה בשליטתי – לא טריטוריה
+}));
+test('גרסה 2: שינוע אל משבצת ריקה בפרובינציה אחרת בשליטה (דרך גשר)', () => v2(() => {
+  const s = setup({ '0,0': [0, 5], '2,0': [0, 1] }, 0, [0, 0], { bridges: { [bk(I(1, 0), I(2, 0))]: 0 } });
+  const to = R.targets(s, 'transport', I(0, 0), I(0, 0)).map((t) => t.to);
+  eq(to.includes(I(1, 0)) && to.includes(I(2, 0)) && to.includes(I(3, 0)), true);
+  const u = R.apply(s, { type: 'transport', R: I(0, 0), from: I(0, 0), to: I(3, 0), count: 4 });
+  eq(u.cells[I(3, 0)], { o: 0, n: 4 }); eq(u.cells[I(0, 0)], { o: 0, n: 1 });
+}));
+test('גרסה 2: ניצחון = 5 פרובינציות שמחוברות בטריטוריה אחת', () => v2(() => {
+  // פרובינציות 0,1,2 (שורה תחתונה) + 3 (מעל 0) + 4 (מעל 1), מחוברות בגשרים
+  const board = { '0,0': [0, 1], '2,0': [0, 1], '4,0': [0, 1], '0,2': [0, 1], '2,2': [0, 1] };
+  const full = { [bk(I(1, 0), I(2, 0))]: 0, [bk(I(3, 0), I(4, 0))]: 0, [bk(I(0, 1), I(0, 2))]: 0, [bk(I(2, 1), I(2, 2))]: 0 };
+  const s = setup(board, 0, [5, 5], { bridges: full });
+  eq(R.provincesHeld(s, 0), 5); eq(R.winProgress(s, 0), 5);
+  const partial = Object.assign({}, full); delete partial[bk(I(2, 1), I(2, 2))];
+  const t = setup(board, 0, [5, 5], { bridges: partial });
+  eq(R.provincesHeld(t, 0), 5); eq(R.winProgress(t, 0), 4);   // 5 בשליטה, אבל רק 4 מחוברות
+  eq(R.apply(t, { type: 'land', R: I(5, 5), count: 1 }).winner, null);
+  eq(R.apply(s, { type: 'land', R: I(5, 5), count: 1 }).winner, 0);
+}));
+test('גרסה 1 (ברירת מחדל) לא השתנתה: שליטה ב-5 פרובינציות מנצחת גם ללא חיבור', () => {
+  eq(R.OPTIONS.provinceTerritory, false);
+  const board = { '0,0': [0, 1], '2,0': [0, 1], '4,0': [0, 1], '0,2': [0, 1], '2,2': [0, 1] };
+  const s = setup(board, 0, [5, 5]);
+  eq(R.apply(s, { type: 'land', R: I(5, 5), count: 1 }).winner, 0);
+});
+
 out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;
 document.title = `Province tests: ${pass} pass, ${fail} fail`;
 </script>
