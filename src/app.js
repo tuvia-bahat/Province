@@ -60,12 +60,26 @@
     document.body.appendChild(l);
     return l;
   })();
-  const PATTERNS = { select: 14, tick: 8, soft: 5, confirm: [12, 36, 18], error: [18, 40, 18] };
+  // משכי זמן קצרים מ-~15ms לא מורגשים ברוב מנועי הרטט באנדרואיד
+  const PATTERNS = { select: 28, tick: 16, soft: 14, confirm: [30, 40, 40], error: [40, 50, 40] };
   function haptic(kind) {
     try {
-      if (navigator.vibrate) { navigator.vibrate(PATTERNS[kind]); return; }
+      if (typeof navigator.vibrate === 'function') { return navigator.vibrate(PATTERNS[kind]); }
       tickEl.click();
-    } catch (e) { /* ignore */ }
+      return true;
+    } catch (e) { return false; }
+  }
+  function testHaptic() {
+    const out = $('hapticMsg');
+    if (typeof navigator.vibrate !== 'function') {
+      out.textContent = /iP(hone|ad)/.test(navigator.userAgent)
+        ? 'באייפון הרטט מוגבל: עובד רק בגרסאות חדשות של Safari.'
+        : 'הדפדפן הזה לא תומך ברטט.';
+      haptic('confirm'); return;
+    }
+    const ok = navigator.vibrate([120, 60, 120]);
+    out.textContent = ok ? 'נשלח רטט. אם לא הרגשת: ודא שהרטט מופעל בהגדרות הטלפון ושהאתר פתוח ישירות ב-Chrome.'
+      : 'הדפדפן חסם את הרטט (לרוב כי הדף פתוח בתוך חלון או אפליקציה אחרת). פתח את הקישור ישירות ב-Chrome.';
   }
 
   // ---------- חישובי אפשרויות ----------
@@ -222,9 +236,9 @@
   }
 
   // ---------- תצוגה: לוח ----------
+  // צל אחד, חזק וסימטרי מכל הצדדים (בלי היסט), כדי שהעיגול לא ייראה עקום
   const DEFS = `<defs>
-      <filter id="sh1" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="4" stdDeviation="4.5" flood-color="#1b2233" flood-opacity=".38"/></filter>
-      <filter id="sh2" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#1b2233" flood-opacity=".62"/></filter>
+      <filter id="sh" x="-80%" y="-80%" width="260%" height="260%"><feDropShadow dx="0" dy="0" stdDeviation="6.5" flood-color="#0e1220" flood-opacity=".8"/></filter>
     </defs>`;
 
   function renderBoard() {
@@ -252,11 +266,11 @@
     // עיגולים
     for (let i = 0; i < R.CELLS; i++) {
       const c = state.cells[i], x = cellX(i), y = cellY(i);
-      let f = '';
-      if (sheet) { if (i === sheet.from || i === sheet.cell) f = 'sh2'; else if (i === sheet.to) f = 'sh1'; }
-      else if (opts) { if (i === ui.sel) f = 'sh2'; else if (opts.has(i)) f = 'sh1'; }
-      else if (play.has(i)) f = 'sh1';
-      const fa = f ? ` filter="url(#${f})"` : '';
+      let lit = false;
+      if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
+      else if (opts) lit = i === ui.sel || opts.has(i);
+      else lit = play.has(i);
+      const fa = lit ? ' filter="url(#sh)"' : '';
       if (c.o === null) {
         const ctl = control[R.provinceOf(i)];
         h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}" cx="${x}" cy="${y}" r="${CR}"${fa}/>`;
@@ -272,6 +286,13 @@
       const la = lastMove.a;
       const cells = la.type === 'land' ? [la.R] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
       cells.forEach((c) => { if (c !== null && c !== undefined) h += `<circle class="ring-last" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 5}" stroke="${COLORS[lastMove.p]}"/>`; });
+    }
+    // בחירת הכמות פתוחה: מסמנים את היעד שאליו גררו (קו מהבסיס + טבעת סביב היעד)
+    if (sheet && sheet.to !== undefined) {
+      h += `<line class="drag-line" x1="${cellX(sheet.from)}" y1="${cellY(sheet.from)}" x2="${cellX(sheet.to)}" y2="${cellY(sheet.to)}" stroke="${turnColor}"/>`;
+      h += `<circle class="ring-dest" cx="${cellX(sheet.to)}" cy="${cellY(sheet.to)}" r="${CR + 6}" stroke="${turnColor}"/>`;
+    } else if (sheet && sheet.cell !== undefined) {
+      h += `<circle class="ring-dest" cx="${cellX(sheet.cell)}" cy="${cellY(sheet.cell)}" r="${CR + 6}" stroke="${turnColor}"/>`;
     }
     // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
     h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="12" fill="${turnColor}" visibility="hidden"/><circle id="hoverRing" class="hover-ring" r="${CR + 5}" stroke="${turnColor}" visibility="hidden"/></g>`;
@@ -515,6 +536,7 @@
   $('speedBtn').onclick = cycleSpeed;
   $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
   $('newBtn').onclick = openNew;
+  $('hapticTest').onclick = testHaptic;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
   $('newStart').onclick = startNew;
   for (const [id, key] of [['grpMode', 'mode'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {

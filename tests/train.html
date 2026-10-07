@@ -1,0 +1,69 @@
+<!doctype html><meta charset="utf-8"><title>train</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/ai.js"></script>
+<script>
+/* אימון פונקציית ההערכה של המחשב: משחקים משחקי מחשב-נגד-מחשב, שומרים את תכונות הלוח בכל מצב,
+ * ומתאימים רגרסיה לוגיסטית שמנבאת מי ינצח. המשקלים המתקבלים הופכים לפונקציית ההערכה (ניבוי ניצחון ארוך טווח). */
+const R = Rules, A = AI;
+const q = new URLSearchParams(location.search);
+const GAMES = +(q.get('g') || 80), EPS = +(q.get('eps') || 0.1), MAXT = 200;
+const startW = JSON.parse(q.get('w') || '{}');
+const mix = JSON.parse(q.get('mix') || '[["strong","strong",0.75],["strong","easy",0.25]]');
+const samples = [];
+
+function playGame(l0, l1) {
+  let s = R.newGame(), t = 0; const recs = [];
+  while (s.winner === null && t < MAXT) {
+    s = R.roll(s, 1 + Math.random() * 6 | 0, 1 + Math.random() * 6 | 0);
+    const lv = s.turn === 0 ? l0 : l1;
+    let a;
+    if (Math.random() < EPS) { const c = A.candidates(s, true); a = c[Math.random() * c.length | 0]; }
+    else a = A.chooseAction(s, lv, startW);
+    s = a.type === 'pass' ? R.passTurn(s) : R.apply(s, a);
+    if (s.winner === null) recs.push({ x: A.featureDiff(s), ply: t });
+    t++;
+  }
+  if (s.winner === null) return { turns: t, done: false };
+  const y = s.winner === 0 ? 1 : 0;
+  // תיוג רק של החלק המאוחר יחסית? משתמשים בכל המצבים, כשהמצבים המאוחרים נושאים מידע חזק יותר
+  for (const r of recs) samples.push({ x: r.x, y, ply: r.ply });
+  return { turns: t, done: true, w: s.winner };
+}
+
+let done = 0, unfinished = 0, turnsTot = 0;
+for (let g = 0; g < GAMES; g++) {
+  const r = Math.random(); let acc = 0, pair = mix[0];
+  for (const m of mix) { acc += m[2]; if (r < acc) { pair = m; break; } }
+  const flip = g % 2;
+  const out = flip ? playGame(pair[1], pair[0]) : playGame(pair[0], pair[1]);
+  turnsTot += out.turns; if (out.done) done++; else unfinished++;
+}
+
+// ---- רגרסיה לוגיסטית (Adam) ----
+const n = A.FN.length, N = samples.length;
+const mean = new Array(n).fill(0), sd = new Array(n).fill(0);
+for (const s of samples) for (let i = 0; i < n; i++) mean[i] += s.x[i] / N;
+for (const s of samples) for (let i = 0; i < n; i++) sd[i] += (s.x[i] - 0) ** 2 / N;   // ללא מרכוז: המודל אנטי-סימטרי וללא קבוע
+for (let i = 0; i < n; i++) sd[i] = Math.sqrt(sd[i]) || 1;
+const X = samples.map((s) => s.x.map((v, i) => v / sd[i])), Y = samples.map((s) => s.y);
+// פיצול: 80% אימון, 20% בדיקה (לפי משחקים בערך: ערבוב רגיל מספיק לבדיקה גסה)
+const idx = X.map((_, i) => i).sort(() => Math.random() - 0.5);
+const nTrain = Math.floor(N * 0.8), tr = idx.slice(0, nTrain), te = idx.slice(nTrain);
+const w = new Array(n).fill(0), m1 = new Array(n).fill(0), m2 = new Array(n).fill(0);
+const sig = (z) => 1 / (1 + Math.exp(-z)), LAMBDA = 0.002;
+function loss(set) { let L = 0, acc = 0; for (const i of set) { const p = sig(X[i].reduce((a, v, k) => a + v * w[k], 0)); L -= Y[i] * Math.log(p + 1e-9) + (1 - Y[i]) * Math.log(1 - p + 1e-9); if ((p > 0.5) === (Y[i] === 1)) acc++; } return { loss: L / set.length, acc: acc / set.length }; }
+for (let it = 1; it <= 1500; it++) {
+  const g = new Array(n).fill(0);
+  for (const i of tr) { const p = sig(X[i].reduce((a, v, k) => a + v * w[k], 0)), e = p - Y[i]; for (let k = 0; k < n; k++) g[k] += e * X[i][k] / tr.length; }
+  for (let k = 0; k < n; k++) {
+    g[k] += LAMBDA * w[k];
+    m1[k] = 0.9 * m1[k] + 0.1 * g[k]; m2[k] = 0.999 * m2[k] + 0.001 * g[k] * g[k];
+    w[k] -= 0.05 * (m1[k] / (1 - 0.9 ** it)) / (Math.sqrt(m2[k] / (1 - 0.999 ** it)) + 1e-8);
+  }
+}
+const SCALE = +(q.get('scale') || 100);
+const weights = {}; A.FN.forEach((name, i) => { weights[name] = +(w[i] / sd[i] * SCALE).toFixed(2); });
+document.getElementById('o').textContent = 'RESULT ' + JSON.stringify({
+  games: GAMES, done, unfinished, avgTurns: Math.round(turnsTot / GAMES), samples: N,
+  train: loss(tr), test: loss(te), weights,
+});
+</script>

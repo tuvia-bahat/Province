@@ -6,7 +6,8 @@
 - `src/rules.js` – לוגיקת המשחק, ללא תלות בתצוגה
 - `src/ai.js` – יריב מחשב (הערכת מצב + חיפוש expectimax)
 - `tools/bundle.py` – בונה קובץ HTML בודד לפרסום כ-Artifact
-- `tests/bench2.html` – טורניר משחק מול עצמו לכוונון המחשב
+- `tests/bench2.html` – טורניר משחק מול עצמו (השוואת גרסאות של המחשב)
+- `tests/train.html` – אימון פונקציית ההערכה של המחשב ממשחקי מחשב-נגד-מחשב (רגרסיה לוגיסטית)
 - `src/app.js`, `index.html`, `style.css` – הממשק
 - `tests/tests.html` – בדיקות לוגיקה (לפתוח בדפדפן)
 
