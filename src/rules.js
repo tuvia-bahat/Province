@@ -18,6 +18,8 @@
   const NAMES = ['אדום', 'כחול'];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
+  // אפשרויות חוקים (לניסויים בלבד; ברירת המחדל = החוקים המקוריים ב-RULES.md)
+  const OPTIONS = { reinforceAnywhere: true };
   const idx = (x, y) => y * SIZE + x;
   const xy = (i) => [i % SIZE, Math.floor(i / SIZE)];
   const provinceOf = (i) => { const [x, y] = xy(i); return Math.floor(y / 2) * 3 + Math.floor(x / 2); };
@@ -157,7 +159,7 @@
   function landTargets(s, R) {
     const c = s.cells[R];
     if (c.o === null) return [R];
-    if (c.o === s.turn) return territory(s, R);
+    if (c.o === s.turn) return OPTIONS.reinforceAnywhere ? territory(s, R) : [R];
     return [];
   }
 
@@ -283,7 +285,7 @@
   }
 
   const Rules = {
-    SIZE, CELLS, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES,
+    SIZE, CELLS, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES, OPTIONS,
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
     roll, crossing, territory, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,

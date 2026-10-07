@@ -1,0 +1,38 @@
+<!doctype html><meta charset="utf-8"><title>stats</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/ai.js"></script>
+<script>
+const R=Rules,A=AI; const q=new URLSearchParams(location.search);
+const GAMES=+(q.get('g')||40); Object.assign(R.OPTIONS, JSON.parse(q.get('opt')||'{}'));
+const T=[10,20,30]; // תורות לכל שחקן שבהן נדגם המצב
+const agg={games:0,turns:0,p0wins:0,draws:0,landings:0,landSoldiers:0,landSingle:0,reinf:0,reinfSoldiers:0,attacks:0,attackSoldiers:0,moves:0,moveSoldiers:0,bridges:0,passes:0,
+ snap:{}}; T.forEach(t=>agg.snap[t]={n:0,bases:0,soldiersPerBase:0,single:0,terr:0,held:0,onBoard:0});
+let winProv1=0, winProvTot=0;
+function terrSize(s,x){ const seen=new Set(); let best=0; for(let i=0;i<36;i++){ if(seen.has(i)||s.cells[i].o!==x) continue; let size=0; const st=[i]; seen.add(i); while(st.length){ const c=st.pop(); size++; for(const n of R.neighbors(c)){ if(seen.has(n)||s.cells[n].o!==x) continue; if(R.crossesRiver(c,n)&&s.bridges[R.bridgeKey(c,n)]!==x) continue; seen.add(n); st.push(n); } } best=Math.max(best,size);} return best; }
+for(let g=0;g<GAMES;g++){
+  let s=R.newGame(),t=0; const turnsOf=[0,0];
+  while(s.winner===null&&t<200){
+    s=R.roll(s,1+Math.random()*6|0,1+Math.random()*6|0);
+    const p=s.turn; const a=A.chooseAction(s,'strong');
+    const before=s;
+    if(a.type==='pass'){ agg.passes++; s=R.passTurn(s); }
+    else{
+      if(a.type==='land'){ const to=a.to==null?a.R:a.to; if(before.cells[to].o===p){agg.reinf++;agg.reinfSoldiers+=a.count;} else {agg.landings++;agg.landSoldiers+=a.count; if(a.count===1)agg.landSingle++;} }
+      else if(a.type==='move'||a.type==='transport'){ const tg=R.targets(before,a.type,a.R,a.from).find(x=>x.to===a.to); if(tg&&tg.kind==='attack'){agg.attacks++;agg.attackSoldiers+=a.count;} else {agg.moves++;agg.moveSoldiers+=a.count;} }
+      else if(a.type==='bridge') agg.bridges++;
+      s=R.apply(s,a);
+    }
+    turnsOf[p]++; t++;
+    // דגימת מצב אחרי T תורות של כל שחקן (מנקודת מבט של שני הצדדים)
+    for(const k of T){ if(turnsOf[p]===k && s.winner===null){ for(const x of [0,1]){ const bs=s.cells.filter(c=>c.o===x); const sn=agg.snap[k]; sn.n++; sn.bases+=bs.length; sn.onBoard+=bs.reduce((u,c)=>u+c.n,0); sn.soldiersPerBase+= bs.length? bs.reduce((u,c)=>u+c.n,0)/bs.length:0; sn.single+=bs.length? bs.filter(c=>c.n===1).length/bs.length:0; sn.terr+=terrSize(s,x); sn.held+=R.provincesHeld(s,x); } } }
+  }
+  agg.games++; agg.turns+=t;
+  if(s.winner===null) agg.draws++; else { if(s.winner===0) agg.p0wins++; const ctl=R.provinceControl(s); const cnt=new Array(9).fill(0); s.cells.forEach((c,i)=>{ if(c.o===s.winner) cnt[R.provinceOf(i)]+=c.n; }); ctl.forEach((o,k)=>{ if(o===s.winner){ winProvTot++; if(cnt[k]===1) winProv1++; } }); }
+}
+const out={options:R.OPTIONS,games:agg.games,avgTurns:+(agg.turns/agg.games).toFixed(0),p0WinPct:+(100*agg.p0wins/(agg.games-agg.draws)).toFixed(0),draws:agg.draws,
+ landAvg:+(agg.landSoldiers/agg.landings).toFixed(2),landSinglePct:+(100*agg.landSingle/agg.landings).toFixed(0),landingsPerGame:+(agg.landings/agg.games).toFixed(1),
+ reinfPerGame:+(agg.reinf/agg.games).toFixed(1),reinfAvg:+(agg.reinfSoldiers/Math.max(1,agg.reinf)).toFixed(2),
+ attacksPerGame:+(agg.attacks/agg.games).toFixed(1),attackAvg:+(agg.attackSoldiers/Math.max(1,agg.attacks)).toFixed(2),movesPerGame:+(agg.moves/agg.games).toFixed(1),bridgesPerGame:+(agg.bridges/agg.games).toFixed(1),passesPerGame:+(agg.passes/agg.games).toFixed(1),
+ winningProvincesHeldBySingleSoldierPct:+(100*winProv1/Math.max(1,winProvTot)).toFixed(0), snaps:{}};
+for(const k of T){ const sn=agg.snap[k]; if(sn.n) out.snaps['turn'+k]={bases:+(sn.bases/sn.n).toFixed(1),soldiersOnBoard:+(sn.onBoard/sn.n).toFixed(1),avgPerBase:+(sn.soldiersPerBase/sn.n).toFixed(2),singleBasePct:+(100*sn.single/sn.n).toFixed(0),largestTerritory:+(sn.terr/sn.n).toFixed(1),provincesHeld:+(sn.held/sn.n).toFixed(1)}; }
+document.getElementById('o').textContent='RESULT '+JSON.stringify(out);
+</script>
