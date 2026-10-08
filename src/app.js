@@ -255,8 +255,7 @@
 
   // ---------- תצוגה: לוח ----------
   const LIFT = 15;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
-  const TILE = P - 10;   // גודל רקע המשבצת בפרובינציה שבשליטה
-
+  
   function renderBoard() {
     const svg = $('board');
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
@@ -273,13 +272,16 @@
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
     }
-    // רקע המשבצות בפרובינציות שבשליטה: ריבוע בגוון דהוי של השחקן (העיגולים עצמם נשארים אפורים)
-    for (let i = 0; i < R.CELLS; i++) {
-      const ctl = control[R.provinceOf(i)];
-      if (ctl !== null) h += `<rect class="tint${ctl}" x="${cellX(i) - TILE / 2}" y="${cellY(i) - TILE / 2}" width="${TILE}" height="${TILE}" rx="14"/>`;
+    // רקע הפרובינציה כולה כשהיא נשלטת: מלבן מעוגל בגוון של השחקן (העיגולים עצמם נשארים אפורים)
+    for (let k = 0; k < 9; k++) {
+      const ctl = control[k];
+      if (ctl === null) continue;
+      const x0 = (k % 3) * 2, y0 = Math.floor(k / 3) * 2, pad = CR + 12;
+      const left = cellX(R.idx(x0, y0)), right = cellX(R.idx(x0 + 1, y0)), top = cellY(R.idx(x0, y0 + 1)), bottom = cellY(R.idx(x0, y0));
+      h += `<rect class="tint${ctl}" x="${left - pad}" y="${top - pad}" width="${right - left + 2 * pad}" height="${bottom - top + 2 * pad}" rx="20"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
-    h += `<circle id="hoverRing" class="hover-ring" r="${CR + 8}" stroke="${turnColor}" visibility="hidden"/>`;
+    h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
     if (sheet && sheet.to !== undefined) {   // חלון הכמות פתוח: קו מהבסיס ליעד, מתחת לעיגולים
       h += `<line class="drag-line" x1="${cellX(sheet.from)}" y1="${cellY(sheet.from)}" x2="${cellX(sheet.to)}" y2="${cellY(sheet.to)}" stroke="${turnColor}"/>`;
     }
@@ -302,12 +304,14 @@
       const floating = lit && c.o !== null;
       const ty = floating ? y - LIFT : y;
       h += `<circle class="cell${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
-      if (rolled.includes(i)) {
-        // משבצת שאי אפשר לשחק בה: טבעת מקווקוות באפור
+      if (i === destCell) {
+        // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
+        h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
+      } else if (rolled.includes(i)) {
+        // משבצת שאי אפשר לשחק בה: טבעת מקווקוו באפור
         const playable = R.actionTypes(state, i).length > 0;
-        h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#b4b9c2'}"/>`;
+        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#b4b9c2'}"/>`;
       }
-      if (i === destCell) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 8}" stroke="${turnColor}"/>`;
       if (c.o !== null) h += `<circle class="base p${c.o}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     if (lastMove) {
@@ -493,9 +497,15 @@
     }
     return best;
   }
+  let hiddenRoll = null;
   function overlay(pos, hover) {
     const line = $('dragLine'), dot = $('dragDot'), ring = $('hoverRing');
     if (!line) return;
+    if (hiddenRoll) { hiddenRoll.setAttribute('visibility', 'visible'); hiddenRoll = null; }
+    if (pos && hover !== null && hover !== undefined) {
+      const rr = $('rr' + hover);
+      if (rr) { rr.setAttribute('visibility', 'hidden'); hiddenRoll = rr; }
+    }
     if (!pos) { line.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); ring.setAttribute('visibility', 'hidden'); return; }
     line.setAttribute('x1', cellX(ui.sel)); line.setAttribute('y1', cellY(ui.sel));
     line.setAttribute('x2', pos.x); line.setAttribute('y2', pos.y);

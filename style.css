@@ -8,8 +8,8 @@
   --cell: #e8eaee;       /* עיגולי הלוח והנהרות */
   --river: #eceef2;
   --cell-deep: #c4c8d0;   /* העיגול האפור שמתחת לעיגול מרחף */
-  --p0-tint: #fce6e7;      /* רקע משבצת בפרובינציה שנשלטת */
-  --p1-tint: #e2eafe;
+  --p0-tint: #f7d3d5;      /* רקע משבצת בפרובינציה שנשלטת */
+  --p1-tint: #d3e0fb;
   --die: #9aa1ac;
   --p0: #e5484d;
   --p1: #3b6ef5;
@@ -59,7 +59,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ring-last { fill: none; stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; opacity: .7; pointer-events: none; }
 .drag-line { stroke-width: 6; stroke-linecap: round; opacity: .35; pointer-events: none; }
 .drag-dot { opacity: .5; pointer-events: none; }
-.ring-dest { fill: none; stroke-width: 3.5; pointer-events: none; }
+.ring-dest { fill: none; stroke-width: 3; pointer-events: none; }
 .haptic { text-align: center; }
 #hapticMsg { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .hover-ring { fill: none; stroke-width: 3; pointer-events: none; }
