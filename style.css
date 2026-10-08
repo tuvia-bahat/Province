@@ -10,6 +10,8 @@
   --cell-deep: #8d939f;   /* העיגול האפור שמתחת לעיגול מרחף */
   --p0-tint: #f2b9bc;      /* רקע משבצת בפרובינציה שנשלטת */
   --p1-tint: #b9cdf8;
+  --p0-deep: #d4868c;     /* העיגול הצבוע שמתחת לבסיס מרחף */
+  --p1-deep: #86a3e6;
   --die: #9aa1ac;
   --p0: #e5484d;
   --p1: #3b6ef5;
@@ -48,8 +50,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #board { width: 100%; height: auto; display: block; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { fill: var(--cell); transition: fill .3s; }
 .cell.deep { fill: var(--cell-deep); }
-.tint0 { fill: var(--p0-tint); }
-.tint1 { fill: var(--p1-tint); }
+.cell.c0 { fill: var(--p0-tint); }
+.cell.c1 { fill: var(--p1-tint); }
+.cell.c0.deep { fill: var(--p0-deep); }
+.cell.c1.deep { fill: var(--p1-deep); }
+.base.float { stroke: #fff; stroke-width: 1.6; }
 .base.p0 { fill: var(--p0); }
 .base.p1 { fill: var(--p1); }
 .cnt { fill: #fff; font: 600 18px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; font-variant-numeric: tabular-nums; }

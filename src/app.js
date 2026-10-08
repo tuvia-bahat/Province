@@ -254,8 +254,7 @@
   }
 
   // ---------- תצוגה: לוח ----------
-  const RIVER_W = 12;      // תואם ל-.river ב-style.css
-  const LIFT = 15;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
+  const LIFT = 10;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
   
   function renderBoard() {
     const svg = $('board');
@@ -272,14 +271,6 @@
     for (let k = 1; k <= 2; k++) {
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
-    }
-    // רקע הפרובינציה כולה כשהיא נשלטת: מלבן מעוגל בגוון של השחקן (העיגולים עצמם נשארים אפורים)
-    for (let k = 0; k < 9; k++) {
-      const ctl = control[k];
-      if (ctl === null) continue;
-      const x0 = (k % 3) * 2, y0 = Math.floor(k / 3) * 2, pad = P / 2 + (G - RIVER_W) / 2;   // עד קצה הנהרות
-      const left = cellX(R.idx(x0, y0)), right = cellX(R.idx(x0 + 1, y0)), top = cellY(R.idx(x0, y0 + 1)), bottom = cellY(R.idx(x0, y0));
-      h += `<rect class="tint${ctl}" x="${left - pad}" y="${top - pad}" width="${right - left + 2 * pad}" height="${bottom - top + 2 * pad}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -304,7 +295,8 @@
       else lit = play.has(i);
       const floating = lit && c.o !== null;
       const ty = floating ? y - LIFT : y;
-      h += `<circle class="cell${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
+      const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
+      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
@@ -313,7 +305,7 @@
         const playable = R.actionTypes(state, i).length > 0;
         h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#b4b9c2'}"/>`;
       }
-      if (c.o !== null) h += `<circle class="base p${c.o}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" x="${x}" y="${ty + 1}">${c.n}</text>`;
+      if (c.o !== null) h += `<circle class="base p${c.o}${floating ? ' float' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     if (lastMove) {
       const la = lastMove.a;
