@@ -254,7 +254,7 @@
   }
 
   // ---------- תצוגה: לוח ----------
-  const LIFT = 21;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
+  const LIFT = 15;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
   const TILE = P - 10;   // גודל רקע המשבצת בפרובינציה שבשליטה
 
   function renderBoard() {
@@ -278,6 +278,11 @@
       const ctl = control[R.provinceOf(i)];
       if (ctl !== null) h += `<rect class="tint${ctl}" x="${cellX(i) - TILE / 2}" y="${cellY(i) - TILE / 2}" width="${TILE}" height="${TILE}" rx="14"/>`;
     }
+    // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
+    h += `<circle id="hoverRing" class="hover-ring" r="${CR + 8}" stroke="${turnColor}" visibility="hidden"/>`;
+    if (sheet && sheet.to !== undefined) {   // חלון הכמות פתוח: קו מהבסיס ליעד, מתחת לעיגולים
+      h += `<line class="drag-line" x1="${cellX(sheet.from)}" y1="${cellY(sheet.from)}" x2="${cellX(sheet.to)}" y2="${cellY(sheet.to)}" stroke="${turnColor}"/>`;
+    }
     // גשרים: עם רווח בין הגשר לעיגולים
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
@@ -285,34 +290,33 @@
       const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + 8;
       h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
-    // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. משבצת מודגשת: העיגול העליון מרחף בהיסט
-    // והאפור שמתחתיו כהה יותר. העיגול המקווקו של המשבצת שהוטלה נמצא בשכבה שמתחת לעיגול העליון.
+    // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. רק בסיס מודגש מרחף בהיסט; אצל משבצת ריקה מודגשת
+    // האפור מתכהה. כל הטבעות (מקווקו של ההטלה, וטבעת היעד) נמצאות בשכבה שמתחת לעיגול העליון.
+    const destCell = sheet ? (sheet.to !== undefined ? sheet.to : sheet.cell) : null;
     for (let i = 0; i < R.CELLS; i++) {
       const c = state.cells[i], x = cellX(i), y = cellY(i);
       let lit = false;
       if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
       else if (opts) lit = i === ui.sel || opts.has(i);
       else lit = play.has(i);
-      const ty = lit ? y - LIFT : y;
+      const floating = lit && c.o !== null;
+      const ty = floating ? y - LIFT : y;
       h += `<circle class="cell${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
-      if (rolled.includes(i)) h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 7}" stroke="${turnColor}"/>`;
+      if (rolled.includes(i)) {
+        // משבצת שאי אפשר לשחק בה: טבעת מקווקוות באפור
+        const playable = R.actionTypes(state, i).length > 0;
+        h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#b4b9c2'}"/>`;
+      }
+      if (i === destCell) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 8}" stroke="${turnColor}"/>`;
       if (c.o !== null) h += `<circle class="base p${c.o}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" x="${x}" y="${ty + 1}">${c.n}</text>`;
-      else if (lit) h += `<circle class="cell" cx="${x}" cy="${ty}" r="${CR}"/>`;
     }
     if (lastMove) {
       const la = lastMove.a;
       const cells = la.type === 'land' ? [la.to === undefined || la.to === null ? la.R : la.to] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
       cells.forEach((c) => { if (c !== null && c !== undefined) h += `<circle class="ring-last" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 5}" stroke="${COLORS[lastMove.p]}"/>`; });
     }
-    // בחירת הכמות פתוחה: מסמנים את היעד שאליו גררו (קו מהבסיס + טבעת סביב היעד)
-    if (sheet && sheet.to !== undefined) {
-      h += `<line class="drag-line" x1="${cellX(sheet.from)}" y1="${cellY(sheet.from)}" x2="${cellX(sheet.to)}" y2="${cellY(sheet.to)}" stroke="${turnColor}"/>`;
-      h += `<circle class="ring-dest" cx="${cellX(sheet.to)}" cy="${cellY(sheet.to)}" r="${CR + 8}" stroke="${turnColor}"/>`;
-    } else if (sheet && sheet.cell !== undefined) {
-      h += `<circle class="ring-dest" cx="${cellX(sheet.cell)}" cy="${cellY(sheet.cell)}" r="${CR + 8}" stroke="${turnColor}"/>`;
-    }
     // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
-    h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="9" fill="${turnColor}" visibility="hidden"/><circle id="hoverRing" class="hover-ring" r="${CR + 7}" stroke="${turnColor}" visibility="hidden"/></g>`;
+    h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="9" fill="${turnColor}" visibility="hidden"/></g>`;
     svg.innerHTML = h;
   }
 
