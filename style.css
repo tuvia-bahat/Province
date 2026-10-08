@@ -5,9 +5,9 @@
   --ink: #1b1e24;
   --muted: #8a909a;
   --faint: #c9cdd4;
-  --cell: #e8eaee;       /* עיגולי הלוח והנהרות */
-  --river: #eceef2;
-  --cell-deep: #c4c8d0;   /* העיגול האפור שמתחת לעיגול מרחף */
+  --cell: #dcdfe5;       /* עיגולי הלוח והנהרות */
+  --river: #e2e5ea;
+  --cell-deep: #aeb3be;   /* העיגול האפור שמתחת לעיגול מרחף */
   --p0-tint: #f7d3d5;      /* רקע משבצת בפרובינציה שנשלטת */
   --p1-tint: #d3e0fb;
   --die: #9aa1ac;
