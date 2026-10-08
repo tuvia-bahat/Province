@@ -14,7 +14,7 @@
   const COLORS = ['#e5484d', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
-  const P = 64, G = 36, M = 22, CR = 26, W = 2 * M + 6 * P + 2 * G;
+  const P = 64, G = 34, M = 24, CR = 21, W = 2 * M + 6 * P + 2 * G;
   const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
   const cy = (y) => { const r = 5 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
   const cellX = (i) => cx(R.xy(i)[0]);
@@ -167,9 +167,8 @@
     lastMove = null; ui = freshUi(); save(); render();
   }
 
-  // פתיחת בחירת כמות, או ביצוע מיידי כשאין מה לבחור
+  // פותחים תמיד את חלון האישור, גם כשאין מה לבחור (בלי ביצוע אוטומטי)
   function openSheet(sheet) {
-    if (sheet.min === sheet.max) { commit(sheet.build(sheet.max)); return; }
     ui.sheet = sheet; render();
   }
   // לחיצה קצרה על משבצת: הוספת חיילים מהמחנה (תגבור/הנחתה) ו/או משיכת חיילים בחזרה למחנה
@@ -181,7 +180,6 @@
     if (!modes.length) return false;
     const sh = { kind: 'adjust', cell: c, modes, mode: modes[0], rl, rw };
     setMode(sh, modes[0]);
-    if (modes.length === 1 && sh.min === sh.max) { commit(sh.build(sh.max)); return true; }
     ui.sheet = sh; render();
     return true;
   }
@@ -256,11 +254,8 @@
   }
 
   // ---------- תצוגה: לוח ----------
-  // צל אחד, חזק וסימטרי מכל הצדדים (בלי היסט), כדי שהעיגול לא ייראה עקום
-  // צל חד, סימטרי מכל הצדדים
-  const DEFS = `<defs>
-      <filter id="sh" x="-70%" y="-70%" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#0b0f1a" flood-opacity=".95"/></filter>
-    </defs>`;
+  const LIFT = 7;        // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
+  const TILE = P - 10;   // גודל רקע המשבצת בפרובינציה שבשליטה
 
   function renderBoard() {
     const svg = $('board');
@@ -270,38 +265,39 @@
     const opts = canAct() && ui.sel !== null ? optionsFrom(ui.sel) : null;
     const sheet = ui.sheet;
     const turnColor = COLORS[state.turn];
-    let h = DEFS;
+    const rolled = state.roll && state.winner === null ? state.roll.cells : [];
+    let h = '';
 
     // נהרות
     for (let k = 1; k <= 2; k++) {
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
     }
-    // גשרים
+    // רקע המשבצות בפרובינציות שבשליטה: ריבוע בגוון דהוי של השחקן (העיגולים עצמם נשארים אפורים)
+    for (let i = 0; i < R.CELLS; i++) {
+      const ctl = control[R.provinceOf(i)];
+      if (ctl !== null) h += `<rect class="tint${ctl}" x="${cellX(i) - TILE / 2}" y="${cellY(i) - TILE / 2}" width="${TILE}" height="${TILE}" rx="14"/>`;
+    }
+    // גשרים: עם רווח בין הגשר לעיגולים
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
-      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR - 2;
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + 8;
       h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
-    // עיגולים: משבצות פעילות מודגשות בצל חד וברור
+    // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. משבצת מודגשת: העיגול העליון מרחף בהיסט
+    // והאפור שמתחתיו כהה יותר. העיגול המקווקו של המשבצת שהוטלה נמצא בשכבה שמתחת לעיגול העליון.
     for (let i = 0; i < R.CELLS; i++) {
       const c = state.cells[i], x = cellX(i), y = cellY(i);
       let lit = false;
       if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
       else if (opts) lit = i === ui.sel || opts.has(i);
       else lit = play.has(i);
-      const fa = lit ? ' filter="url(#sh)"' : '';
-      if (c.o === null) {
-        const ctl = control[R.provinceOf(i)];
-        h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}" cx="${x}" cy="${y}" r="${CR}"${fa}/>`;
-      } else {
-        h += `<circle class="base p${c.o}" cx="${x}" cy="${y}" r="${CR}"${fa}/><text class="cnt" x="${x}" y="${y + 1}">${c.n}</text>`;
-      }
-    }
-    // טבעות: משבצות שהוטלו, ומהלך אחרון
-    if (state.roll && state.winner === null) {
-      state.roll.cells.forEach((c) => { h += `<circle class="ring-roll" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 8}" stroke="${turnColor}"/>`; });
+      const ty = lit ? y - LIFT : y;
+      h += `<circle class="cell${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
+      if (rolled.includes(i)) h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 7}" stroke="${turnColor}"/>`;
+      if (c.o !== null) h += `<circle class="base p${c.o}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" x="${x}" y="${ty + 1}">${c.n}</text>`;
+      else if (lit) h += `<circle class="cell" cx="${x}" cy="${ty}" r="${CR}"/>`;
     }
     if (lastMove) {
       const la = lastMove.a;
@@ -311,12 +307,12 @@
     // בחירת הכמות פתוחה: מסמנים את היעד שאליו גררו (קו מהבסיס + טבעת סביב היעד)
     if (sheet && sheet.to !== undefined) {
       h += `<line class="drag-line" x1="${cellX(sheet.from)}" y1="${cellY(sheet.from)}" x2="${cellX(sheet.to)}" y2="${cellY(sheet.to)}" stroke="${turnColor}"/>`;
-      h += `<circle class="ring-dest" cx="${cellX(sheet.to)}" cy="${cellY(sheet.to)}" r="${CR + 6}" stroke="${turnColor}"/>`;
+      h += `<circle class="ring-dest" cx="${cellX(sheet.to)}" cy="${cellY(sheet.to)}" r="${CR + 8}" stroke="${turnColor}"/>`;
     } else if (sheet && sheet.cell !== undefined) {
-      h += `<circle class="ring-dest" cx="${cellX(sheet.cell)}" cy="${cellY(sheet.cell)}" r="${CR + 6}" stroke="${turnColor}"/>`;
+      h += `<circle class="ring-dest" cx="${cellX(sheet.cell)}" cy="${cellY(sheet.cell)}" r="${CR + 8}" stroke="${turnColor}"/>`;
     }
     // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
-    h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="12" fill="${turnColor}" visibility="hidden"/><circle id="hoverRing" class="hover-ring" r="${CR + 5}" stroke="${turnColor}" visibility="hidden"/></g>`;
+    h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="9" fill="${turnColor}" visibility="hidden"/><circle id="hoverRing" class="hover-ring" r="${CR + 7}" stroke="${turnColor}" visibility="hidden"/></g>`;
     svg.innerHTML = h;
   }
 
@@ -411,7 +407,7 @@
     if (sh) {
       sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
       msg.innerHTML = '';
-      const box = document.createElement('div'); box.className = 'sheet';
+      const box = document.createElement('div'); box.className = 'sheet' + (sh.min === sh.max ? ' fixed' : '');
       const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'תגבור' : 'הנחתה';
       const toggle = sh.modes && sh.modes.length > 1
         ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'נסיגה'}</button>`).join('')}</div>` : '';
@@ -510,7 +506,7 @@
   // לחיצה קצרה (בלי גרירה) פותחת הוספה או משיכה של חיילים.
   svg.addEventListener('pointerdown', (e) => {
     if (!canAct() || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    const pos = toSvg(e), c = cellAt(pos, CR + 10);
+    const pos = toSvg(e), c = cellAt(pos, CR + 12);
     drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null };
     if (c === null) return;
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
@@ -525,7 +521,7 @@
     if (!drag.moved && Math.hypot(pos.x - drag.x0, pos.y - drag.y0) > 9) drag.moved = true;
     if (!drag.moved || ui.sel === null || drag.start !== ui.sel || ui.sheet) return;
     const opts = optionsFrom(ui.sel);
-    let hover = cellAt(pos, CR + 12);
+    let hover = cellAt(pos, CR + 14);
     if (hover === ui.sel || (hover !== null && !opts.has(hover))) hover = null;
     if (hover !== drag.hover) { drag.hover = hover; if (hover !== null) haptic('tick'); }
     overlay(pos, hover);
