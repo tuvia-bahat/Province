@@ -279,7 +279,7 @@
       if (ctl === null) continue;
       const x0 = (k % 3) * 2, y0 = Math.floor(k / 3) * 2, pad = P / 2 + (G - RIVER_W) / 2;   // עד קצה הנהרות
       const left = cellX(R.idx(x0, y0)), right = cellX(R.idx(x0 + 1, y0)), top = cellY(R.idx(x0, y0 + 1)), bottom = cellY(R.idx(x0, y0));
-      h += `<rect class="tint${ctl}" x="${left - pad}" y="${top - pad}" width="${right - left + 2 * pad}" height="${bottom - top + 2 * pad}" rx="12"/>`;
+      h += `<rect class="tint${ctl}" x="${left - pad}" y="${top - pad}" width="${right - left + 2 * pad}" height="${bottom - top + 2 * pad}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
