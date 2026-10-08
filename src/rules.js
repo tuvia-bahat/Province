@@ -14,7 +14,7 @@
 (function (root) {
   'use strict';
 
-  const SIZE = 6, CELLS = 36, SOLDIERS = 36, BRIDGES = 6, WIN_PROVINCES = 5;
+  const SIZE = 6, CELLS = 36, SOLDIERS = 36, BRIDGES = 8, WIN_PROVINCES = 5;
   const NAMES = ['אדום', 'כחול'];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
