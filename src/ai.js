@@ -28,7 +28,7 @@
   const IDX = {}; FN.forEach((n, i) => { IDX[n] = i; });
   // כוונון: רגרסיה לוגיסטית על משחקי מחשב-נגד-מחשב (tests/train.html), מעורבבת חצי-חצי עם המשקלים הידניים
   const DEFAULT_W = {
-    h1: 16.68, h2: 27.04, h3: 28.67, h4: 74.17, h5: 485.32, c2: 0, c3: 0, c4: 0, c5: 0, presence: 9.42, strength: -2.02, lead: 11.52, trail: -11.52, alive: 19.2, camp: 2.98, over: -0.51, bridge: -24.62, bridgeLeft: -4.57, territory: -3.82, army: 3.82, terrProv: 37.61, frag: 5.77, secure: -4.22, bases: 1.06, lone: 12.21, weakFront: -10.74,
+    h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77,
   };
   let Wv = FN.map((n) => DEFAULT_W[n] || 0);   // תכונה שאין לה משקל = 0 (ולא undefined, שהיה הופך את כל ההערכות ל-NaN)
   function setWeights(w) { const m = Object.assign({}, DEFAULT_W, w || {}); Wv = FN.map((n) => m[n] || 0); }
