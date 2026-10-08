@@ -8,15 +8,26 @@
  */
 (function () {
   'use strict';
-  const R = window.Rules;
+  let R = window.Rules, AIB = window.AI;   // כללי המשחק והמחשב של גודל הלוח הנוכחי (useBoard)
   const SAVE_KEY = 'province.save.v7';
-  const NAME = R.NAMES;
+  const NAME = window.Rules.NAMES;
   const COLORS = ['#e5484d', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
-  const P = 64, G = 34, M = 24, CR = 21, W = 2 * M + 6 * P + 2 * G;
+  // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
+  const GEO = {
+    6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
+    8: { P: 56, G: 30, M: 22, CR: 19, LIFT: 9, RIVER_W: 11, BR: 7, FS: 16 },
+  };
+  let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
+  function useBoard(n) {
+    R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
+    ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
+    W = 2 * M + n * P + (n / 2 - 1) * G;
+    memo = { state: null, play: null, opts: new Map() };
+  }
   const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
-  const cy = (y) => { const r = 5 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
+  const cy = (y) => { const r = R.SIZE - 1 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
   const cellX = (i) => cx(R.xy(i)[0]);
   const cellY = (i) => cy(R.xy(i)[1]);
 
@@ -24,7 +35,7 @@
   const $ = (id) => document.getElementById(id);
   let state, history;
   // mode: pvp | ai | watch
-  let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal' };
+  let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
   let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
@@ -41,10 +52,13 @@
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d && d.state && d.state.cells.length === R.CELLS) { state = d.state; history = d.history || []; settings = Object.assign(settings, d.settings || {}); return; }
+        if (d && d.state && (d.state.cells.length === 36 || d.state.cells.length === 64)) {
+          state = d.state; history = d.history || []; settings = Object.assign(settings, d.settings || {});
+          settings.board = d.state.cells.length === 64 ? 8 : 6; return;
+        }
       }
     } catch (e) { /* ignore */ }
-    state = R.newGame(); history = [];
+    state = window.Rules.forSize(settings.board).newGame(); history = [];
   }
   // כללי גרסה 2 בכל המצבים (פרובינציה בשליטה = טריטוריה; ניצחון ב-5 פרובינציות מחוברות). המחשב אומן עליהם.
   function applyRules() { R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true; }
@@ -149,7 +163,7 @@
     return true;
   }
   function doRoll() {
-    state = R.roll(state, 1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6));
+    state = R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
     haptic('soft'); save(); render();
@@ -222,7 +236,7 @@
     const p = state.turn;
     let a = { type: 'pass' };
     if (R.hasAnyMove(state)) {
-      try { a = AI.chooseAction(state, aiLevel()); } catch (e) { console.error(e); }
+      try { a = AIB.chooseAction(state, aiLevel()); } catch (e) { console.error(e); }
     }
     history.push(state);
     if (!R.hasAnyMove(state)) state = R.skipTurn(state);
@@ -238,23 +252,24 @@
   let pending = null;
   function openNew() { pending = Object.assign({}, settings); renderNewModal(); $('newModal').hidden = false; }
   function renderNewModal() {
-    const groups = { grpMode: 'mode', grpSide: 'human', grpLevel: 'level', grpLevelR: 'levelR', grpLevelB: 'levelB', grpSpeed: 'speed' };
+    const groups = { grpMode: 'mode', grpBoard: 'board', grpSide: 'human', grpLevel: 'level', grpLevelR: 'levelR', grpLevelB: 'levelB', grpSpeed: 'speed' };
     for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
     $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
     $('grpWatchWrap').hidden = pending.mode !== 'watch';
-    $('ruleNote').textContent = 'פרובינציה בשליטתך היא חלק מהטריטוריה, והניצחון הוא 5 פרובינציות מחוברות.';
+    const Rb = window.Rules.forSize(+pending.board);
+    $('ruleNote').textContent = `פרובינציה בשליטתך היא חלק מהטריטוריה, והניצחון הוא ${Rb.WIN_PROVINCES} פרובינציות מחוברות. ${Rb.SIZE === 8 ? `לוח גדול: ${Rb.NPROV} פרובינציות, ${Rb.SOLDIERS} חיילים ו-${Rb.BRIDGES} גשרים לכל שחקן.` : ''}${Rb.SIZE === 8 && pending.mode !== 'pvp' && !window.AI.forSize(8).trained ? ' המחשב בלוח הגדול עדיין באימון ולכן חלש יותר.' : ''}`;
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false;
-    settings = Object.assign({}, pending); settings.human = +settings.human;
-    applyRules();
+    settings = Object.assign({}, pending); settings.human = +settings.human; settings.board = +settings.board;
+    useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('newModal').hidden = true; $('overlay').dataset.dismissed = '';
     save(); render();
   }
 
   // ---------- תצוגה: לוח ----------
-  const LIFT = 10;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
+       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
   
   function renderBoard() {
     const svg = $('board');
@@ -268,9 +283,9 @@
     let h = '';
 
     // נהרות
-    for (let k = 1; k <= 2; k++) {
+    for (let k = 1; k <= R.SIZE / 2 - 1; k++) {
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
-      h += `<line class="river" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
+      h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" style="stroke-width:${RIVER_W}" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -281,8 +296,8 @@
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
-      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + 15;
-      h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + P * 0.23;
+      h += `<line class="bridge" style="stroke-width:${BR}" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
     // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. רק בסיס מודגש מרחף בהיסט; אצל משבצת ריקה מודגשת
     // האפור מתכהה. כל הטבעות (מקווקו של ההטלה, וטבעת היעד) נמצאות בשכבה שמתחת לעיגול העליון.
@@ -305,7 +320,7 @@
         const playable = R.actionTypes(state, i).length > 0;
         h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#b4b9c2'}"/>`;
       }
-      if (c.o !== null) h += `<circle class="base p${c.o}${floating ? ' float' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" x="${x}" y="${ty + 1}">${c.n}</text>`;
+      if (c.o !== null) h += `<circle class="base p${c.o}${floating ? ' float' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     if (lastMove) {
       const la = lastMove.a;
@@ -327,12 +342,12 @@
       const held = R.winProgress(state, p);
       let pips = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) pips += `<span class="pip${k < held ? ' on' : ''}"></span>`;
-      el.innerHTML = `<div class="top"><span class="swatch"></span><span>${NAME[p]}</span><span class="tag">${tag}</span><span class="pips" title="פרובינציות">${pips}</span></div>
+      el.innerHTML = `<div class="top"><span class="swatch"></span><span>${NAME[p]}</span><span class="tag">${tag}</span><span class="pips${R.WIN_PROVINCES > 5 ? ' many' : ''}" title="פרובינציות">${pips}</span></div>
         <div class="meta">מחנה ${R.camp(state, p)} · קברות ${state.graveyard[p]} · גשרים ${state.bridgesLeft[p]}</div><div class="under"></div>`;
     }
   }
 
-  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8], 7: [0, 2, 3, 4, 5, 6, 8], 8: [0, 1, 2, 3, 5, 6, 7, 8] };
   function dieHtml(n, label, cls) {
     let cells = '';
     for (let i = 0; i < 9; i++) cells += `<i${PIPS[n].includes(i) ? ' class="on"' : ''}></i>`;
@@ -563,12 +578,12 @@
   $('hapticTest').onclick = testHaptic;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
   $('newStart').onclick = startNew;
-  for (const [id, key] of [['grpMode', 'mode'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
+  for (const [id, key] of [['grpMode', 'mode'], ['grpBoard', 'board'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
     $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
   }
   $('winNew').onclick = () => { $('overlay').hidden = true; openNew(); };
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  load(); applyRules(); render();
-  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom };   // לנוחות בדיקה
+  load(); useBoard(settings.board); applyRules(); render();
+  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();

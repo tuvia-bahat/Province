@@ -14,7 +14,8 @@
 (function (root) {
   'use strict';
 
-  const SIZE = 6, CELLS = 36, SOLDIERS = 36, BRIDGES = 8, WIN_PROVINCES = 5;
+  // תצורות לוח: 6×6 (9 פרובינציות) ו-8×8 (16 פרובינציות, בלי שינוי בכללים)
+  const CONFIGS = { 6: { SOLDIERS: 36, BRIDGES: 8, WIN: 5 }, 8: { SOLDIERS: 64, BRIDGES: 16, WIN: 9 } };
   const NAMES = ['אדום', 'כחול'];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
@@ -23,9 +24,13 @@
   //   provinceTerritory – גרסה 2: פרובינציה בשליטתך (כולל משבצות ריקות) היא חלק מהטריטוריה שלך; ניצחון = 5 פרובינציות מחוברות
   //   winConnected – בגרסה 2: האם הניצחון דורש 5 פרובינציות מחוברות בטריטוריה אחת (כבוי = מספיק לשלוט ב-5)
   const OPTIONS = { reinforceAnywhere: true, provinceTerritory: false, winConnected: true };
+
+  function build(SIZE) {
+  const CELLS = SIZE * SIZE, SOLDIERS = CONFIGS[SIZE].SOLDIERS, BRIDGES = CONFIGS[SIZE].BRIDGES, WIN_PROVINCES = CONFIGS[SIZE].WIN;
+  const PR = SIZE / 2, NPROV = PR * PR;   // פרובינציות בשורה, ובסך הכל
   const idx = (x, y) => y * SIZE + x;
   const xy = (i) => [i % SIZE, Math.floor(i / SIZE)];
-  const provinceOf = (i) => { const [x, y] = xy(i); return Math.floor(y / 2) * 3 + Math.floor(x / 2); };
+  const provinceOf = (i) => { const [x, y] = xy(i); return Math.floor(y / 2) * PR + Math.floor(x / 2); };
   const crossesRiver = (a, b) => provinceOf(a) !== provinceOf(b);
   const bridgeKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
   const clone = (s) => JSON.parse(JSON.stringify(s));
@@ -48,6 +53,7 @@
 
   function newGame() {
     return {
+      size: SIZE,
       cells: Array.from({ length: CELLS }, () => ({ o: null, n: 0 })),
       bridges: {},
       bridgesLeft: [BRIDGES, BRIDGES],
@@ -82,7 +88,7 @@
   }
   function provinceControl(s) {
     return memo(caches.ctl, ownerSig(s), () => {
-      const owners = Array.from({ length: 9 }, () => new Set());
+      const owners = Array.from({ length: NPROV }, () => new Set());
       s.cells.forEach((c, i) => { if (c.o !== null) owners[provinceOf(i)].add(c.o); });
       return owners.map((set) => (set.size === 1 ? [...set][0] : null));
     });
@@ -154,16 +160,16 @@
     if (!OPTIONS.provinceTerritory || !OPTIONS.winConnected) return provincesHeld(s, p);
     const ctl = provinceControl(s), nodes = territoryNodes(s, p), done = new Set();
     let best = 0;
-    for (let k = 0; k < 9; k++) {
+    for (let k = 0; k < NPROV; k++) {
       if (ctl[k] !== p || done.has(k)) continue;
       const comp = territory(s, firstCellOf(k), p, nodes);
       let n = 0;
-      for (let j = 0; j < 9; j++) if (ctl[j] === p && comp.includes(firstCellOf(j))) { n++; done.add(j); }
+      for (let j = 0; j < NPROV; j++) if (ctl[j] === p && comp.includes(firstCellOf(j))) { n++; done.add(j); }
       if (n > best) best = n;
     }
     return best;
   }
-  const firstCellOf = (k) => idx((k % 3) * 2, Math.floor(k / 3) * 2);
+  const firstCellOf = (k) => idx((k % PR) * 2, Math.floor(k / PR) * 2);
 
   // יעדים אפשריים לפעולה מבסיס מקור
   function targets(s, type, R, from) {
@@ -275,6 +281,7 @@
   // שכפול מהיר למנוע החיפוש של המחשב (היומן משותף, ולכן אסור לכתוב אליו במצב מהיר)
   function fastClone(s) {
     return {
+      size: s.size,
       cells: s.cells.map((c) => ({ o: c.o, n: c.n })),
       bridges: Object.assign({}, s.bridges),
       bridgesLeft: s.bridgesLeft.slice(),
@@ -351,12 +358,18 @@
   }
 
   const Rules = {
-    SIZE, CELLS, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES, OPTIONS,
+    SIZE, CELLS, NPROV, PR, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES, OPTIONS,
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
     roll, crossing, territory, territoryNodes, components, winProgress, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,
     apply, skipTurn, passTurn, passFast, fastClone, clone,
   };
-  if (typeof module !== 'undefined' && module.exports) module.exports = Rules;
-  else root.Rules = Rules;
+  return Rules;
+  }
+
+  const cache = {};
+  const base = build(6); cache[6] = base;
+  base.forSize = (n) => cache[n] || (cache[n] = build(n));
+  if (typeof module !== 'undefined' && module.exports) module.exports = base;
+  else root.Rules = base;
 })(typeof window !== 'undefined' ? window : globalThis);

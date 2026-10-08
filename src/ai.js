@@ -10,9 +10,16 @@
  */
 (function (root) {
   'use strict';
-  const R = root.Rules || require('./rules.js');
+  const RulesBase = root.Rules || require('./rules.js');
+  const WEIGHTS = {
+    6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77 },
+    8: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77 },
+  };
   const WIN = 3000;                       // שווי ניצחון/הפסד (ביחידות של פונקציית ההערכה)
 
+  function build(R) {
+  const NP = R.NPROV, TW = R.WIN_PROVINCES, DEFAULT_W = WEIGHTS[R.SIZE];
+  const TH = [0, 1, 2, 3, 4, 5].map((k) => Math.max(1, Math.round(TW * k / 5)));   // סף פרובינציות לכל מדרגת h/c
   // פונקציית ההערכה: סכום משוקלל של הפרשי תכונות בין השחקן ליריב. כל תכונה מחושבת לכל צד בנפרד.
   //  h1..h5       – שליטה בלפחות 1..5 פרובינציות (מצטבר, כך שהערך קמור: הקרבה לניצחון שווה יותר)
   //  c2..c5       – בגרסה 2: הכי הרבה פרובינציות בשליטה שמחוברות בטריטוריה אחת (≥2..5); בגרסה 1 זהה ל-h
@@ -27,9 +34,6 @@
     'territory', 'army', 'terrProv', 'frag', 'secure', 'bases', 'lone', 'weakFront'];
   const IDX = {}; FN.forEach((n, i) => { IDX[n] = i; });
   // כוונון: רגרסיה לוגיסטית על משחקי מחשב-נגד-מחשב (tests/train.html), מעורבבת חצי-חצי עם המשקלים הידניים
-  const DEFAULT_W = {
-    h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77,
-  };
   let Wv = FN.map((n) => DEFAULT_W[n] || 0);   // תכונה שאין לה משקל = 0 (ולא undefined, שהיה הופך את כל ההערכות ל-NaN)
   function setWeights(w) { const m = Object.assign({}, DEFAULT_W, w || {}); Wv = FN.map((n) => m[n] || 0); }
 
@@ -37,14 +41,14 @@
   // טבלאות קבועות (מהירות): פרובינציה לכל משבצת, ושכנים עם דגל חציית נהר ומפתח גשר
   const PROV = Array.from({ length: R.CELLS }, (_, i) => R.provinceOf(i));
   const NEI = Array.from({ length: R.CELLS }, (_, i) => R.neighbors(i).map((n) => ({ n, cross: R.crossesRiver(i, n), key: R.bridgeKey(i, n) })));
-  const FIRST = Array.from({ length: 9 }, (_, k) => R.idx((k % 3) * 2, Math.floor(k / 3) * 2));
+  const FIRST = Array.from({ length: NP }, (_, k) => R.idx((k % R.PR) * 2, Math.floor(k / R.PR) * 2));
 
   // ניתוח חד-פעמי של לוח: חיילים לפי פרובינציה, שליטה, צמתי טריטוריה ורכיביה, והתקדמות לניצחון (לשני הצדדים)
   function analyze(s) {
-    const cnt = [new Array(9).fill(0), new Array(9).fill(0)];
+    const cnt = [new Array(NP).fill(0), new Array(NP).fill(0)];
     for (let i = 0; i < R.CELLS; i++) { const c = s.cells[i]; if (c.o !== null) cnt[c.o][PROV[i]] += c.n; }
-    const ctl = new Array(9), held = [0, 0];
-    for (let k = 0; k < 9; k++) {
+    const ctl = new Array(NP), held = [0, 0];
+    for (let k = 0; k < NP; k++) {
       ctl[k] = cnt[0][k] > 0 && cnt[1][k] === 0 ? 0 : cnt[1][k] > 0 && cnt[0][k] === 0 ? 1 : null;
       if (ctl[k] !== null) held[ctl[k]]++;
     }
@@ -73,7 +77,7 @@
       if (!v2 || !R.OPTIONS.winConnected) prog[x] = held[x];
       else {
         const tally = {};
-        for (let k = 0; k < 9; k++) if (ctl[k] === x) { const c = id[FIRST[k]]; tally[c] = (tally[c] || 0) + 1; if (tally[c] > prog[x]) prog[x] = tally[c]; }
+        for (let k = 0; k < NP; k++) if (ctl[k] === x) { const c = id[FIRST[k]]; tally[c] = (tally[c] || 0) + 1; if (tally[c] > prog[x]) prog[x] = tally[c]; }
       }
     }
     return { cnt, held, comp, best, size, prog };
@@ -81,15 +85,15 @@
 
   function features(s, x, A) {
     const f = new Float64Array(FN.length), y = 1 - x, h = A.held[x], cnt = A.cnt, id = A.comp[x], best = A.best[x];
-    for (let k = 1; k <= 5; k++) f[IDX['h' + k]] = h >= k ? 1 : 0;
-    for (let k = 2; k <= 5; k++) f[IDX['c' + k]] = A.prog[x] >= k ? 1 : 0;
-    for (let k = 0; k < 9; k++) {
+    for (let k = 1; k <= 5; k++) f[IDX['h' + k]] = h >= TH[k] ? 1 : 0;
+    for (let k = 2; k <= 5; k++) f[IDX['c' + k]] = A.prog[x] >= TH[k] ? 1 : 0;
+    for (let k = 0; k < NP; k++) {
       const a = cnt[x][k], b = cnt[y][k];
       if (a > 0) f[IDX.presence]++;
       if (a > 0 && b === 0) f[IDX.strength] += Math.min(a, 4);
       if (a > 0 && b > 0) { if (a > b) f[IDX.lead]++; else if (a < b) f[IDX.trail]++; }
     }
-    const secureProv = new Uint8Array(9);
+    const secureProv = new Uint8Array(NP);
     if (best >= 0) for (let i = 0; i < R.CELLS; i++) if (id[i] === best) secureProv[PROV[i]] = 1;
     let onBoard = 0;
     for (let i = 0; i < R.CELLS; i++) {
@@ -107,7 +111,7 @@
     for (const k in s.bridges) if (s.bridges[k] === x) f[IDX.bridge]++;
     f[IDX.bridgeLeft] = s.bridgesLeft[x];
     f[IDX.territory] = A.size[x];
-    for (let k = 0; k < 9; k++) {
+    for (let k = 0; k < NP; k++) {
       if (secureProv[k]) f[IDX.terrProv]++;
       if (secureProv[k] && cnt[x][k] > 0 && cnt[y][k] === 0) f[IDX.secure]++;
     }
@@ -172,8 +176,9 @@
   // ---------- בחירת מהלך ----------
   const ROLLS = (() => {   // 18 הטלות שונות (כל זוג משבצות נגדיות פעם אחת)
     const out = [];
-    for (let w = 1; w <= 6; w++) for (let b = 1; b <= 6; b++) {
-      if (R.idx(w - 1, b - 1) < R.idx(6 - w, 6 - b)) out.push({ w, b, cells: [R.idx(w - 1, b - 1), R.idx(6 - w, 6 - b)] });
+    const N = R.SIZE;
+    for (let w = 1; w <= N; w++) for (let b = 1; b <= N; b++) {
+      if (R.idx(w - 1, b - 1) < R.idx(N - w, N - b)) out.push({ w, b, cells: [R.idx(w - 1, b - 1), R.idx(N - w, N - b)] });
     }
     return out;
   })();
@@ -234,9 +239,10 @@
 
     const deep = level === 'deep';
     // 'train': גרסה מהירה (פחות מהלכים ופחות הטלות) ליצירת נתוני אימון
-    const fast = level === 'train';
-    const K = deep ? 8 : fast ? 6 : 14, lite = true;
-    const rolls = fast ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, 6) : null;
+    const quick = level === 'quick';   // עוד יותר מהיר (ללוח גדול)
+    const fast = level === 'train' || quick;
+    const K = deep ? 8 : quick ? 4 : fast ? 6 : 14, lite = true;
+    const rolls = fast ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, quick ? 4 : 6) : null;
     // מדגם קבוע של הטלות לעומק השלישי (אותו מדגם לכל המהלכים, כדי שההשוואה ביניהם הוגנת)
     const sample = deep ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, 6).map((r) => ({ w: r.w, b: r.b, cells: r.cells })) : null;
     let best = null;
@@ -248,7 +254,14 @@
     return best.a;
   }
 
-  const AI = { evaluate, candidates, chooseAction, featureDiff, setWeights, FN, DEFAULT_W };
+  return { evaluate, candidates, chooseAction, featureDiff, setWeights, FN, DEFAULT_W, R, trained: R.SIZE === 6 };
+  }
+
+  // מופע אחד לכל גודל לוח (לכל גודל משקלים משלו)
+  const cache = {};
+  const forRules = (Rr) => cache[Rr.SIZE] || (cache[Rr.SIZE] = build(Rr));
+  const AI = forRules(RulesBase);
+  AI.forSize = (n) => forRules(RulesBase.forSize(n));
   if (typeof module !== 'undefined' && module.exports) module.exports = AI;
   else root.AI = AI;
 })(typeof window !== 'undefined' ? window : globalThis);

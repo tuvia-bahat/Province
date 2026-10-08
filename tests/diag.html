@@ -1,7 +1,7 @@
 <!doctype html><meta charset="utf-8"><title>diag</title><pre id="o">running</pre>
 <script src="../src/rules.js"></script><script src="../src/ai.js"></script>
 <script>
-const R=Rules,A=AI; R.OPTIONS.provinceTerritory=true;
+const __b = +(new URLSearchParams(location.search).get('board') || 6); const R = Rules.forSize(__b), A = AI.forSize(__b); R.OPTIONS.provinceTerritory=true;
 const q=new URLSearchParams(location.search); const G=+(q.get('g')||6), T=+(q.get('t')||300);
 const out=[];
 for(let g=0;g<G;g++){

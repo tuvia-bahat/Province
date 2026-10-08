@@ -4,7 +4,7 @@
 /* אימון פונקציית ההערכה של המחשב: משחקים משחקי מחשב-נגד-מחשב, שומרים את תכונות הלוח בכל מצב,
  * ומתאימים רגרסיה לוגיסטית שמנבאת מי ינצח. המשקלים המתקבלים הופכים לפונקציית ההערכה (ניבוי ניצחון ארוך טווח). */
 const __q0 = new URLSearchParams(location.search);
-const R = Rules, A = AI;
+const __b = +(new URLSearchParams(location.search).get('board') || 6); const R = Rules.forSize(__b), A = AI.forSize(__b);
 Rules.OPTIONS.provinceTerritory = !__q0.get('v1');
 const q = new URLSearchParams(location.search);
 const GAMES = +(q.get('g') || 80), EPS = +(q.get('eps') || 0.1), MAXT = +(q.get('maxt') || 250);

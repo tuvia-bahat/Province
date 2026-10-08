@@ -40,6 +40,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .tag { font-weight: 400; font-size: 12px; color: var(--muted); }
 .pl .pips { display: flex; gap: 4px; margin-inline-start: auto; }
 .pl .pip { width: 8px; height: 8px; border-radius: 50%; background: var(--cell); transition: background .25s; }
+.pl .pips.many { gap: 3px; }
+.pl .pips.many .pip { width: 6px; height: 6px; }
 .pl .pip.on { background: var(--c); }
 .pl .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .pl .under { height: 2px; border-radius: 2px; background: var(--c); transform: scaleX(0); transform-origin: right; transition: transform .3s; }
@@ -141,5 +143,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 6px; font-size: 14px; font-weight: 500; color: var(--muted); transition: background .2s, color .2s; }
 .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(20,25,40,.14); }
 .rule-note { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: -4px; }
-#grpWatchWrap, #grpSideWrap, #grpLevelWrap { display: flex; flex-direction: column; }
+#grpBoardWrap, #grpWatchWrap, #grpSideWrap, #grpLevelWrap { display: flex; flex-direction: column; }
 #grpWatchWrap > .seg { margin-bottom: 10px; }

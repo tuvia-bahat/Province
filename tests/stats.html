@@ -2,7 +2,7 @@
 <script src="../src/rules.js"></script><script src="../src/ai.js"></script>
 <script>
 const __q0 = new URLSearchParams(location.search);
-const R=Rules,A=AI; const q=new URLSearchParams(location.search);
+const __b = +(new URLSearchParams(location.search).get('board') || 6); const R = Rules.forSize(__b), A = AI.forSize(__b); const q=new URLSearchParams(location.search);
 Rules.OPTIONS.provinceTerritory = !__q0.get('v1');
 const GAMES=+(q.get('g')||40); Object.assign(R.OPTIONS, JSON.parse(q.get('opt')||'{}'));
 const T=[10,20,30]; // תורות לכל שחקן שבהן נדגם המצב
