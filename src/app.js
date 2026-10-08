@@ -254,6 +254,7 @@
   }
 
   // ---------- תצוגה: לוח ----------
+  const RIVER_W = 12;      // תואם ל-.river ב-style.css
   const LIFT = 15;       // כמה העיגול המודגש "מרחף" מעל העיגול האפור שמתחתיו
   
   function renderBoard() {
@@ -276,9 +277,9 @@
     for (let k = 0; k < 9; k++) {
       const ctl = control[k];
       if (ctl === null) continue;
-      const x0 = (k % 3) * 2, y0 = Math.floor(k / 3) * 2, pad = CR + 12;
+      const x0 = (k % 3) * 2, y0 = Math.floor(k / 3) * 2, pad = P / 2 + (G - RIVER_W) / 2;   // עד קצה הנהרות
       const left = cellX(R.idx(x0, y0)), right = cellX(R.idx(x0 + 1, y0)), top = cellY(R.idx(x0, y0 + 1)), bottom = cellY(R.idx(x0, y0));
-      h += `<rect class="tint${ctl}" x="${left - pad}" y="${top - pad}" width="${right - left + 2 * pad}" height="${bottom - top + 2 * pad}" rx="20"/>`;
+      h += `<rect class="tint${ctl}" x="${left - pad}" y="${top - pad}" width="${right - left + 2 * pad}" height="${bottom - top + 2 * pad}" rx="12"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -289,7 +290,7 @@
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
-      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + 8;
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + 15;
       h += `<line class="bridge" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
     // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. רק בסיס מודגש מרחף בהיסט; אצל משבצת ריקה מודגשת
