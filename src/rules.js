@@ -67,10 +67,25 @@
   const camp = (s, p) => SOLDIERS - onBoard(s, p) - s.graveyard[p];
 
   // מי שולט בכל אחת מ-9 הפרובינציות (null אם אף אחד)
+  // מטמונים לפי "חתימת בעלים" של הלוח (מי מחזיק כל משבצת; הכמויות לא משפיעות על שליטה וטריטוריה).
+  // המבנים המוחזרים משותפים ולקריאה בלבד.
+  const caches = { ctl: new Map(), nodes: new Map(), comp: new Map() };
+  function memo(map, key, fn) {
+    let v = map.get(key);
+    if (v === undefined) { v = fn(); if (map.size > 30000) map.clear(); map.set(key, v); }
+    return v;
+  }
+  function ownerSig(s) {
+    let k = '';
+    for (let i = 0; i < CELLS; i++) { const o = s.cells[i].o; k += o === null ? '.' : o; }
+    return k;
+  }
   function provinceControl(s) {
-    const owners = Array.from({ length: 9 }, () => new Set());
-    s.cells.forEach((c, i) => { if (c.o !== null) owners[provinceOf(i)].add(c.o); });
-    return owners.map((set) => (set.size === 1 ? [...set][0] : null));
+    return memo(caches.ctl, ownerSig(s), () => {
+      const owners = Array.from({ length: 9 }, () => new Set());
+      s.cells.forEach((c, i) => { if (c.o !== null) owners[provinceOf(i)].add(c.o); });
+      return owners.map((set) => (set.size === 1 ? [...set][0] : null));
+    });
   }
   const provincesHeld = (s, p) => provinceControl(s).filter((o) => o === p).length;
 
@@ -94,29 +109,44 @@
 
   // צמתי הטריטוריה של שחקן p: הבסיסים שלו, ובגרסה 2 גם כל משבצות הפרובינציות שבשליטתו (כולל ריקות)
   function territoryNodes(s, p) {
-    const nodes = new Uint8Array(CELLS);
-    for (let i = 0; i < CELLS; i++) if (s.cells[i].o === p) nodes[i] = 1;
-    if (OPTIONS.provinceTerritory) {
-      const ctl = provinceControl(s);
-      for (let i = 0; i < CELLS; i++) if (ctl[provinceOf(i)] === p) nodes[i] = 1;
-    }
-    return nodes;
+    return memo(caches.nodes, ownerSig(s) + p + (OPTIONS.provinceTerritory ? 'T' : 'B'), () => {
+      const nodes = new Uint8Array(CELLS);
+      for (let i = 0; i < CELLS; i++) if (s.cells[i].o === p) nodes[i] = 1;
+      if (OPTIONS.provinceTerritory) {
+        const ctl = provinceControl(s);
+        for (let i = 0; i < CELLS; i++) if (ctl[provinceOf(i)] === p) nodes[i] = 1;
+      }
+      return nodes;
+    });
+  }
+
+  // רכיבי הטריטוריה של שחקן p: id לכל צומת (או -1), ורשימות המשבצות בכל רכיב
+  function components(s, p) {
+    const own = Object.keys(s.bridges).filter((k) => s.bridges[k] === p).sort().join(',');
+    return memo(caches.comp, ownerSig(s) + p + (OPTIONS.provinceTerritory ? 'T' : 'B') + '|' + own, () => {
+      const nodes = territoryNodes(s, p), id = new Int8Array(CELLS).fill(-1), lists = [];
+      for (let i = 0; i < CELLS; i++) {
+        if (id[i] >= 0 || !nodes[i]) continue;
+        const k = lists.length, list = [i]; id[i] = k;
+        for (let h = 0; h < list.length; h++) {
+          const cur = list[h];
+          for (const n of neighbors(cur)) {
+            if (id[n] >= 0 || !nodes[n]) continue;
+            if (crossesRiver(cur, n) && s.bridges[bridgeKey(cur, n)] !== p) continue;
+            id[n] = k; list.push(n);
+          }
+        }
+        lists.push(list);
+      }
+      return { id, lists };
+    });
   }
 
   // טריטוריה: רכיב מחובר של צמתים צמודים (מעבר לנהר – רק דרך גשר שלי). מחזיר את כל המשבצות בטריטוריה, כולל ריקות בגרסה 2.
-  function territory(s, start, p, nodes) {
+  function territory(s, start, p) {
     if (p === undefined) p = s.cells[start].o !== null ? s.cells[start].o : s.turn;
-    if (!nodes) nodes = territoryNodes(s, p);
-    const seen = new Set([start]), q = [start];
-    while (q.length) {
-      const cur = q.pop();
-      for (const n of neighbors(cur)) {
-        if (seen.has(n) || !nodes[n]) continue;
-        if (crossesRiver(cur, n) && s.bridges[bridgeKey(cur, n)] !== p) continue;
-        seen.add(n); q.push(n);
-      }
-    }
-    return [...seen];
+    const comp = components(s, p), k = comp.id[start];
+    return k >= 0 ? comp.lists[k].slice() : [start];
   }
 
   // התקדמות לקראת ניצחון: גרסה 1 – מספר פרובינציות בשליטה; גרסה 2 – הכי הרבה פרובינציות בשליטה שמחוברות בטריטוריה אחת
@@ -324,7 +354,7 @@
     SIZE, CELLS, SOLDIERS, BRIDGES, WIN_PROVINCES, NAMES, OPTIONS,
     idx, xy, provinceOf, crossesRiver, bridgeKey, neighbors, cellLabel,
     newGame, camp, onBoard, provinceControl, provincesHeld,
-    roll, crossing, territory, territoryNodes, winProgress, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,
+    roll, crossing, territory, territoryNodes, components, winProgress, landTargets, targets, sources, actionTypes, hasAnyMove, maxCount,
     apply, skipTurn, passTurn, passFast, fastClone, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = Rules;

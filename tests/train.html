@@ -7,7 +7,7 @@ const __q0 = new URLSearchParams(location.search);
 const R = Rules, A = AI;
 Rules.OPTIONS.provinceTerritory = !__q0.get('v1');
 const q = new URLSearchParams(location.search);
-const GAMES = +(q.get('g') || 80), EPS = +(q.get('eps') || 0.1), MAXT = 200;
+const GAMES = +(q.get('g') || 80), EPS = +(q.get('eps') || 0.1), MAXT = +(q.get('maxt') || 250);
 const startW = JSON.parse(q.get('w') || '{}');
 const mix = JSON.parse(q.get('mix') || '[["strong","strong",0.75],["strong","easy",0.25]]');
 const samples = [];
@@ -24,7 +24,13 @@ function playGame(l0, l1) {
     if (s.winner === null) recs.push({ x: A.featureDiff(s), ply: t });
     t++;
   }
-  if (s.winner === null) return { turns: t, done: false };
+  if (s.winner === null) {
+    // משחק שלא הוכרע: תווית רכה לפי ההתקדמות בסוף (פרובינציות מחוברות ובשליטה); משתמשים רק ב-40% האחרונים של המשחק
+    const d = (R.winProgress(s, 0) - R.winProgress(s, 1)) * 0.12 + (R.provincesHeld(s, 0) - R.provincesHeld(s, 1)) * 0.03 + (R.SOLDIERS - s.graveyard[0] - (R.SOLDIERS - s.graveyard[1])) * 0.01;
+    const ysoft = Math.max(0.15, Math.min(0.85, 0.5 + d));
+    for (const r of recs.slice(Math.floor(recs.length * 0.6))) samples.push({ x: r.x, y: ysoft, ply: r.ply });
+    return { turns: t, done: false };
+  }
   const y = s.winner === 0 ? 1 : 0;
   // תיוג רק של החלק המאוחר יחסית? משתמשים בכל המצבים, כשהמצבים המאוחרים נושאים מידע חזק יותר
   for (const r of recs) samples.push({ x: r.x, y, ply: r.ply });

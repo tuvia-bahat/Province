@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>diag</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/ai.js"></script>
+<script>
+const R=Rules,A=AI; R.OPTIONS.provinceTerritory=true;
+const q=new URLSearchParams(location.search); const G=+(q.get('g')||6), T=+(q.get('t')||300);
+const out=[];
+for(let g=0;g<G;g++){
+  let s=R.newGame(),t=0; const prog=[];
+  while(s.winner===null&&t<T){ s=R.roll(s,1+Math.random()*6|0,1+Math.random()*6|0); const a=A.chooseAction(s,'train'); s=a.type==='pass'?R.passTurn(s):R.apply(s,a); t++;
+    if(t%50===0) prog.push([R.provincesHeld(s,0),R.winProgress(s,0),R.provincesHeld(s,1),R.winProgress(s,1)].join('/')); }
+  const bridges=Object.keys(s.bridges).length;
+  out.push({turns:t,winner:s.winner,prog:prog.join(' '),bridges,bridgesLeft:s.bridgesLeft.join(','),bases:[0,1].map(p=>s.cells.filter(c=>c.o===p).length).join(','),onBoard:[0,1].map(p=>R.onBoard(s,p)).join(','),gy:s.graveyard.join(',')});
+}
+document.getElementById('o').textContent='RESULT '+JSON.stringify(out,null,1);
+</script>

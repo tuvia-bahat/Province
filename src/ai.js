@@ -28,50 +28,70 @@
   const IDX = {}; FN.forEach((n, i) => { IDX[n] = i; });
   // כוונון: רגרסיה לוגיסטית על משחקי מחשב-נגד-מחשב (tests/train.html), מעורבבת חצי-חצי עם המשקלים הידניים
   const DEFAULT_W = {
-    h1: 16.68, h2: 27.04, h3: 28.67, h4: 74.17, h5: 485.32, presence: 9.42, strength: -2.02, lead: 11.52, trail: -11.52, alive: 19.2, camp: 2.98, over: -0.51, bridge: -24.62, bridgeLeft: -4.57, territory: -3.82, army: 3.82, terrProv: 37.61, frag: 5.77, secure: -4.22, bases: 1.06, lone: 12.21, weakFront: -10.74,
+    h1: 16.68, h2: 27.04, h3: 28.67, h4: 74.17, h5: 485.32, c2: 0, c3: 0, c4: 0, c5: 0, presence: 9.42, strength: -2.02, lead: 11.52, trail: -11.52, alive: 19.2, camp: 2.98, over: -0.51, bridge: -24.62, bridgeLeft: -4.57, territory: -3.82, army: 3.82, terrProv: 37.61, frag: 5.77, secure: -4.22, bases: 1.06, lone: 12.21, weakFront: -10.74,
   };
-  let Wv = FN.map((n) => DEFAULT_W[n]);
-  function setWeights(w) { const m = Object.assign({}, DEFAULT_W, w || {}); Wv = FN.map((n) => m[n]); }
+  let Wv = FN.map((n) => DEFAULT_W[n] || 0);   // תכונה שאין לה משקל = 0 (ולא undefined, שהיה הופך את כל ההערכות ל-NaN)
+  function setWeights(w) { const m = Object.assign({}, DEFAULT_W, w || {}); Wv = FN.map((n) => m[n] || 0); }
 
   // ---------- תכונות ----------
-  // רכיבי הטריטוריות של שחקן x (לפי כללי המשחק: בגרסה 2 כולל משבצות ריקות בפרובינציות בשליטה).
-  // לכל צומת מספר רכיב; הרכיב הגדול ביותר הוא "הטריטוריה הראשית"
-  function territoryInfo(s, x) {
-    const nodes = R.territoryNodes(s, x);
-    const comp = new Int8Array(R.CELLS).fill(-1), sizes = [];
-    for (let i = 0; i < R.CELLS; i++) {
-      if (comp[i] >= 0 || !nodes[i]) continue;
-      const id = sizes.length; let size = 0; const q = [i]; comp[i] = id;
-      while (q.length) {
-        const cur = q.pop(); size++;
-        for (const n of R.neighbors(cur)) {
-          if (comp[n] >= 0 || !nodes[n]) continue;
-          if (R.crossesRiver(cur, n) && s.bridges[R.bridgeKey(cur, n)] !== x) continue;
-          comp[n] = id; q.push(n);
-        }
-      }
-      sizes.push(size);
+  // טבלאות קבועות (מהירות): פרובינציה לכל משבצת, ושכנים עם דגל חציית נהר ומפתח גשר
+  const PROV = Array.from({ length: R.CELLS }, (_, i) => R.provinceOf(i));
+  const NEI = Array.from({ length: R.CELLS }, (_, i) => R.neighbors(i).map((n) => ({ n, cross: R.crossesRiver(i, n), key: R.bridgeKey(i, n) })));
+  const FIRST = Array.from({ length: 9 }, (_, k) => R.idx((k % 3) * 2, Math.floor(k / 3) * 2));
+
+  // ניתוח חד-פעמי של לוח: חיילים לפי פרובינציה, שליטה, צמתי טריטוריה ורכיביה, והתקדמות לניצחון (לשני הצדדים)
+  function analyze(s) {
+    const cnt = [new Array(9).fill(0), new Array(9).fill(0)];
+    for (let i = 0; i < R.CELLS; i++) { const c = s.cells[i]; if (c.o !== null) cnt[c.o][PROV[i]] += c.n; }
+    const ctl = new Array(9), held = [0, 0];
+    for (let k = 0; k < 9; k++) {
+      ctl[k] = cnt[0][k] > 0 && cnt[1][k] === 0 ? 0 : cnt[1][k] > 0 && cnt[0][k] === 0 ? 1 : null;
+      if (ctl[k] !== null) held[ctl[k]]++;
     }
-    let best = -1, bs = 0;
-    sizes.forEach((z, id) => { if (z > bs) { bs = z; best = id; } });
-    return { comp, best, size: bs };
+    const v2 = R.OPTIONS.provinceTerritory;
+    const comp = [], best = [-1, -1], size = [0, 0], prog = [0, 0];
+    for (const x of [0, 1]) {
+      const id = new Int8Array(R.CELLS).fill(-1), sizes = [];
+      for (let i = 0; i < R.CELLS; i++) {
+        if (id[i] >= 0) continue;
+        if (!(s.cells[i].o === x || (v2 && ctl[PROV[i]] === x))) continue;
+        const k = sizes.length, q = [i]; id[i] = k;
+        for (let h = 0; h < q.length; h++) {
+          const cur = q[h];
+          for (const e of NEI[cur]) {
+            const n = e.n;
+            if (id[n] >= 0 || !(s.cells[n].o === x || (v2 && ctl[PROV[n]] === x))) continue;
+            if (e.cross && s.bridges[e.key] !== x) continue;
+            id[n] = k; q.push(n);
+          }
+        }
+        sizes.push(q.length);
+      }
+      let bs = 0;
+      sizes.forEach((z, k) => { if (z > bs) { bs = z; best[x] = k; } });
+      size[x] = bs; comp[x] = id;
+      if (!v2 || !R.OPTIONS.winConnected) prog[x] = held[x];
+      else {
+        const tally = {};
+        for (let k = 0; k < 9; k++) if (ctl[k] === x) { const c = id[FIRST[k]]; tally[c] = (tally[c] || 0) + 1; if (tally[c] > prog[x]) prog[x] = tally[c]; }
+      }
+    }
+    return { cnt, held, comp, best, size, prog };
   }
 
-  function features(s, x, cnt, held) {
-    const f = new Float64Array(FN.length), y = 1 - x, h = held[x];
+  function features(s, x, A) {
+    const f = new Float64Array(FN.length), y = 1 - x, h = A.held[x], cnt = A.cnt, id = A.comp[x], best = A.best[x];
     for (let k = 1; k <= 5; k++) f[IDX['h' + k]] = h >= k ? 1 : 0;
-    const prog = R.winProgress(s, x);
-    for (let k = 2; k <= 5; k++) f[IDX['c' + k]] = prog >= k ? 1 : 0;
+    for (let k = 2; k <= 5; k++) f[IDX['c' + k]] = A.prog[x] >= k ? 1 : 0;
     for (let k = 0; k < 9; k++) {
       const a = cnt[x][k], b = cnt[y][k];
       if (a > 0) f[IDX.presence]++;
       if (a > 0 && b === 0) f[IDX.strength] += Math.min(a, 4);
       if (a > 0 && b > 0) { if (a > b) f[IDX.lead]++; else if (a < b) f[IDX.trail]++; }
     }
-    const t = territoryInfo(s, x);
-    let onBoard = 0;
     const secureProv = new Uint8Array(9);
-    for (let i = 0; i < R.CELLS; i++) if (t.comp[i] === t.best && t.best >= 0) secureProv[R.provinceOf(i)] = 1;
+    if (best >= 0) for (let i = 0; i < R.CELLS; i++) if (id[i] === best) secureProv[PROV[i]] = 1;
+    let onBoard = 0;
     for (let i = 0; i < R.CELLS; i++) {
       const c = s.cells[i];
       if (c.o !== x) continue;
@@ -79,14 +99,14 @@
       f[IDX.bases]++;
       if (c.n === 1) f[IDX.lone]++;
       if (c.n > 6) f[IDX.over] += c.n - 6;
-      if (t.comp[i] === t.best) f[IDX.army] += Math.min(c.n, 6); else f[IDX.frag]++;
-      for (const n of R.neighbors(i)) { const e = s.cells[n]; if (e.o === y && e.n > c.n) { f[IDX.weakFront]++; break; } }
+      if (id[i] === best) f[IDX.army] += Math.min(c.n, 6); else f[IDX.frag]++;
+      for (const e of NEI[i]) { const o = s.cells[e.n]; if (o.o === y && o.n > c.n) { f[IDX.weakFront]++; break; } }
     }
     const alive = R.SOLDIERS - s.graveyard[x];
     f[IDX.alive] = alive; f[IDX.camp] = alive - onBoard;
     for (const k in s.bridges) if (s.bridges[k] === x) f[IDX.bridge]++;
     f[IDX.bridgeLeft] = s.bridgesLeft[x];
-    f[IDX.territory] = t.size;
+    f[IDX.territory] = A.size[x];
     for (let k = 0; k < 9; k++) {
       if (secureProv[k]) f[IDX.terrProv]++;
       if (secureProv[k] && cnt[x][k] > 0 && cnt[y][k] === 0) f[IDX.secure]++;
@@ -94,29 +114,18 @@
     return f;
   }
 
-  function counts(s) {
-    const cnt = [new Array(9).fill(0), new Array(9).fill(0)];
-    for (let i = 0; i < R.CELLS; i++) { const c = s.cells[i]; if (c.o !== null) cnt[c.o][R.provinceOf(i)] += c.n; }
-    const held = [0, 0];
-    for (let k = 0; k < 9; k++) {
-      if (cnt[0][k] > 0 && cnt[1][k] === 0) held[0]++;
-      else if (cnt[1][k] > 0 && cnt[0][k] === 0) held[1]++;
-    }
-    return { cnt, held };
-  }
-
   // הפרש תכונות F(שחקן 0) - F(שחקן 1): משמש לאימון הערכה מנתוני משחקים
   function featureDiff(s) {
-    const { cnt, held } = counts(s);
-    const a = features(s, 0, cnt, held), b = features(s, 1, cnt, held);
+    const A = analyze(s);
+    const a = features(s, 0, A), b = features(s, 1, A);
     return Array.from(a, (v, i) => v - b[i]);
   }
 
   // ערך המצב מנקודת מבטו של שחקן p (אנטי-סימטרי: evaluate(s,p) = -evaluate(s,1-p))
   function evaluate(s, p) {
     if (s.winner !== null) return s.winner === p ? WIN : -WIN;
-    const { cnt, held } = counts(s);
-    const a = features(s, p, cnt, held), b = features(s, 1 - p, cnt, held);
+    const A = analyze(s);
+    const a = features(s, p, A), b = features(s, 1 - p, A);
     let v = 0;
     for (let i = 0; i < Wv.length; i++) v += Wv[i] * (a[i] - b[i]);
     return v;
@@ -184,11 +193,12 @@
 
   // ערך המצב אחרי מהלך שלי, ממוצע על הטלות היריב ותגובה מיטבית (חמדנית) שלו.
   // sample (אופציונלי): עומק שלישי – אחרי תגובת היריב מחשבים גם את המהלך הבא שלי, על מדגם הטלות.
-  function opponentAverage(st, p, lite, sample) {
+  function opponentAverage(st, p, lite, sample, rolls) {
     const q = 1 - p;
     let sum = 0;
     const saved = st.roll;
-    for (const r of ROLLS) {
+    const rl = rolls || ROLLS;
+    for (const r of rl) {
       st.roll = { w: r.w, b: r.b, cells: r.cells };
       let worst = Infinity, worstState = null;
       for (const a of candidates(st, lite)) {
@@ -203,7 +213,7 @@
       } else sum += worst;
     }
     st.roll = saved;
-    return sum / ROLLS.length;
+    return sum / rl.length;
   }
 
   /* מחזיר פעולה בפורמט של Rules.apply, או { type:'pass' }. */
@@ -223,13 +233,16 @@
     }
 
     const deep = level === 'deep';
-    const K = deep ? 8 : 14, lite = true;
+    // 'train': גרסה מהירה (פחות מהלכים ופחות הטלות) ליצירת נתוני אימון
+    const fast = level === 'train';
+    const K = deep ? 8 : fast ? 6 : 14, lite = true;
+    const rolls = fast ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, 6) : null;
     // מדגם קבוע של הטלות לעומק השלישי (אותו מדגם לכל המהלכים, כדי שההשוואה ביניהם הוגנת)
     const sample = deep ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, 6).map((r) => ({ w: r.w, b: r.b, cells: r.cells })) : null;
     let best = null;
     for (const c of list.slice(0, K)) {
       if (c.ns.winner === p) return c.a;
-      const v = c.ns.winner !== null ? -WIN : opponentAverage(c.ns, p, lite, sample) + c.v1 * 0.1;
+      const v = c.ns.winner !== null ? -WIN : opponentAverage(c.ns, p, lite, sample, rolls) + c.v1 * 0.1;
       if (!best || v > best.v) best = { v, a: c.a };
     }
     return best.a;
