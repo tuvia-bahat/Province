@@ -15,7 +15,7 @@ const samples = [];
 function playGame(l0, l1) {
   let s = R.newGame(), t = 0; const recs = [];
   while (s.winner === null && t < MAXT) {
-    s = R.roll(s, 1 + Math.random() * 6 | 0, 1 + Math.random() * 6 | 0);
+    s = R.roll(s, 1 + Math.random() * R.SIZE | 0, 1 + Math.random() * R.SIZE | 0);
     const lv = s.turn === 0 ? l0 : l1;
     let a;
     if (Math.random() < EPS) { const c = A.candidates(s, true); a = c[Math.random() * c.length | 0]; }

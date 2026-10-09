@@ -13,7 +13,7 @@ function terrSize(s,x){ const seen=new Set(); let best=0; for(let i=0;i<36;i++){
 for(let g=0;g<GAMES;g++){
   let s=R.newGame(),t=0; const turnsOf=[0,0];
   while(s.winner===null&&t<200){
-    s=R.roll(s,1+Math.random()*6|0,1+Math.random()*6|0);
+    s=R.roll(s,1+Math.random()*R.SIZE|0,1+Math.random()*R.SIZE|0);
     const p=s.turn; const a=A.chooseAction(s,'strong');
     const before=s;
     if(a.type==='pass'){ agg.passes++; s=R.passTurn(s); }

@@ -12,8 +12,8 @@
   'use strict';
   const RulesBase = root.Rules || require('./rules.js');
   const WEIGHTS = {
-    6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77 },
-    8: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77 },
+    6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: -20, bridgeLeft: 33, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
+    8: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: -20, bridgeLeft: 33, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
   };
   const WIN = 3000;                       // שווי ניצחון/הפסד (ביחידות של פונקציית ההערכה)
 
@@ -29,9 +29,11 @@
   //  bridge/bridgeLeft – גשרים שהונחו ושנותרו
   //  territory    – גודל הטריטוריה הראשית (שרשרת בסיסים מחוברת);  army – חיילים בה;  terrProv – כמה פרובינציות היא פורשת עליהן
   //  frag         – בסיסים מחוץ לטריטוריה הראשית (פיזור);  secure – פרובינציות בשליטה שמחוברות לטריטוריה הראשית
+  //  blLow        – מחסור בגשרים: כמה גשרים חסרים כדי להגיע ל-(מטרה−1) גשרים שנותרו (הכרחיים לחיבור הפרובינציות)
+  //  compCtl      – בגרסה 2: כמה רכיבים נפרדים יש לפרובינציות שבשליטתי (ככל שפחות, קרוב יותר לניצחון)
   //  bases/lone   – מספר בסיסים, וכמה מהם עם חייל בודד;  weakFront – בסיסים שצמוד אליהם בסיס יריב חזק מהם
   const FN = ['h1', 'h2', 'h3', 'h4', 'h5', 'c2', 'c3', 'c4', 'c5', 'presence', 'strength', 'lead', 'trail', 'alive', 'camp', 'over', 'bridge', 'bridgeLeft',
-    'territory', 'army', 'terrProv', 'frag', 'secure', 'bases', 'lone', 'weakFront'];
+    'territory', 'army', 'terrProv', 'frag', 'secure', 'bases', 'lone', 'weakFront', 'blLow', 'compCtl'];
   const IDX = {}; FN.forEach((n, i) => { IDX[n] = i; });
   // כוונון: רגרסיה לוגיסטית על משחקי מחשב-נגד-מחשב (tests/train.html), מעורבבת חצי-חצי עם המשקלים הידניים
   let Wv = FN.map((n) => DEFAULT_W[n] || 0);   // תכונה שאין לה משקל = 0 (ולא undefined, שהיה הופך את כל ההערכות ל-NaN)
@@ -53,7 +55,7 @@
       if (ctl[k] !== null) held[ctl[k]]++;
     }
     const v2 = R.OPTIONS.provinceTerritory;
-    const comp = [], best = [-1, -1], size = [0, 0], prog = [0, 0];
+    const comp = [], best = [-1, -1], size = [0, 0], prog = [0, 0], compCtl = [0, 0];
     for (const x of [0, 1]) {
       const id = new Int8Array(R.CELLS).fill(-1), sizes = [];
       for (let i = 0; i < R.CELLS; i++) {
@@ -78,9 +80,10 @@
       else {
         const tally = {};
         for (let k = 0; k < NP; k++) if (ctl[k] === x) { const c = id[FIRST[k]]; tally[c] = (tally[c] || 0) + 1; if (tally[c] > prog[x]) prog[x] = tally[c]; }
+        compCtl[x] = Object.keys(tally).length;
       }
     }
-    return { cnt, held, comp, best, size, prog };
+    return { cnt, held, comp, best, size, prog, compCtl };
   }
 
   function features(s, x, A) {
@@ -110,6 +113,8 @@
     f[IDX.alive] = alive; f[IDX.camp] = alive - onBoard;
     for (const k in s.bridges) if (s.bridges[k] === x) f[IDX.bridge]++;
     f[IDX.bridgeLeft] = s.bridgesLeft[x];
+    f[IDX.blLow] = Math.max(0, (TW - 1) - s.bridgesLeft[x]);
+    f[IDX.compCtl] = A.compCtl[x];
     f[IDX.territory] = A.size[x];
     for (let k = 0; k < NP; k++) {
       if (secureProv[k]) f[IDX.terrProv]++;
