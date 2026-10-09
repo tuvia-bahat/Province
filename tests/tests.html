@@ -394,9 +394,9 @@ function setup8(board, turn, rollCell, extra) {
 const J = (x, y) => R8.idx(x, y);
 function v2on(fn) { const a = R.OPTIONS.provinceTerritory; R.OPTIONS.provinceTerritory = true; try { fn(); } finally { R.OPTIONS.provinceTerritory = a; } }
 
-test('8×8: 64 משבצות, 16 פרובינציות, 64 חיילים, 16 גשרים, ניצחון ב-9', () => {
+test('8×8: 64 משבצות, 16 פרובינציות, 54 חיילים, 14 גשרים, ניצחון ב-8', () => {
   const s = R8.newGame();
-  eq(s.cells.length, 64); eq(R8.NPROV, 16); eq(R8.SOLDIERS, 64); eq(s.bridgesLeft, [16, 16]); eq(R8.WIN_PROVINCES, 9);
+  eq(s.cells.length, 64); eq(R8.NPROV, 16); eq(R8.SOLDIERS, 54); eq(s.bridgesLeft, [14, 14]); eq(R8.WIN_PROVINCES, 8);
   eq(new Set(s.cells.map((_, i) => R8.provinceOf(i))).size, 16);
   eq(R8.provinceOf(J(7, 7)), 15); eq(R8.provinceOf(J(2, 0)), 1); eq(R8.provinceOf(J(0, 2)), 4);
 });
@@ -411,18 +411,18 @@ test('8×8: קוביות מוטלות לשתי משבצות נגדיות', () =>
 test('8×8: הנחתה ותנועה עובדות כמו בלוח הקטן', () => {
   let s = setup8({}, 0, [7, 7]);
   s = R8.apply(s, { type: 'land', R: J(7, 7), count: 5 });
-  eq(R8.camp(s, 0), 59); eq(s.cells[J(7, 7)], { o: 0, n: 5 });
+  eq(R8.camp(s, 0), 49); eq(s.cells[J(7, 7)], { o: 0, n: 5 });
 });
-test('8×8 גרסה 2: ניצחון = 9 פרובינציות מחוברות', () => v2on(() => {
-  const board = { '0,0': [0, 1], '2,0': [0, 1], '4,0': [0, 1], '6,0': [0, 1], '0,2': [0, 1], '2,2': [0, 1], '4,2': [0, 1], '6,2': [0, 1], '0,4': [0, 1] };
+test('8×8 גרסה 2: ניצחון = 8 פרובינציות מחוברות', () => v2on(() => {
+  const board = { '0,0': [0, 1], '2,0': [0, 1], '4,0': [0, 1], '6,0': [0, 1], '0,2': [0, 1], '2,2': [0, 1], '4,2': [0, 1], '6,2': [0, 1] };
   const bk8 = R8.bridgeKey;
-  const links = [[[1, 0], [2, 0]], [[3, 0], [4, 0]], [[5, 0], [6, 0]], [[0, 1], [0, 2]], [[2, 1], [2, 2]], [[4, 1], [4, 2]], [[6, 1], [6, 2]], [[0, 3], [0, 4]]];
+  const links = [[[1, 0], [2, 0]], [[3, 0], [4, 0]], [[5, 0], [6, 0]], [[0, 1], [0, 2]], [[2, 1], [2, 2]], [[4, 1], [4, 2]], [[6, 1], [6, 2]]];
   const mk = (skip) => { const b = {}; links.forEach(([p, q], k) => { if (k !== skip) b[bk8(J(...p), J(...q))] = 0; }); return b; };
   const s = setup8(board, 0, [7, 7], { bridges: mk(-1) });
-  eq(R8.provincesHeld(s, 0), 9); eq(R8.winProgress(s, 0), 9);
+  eq(R8.provincesHeld(s, 0), 8); eq(R8.winProgress(s, 0), 8);
   eq(R8.apply(s, { type: 'land', R: J(7, 7), count: 1 }).winner, 0);
-  const t = setup8(board, 0, [7, 7], { bridges: mk(7) });      // בלי הגשר האחרון: 8 מחוברות
-  eq(R8.winProgress(t, 0), 8); eq(R8.apply(t, { type: 'land', R: J(7, 7), count: 1 }).winner, null);
+  const t = setup8(board, 0, [7, 7], { bridges: mk(6) });      // בלי אחד הגשרים: רק 7 מחוברות
+  eq(R8.winProgress(t, 0), 7); eq(R8.apply(t, { type: 'land', R: J(7, 7), count: 1 }).winner, null);
 }));
 test('8×8: המחשב מחזיר פעולה חוקית', () => v2on(() => {
   let s = R8.newGame(); const A8 = AI.forSize(8);

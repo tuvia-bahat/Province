@@ -1,0 +1,24 @@
+<!doctype html><meta charset="utf-8"><title>usage</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/ai.js"></script>
+<script>
+const q=new URLSearchParams(location.search); const __b=+(q.get('board')||6); const R=Rules.forSize(__b), A=AI.forSize(__b);
+R.OPTIONS.provinceTerritory=true; R.OPTIONS.winConnected=true;
+const G=+(q.get('g')||10), LV=q.get('lv')||'train';
+const chosen={land:0,move:0,attack:0,transport:0,transportFar:0,withdraw:0,bridge:0,pass:0}; let turns=0, availFar=0, availAny=0, chosenTotalWhenAvail=0;
+for(let g=0;g<G;g++){
+  let s=R.newGame(),t=0;
+  while(s.winner===null&&t<250){
+    s=R.roll(s,1+Math.random()*R.SIZE|0,1+Math.random()*R.SIZE|0);
+    const cands=A.candidates(s,true);
+    const far=cands.filter(c=>c.type==='transport'&&Math.abs(c.to-c.from)!==1&&Math.abs(c.to-c.from)!==R.SIZE);
+    const farMoves=far.length; if(farMoves>0) availFar++; if(cands.some(c=>c.type==='transport')) availAny++;
+    const a=A.chooseAction(s,LV); turns++;
+    if(a.type==='pass') chosen.pass++;
+    else if(a.type==='move'){ const tg=R.targets(s,'move',a.R,a.from).find(x=>x.to===a.to); if(tg&&tg.kind==='attack') chosen.attack++; else chosen.move++; }
+    else if(a.type==='transport'){ chosen.transport++; if(Math.abs(a.to-a.from)!==1&&Math.abs(a.to-a.from)!==R.SIZE) chosen.transportFar++; }
+    else chosen[a.type]++;
+    s=a.type==='pass'?R.passTurn(s):R.apply(s,a); t++;
+  }
+}
+document.getElementById('o').textContent='RESULT '+JSON.stringify({turns,chosen,turnsWithFarTransportAvailable:availFar,turnsWithAnyTransportAvailable:availAny});
+</script>
