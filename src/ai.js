@@ -254,7 +254,7 @@
     return best.a;
   }
 
-  return { evaluate, candidates, chooseAction, featureDiff, setWeights, FN, DEFAULT_W, R, trained: R.SIZE === 6 };
+  return { evaluate, candidates, chooseAction, featureDiff, setWeights, FN, DEFAULT_W, R, trained: true };
   }
 
   // מופע אחד לכל גודל לוח (לכל גודל משקלים משלו)
