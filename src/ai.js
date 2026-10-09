@@ -12,8 +12,8 @@
   'use strict';
   const RulesBase = root.Rules || require('./rules.js');
   const WEIGHTS = {
-    6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: -20, bridgeLeft: 33, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
-    8: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: -20, bridgeLeft: 33, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
+    6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
+    8: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
   };
   const WIN = 3000;                       // שווי ניצחון/הפסד (ביחידות של פונקציית ההערכה)
 
