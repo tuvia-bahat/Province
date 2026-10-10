@@ -29,11 +29,11 @@ m = re.search(r'^(\s*)%d: \{ (.*) \},$' % size, s, re.M)
 if not m:
     sys.exit('לא נמצאה שורת משקלים לגודל %d' % size)
 cur = {k: float(v) for k, v in re.findall(r'(\w+): (-?[\d.]+)', m.group(2))}
-names = list(cur.keys())
+names = list(cur.keys()) + [k for k in data if k not in cur]   # כולל תכונות חדשות שעדיין לא היו בשורה
 if blend:
     for k in names:
-        data[k] = round(0.5 * data.get(k, 0) + 0.5 * cur[k], 2)
-items = ', '.join(f'{k}: {data.get(k, cur[k])}' for k in names)
+        data[k] = round(0.5 * data.get(k, 0) + 0.5 * cur.get(k, 0), 2)
+items = ', '.join(f'{k}: {data.get(k, cur.get(k, 0))}' for k in names)
 s = s[:m.start()] + f'{m.group(1)}{size}: {{ {items} }},' + s[m.end():]
 ai.write_text(s, encoding='utf-8')
 print(items)

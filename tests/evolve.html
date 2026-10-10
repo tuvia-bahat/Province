@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>evolve</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/ai.js"></script>
+<script>
+/* אבולוציה של משקלי ההערכה מול "ליגה" של יריבים שונים (חמדני, ללא חיפוש – מהיר), כדי לקבל משקלים שמצליחים
+ * מול סגנונות משחק שונים ולא רק מול עצמם. פרמטרים: board, gens, lambda, games (למועמד מול כל יריב), maxt. */
+Rules.OPTIONS.provinceTerritory = true; Rules.OPTIONS.winConnected = true;
+const q = new URLSearchParams(location.search);
+const BOARD = +(q.get('board') || 8), R = Rules.forSize(BOARD), A = AI.forSize(BOARD), FN = A.FN;
+const GENS = +(q.get('gens') || 20), LAMBDA = +(q.get('lambda') || 6), GPO = +(q.get('games') || 4), MAXT = +(q.get('maxt') || 300);
+const full = (o) => { const d = {}; FN.forEach((k) => { d[k] = 0; }); return Object.assign(d, o); };
+const FROZEN = ['over'];   // תכונת הסף הישנה (חיילים מעל 6) מוקפאת על אפס: אין סיבה לסף שרירותי, יש תכונות רציפות במקומה (conc, expo)
+const CUR = full(Object.assign({}, A.DEFAULT_W, { over: 0 }));
+const LEAGUE = [
+  { name: 'cur', w: CUR },
+  { name: 'plan', w: full({ planCost: -60, planShort: -80, alive: 10, h1: 20, h2: 30, h3: 50, h4: 80, c2: 20, c3: 40, c4: 80, presence: 5, weakFront: -10, lead: 8, trail: -8, bridgeLeft: 10, over: -1 }) },
+  { name: 'rush', w: full({ h1: 15, h2: 30, h3: 50, h4: 80, h5: 120, c2: 40, c3: 80, c4: 160, c5: 300, presence: 5, strength: 1, lead: 8, trail: -8, alive: 8, over: -1, bridge: -4, bridgeLeft: 12, territory: 3, army: 2, terrProv: 30, frag: -4, secure: 6, weakFront: -10, blLow: -8, compCtl: -25, pp2: 3, pp3: 5 }) },
+  { name: 'old6', w: full(Rules.OPTIONS && AI.forSize(6).DEFAULT_W) },
+  { name: 'tactic', w: full({ alive: 60, over: -1, h1: 10, h2: 20, h3: 30, h4: 50, presence: 4, lead: 6, trail: -6, weakFront: -25, planCost: -10, bridgeLeft: 8 }) },
+];
+function playGame(w0, w1) {
+  let s = R.newGame(), t = 0;
+  while (s.winner === null && t < MAXT) {
+    s = R.roll(s, 1 + Math.random() * R.SIZE | 0, 1 + Math.random() * R.SIZE | 0);
+    const a = A.chooseAction(s, 'greedy', s.turn === 0 ? w0 : w1);
+    s = a.type === 'pass' ? R.passTurn(s) : R.apply(s, a); t++;
+  }
+  return s.winner;     // null = לא הוכרע
+}
+function score(w) {   // ממוצע ניצחונות מול הליגה (תיקו = חצי)
+  let pts = 0, n = 0;
+  for (const opp of LEAGUE) for (let g = 0; g < GPO; g++) {
+    const flip = g % 2, win = flip ? playGame(opp.w, w) : playGame(w, opp.w);
+    const mine = flip ? 1 : 0;
+    pts += win === null ? 0.5 : win === mine ? 1 : 0; n++;
+  }
+  return pts / n;
+}
+const gauss = () => { let u = 0, v = 0; while (u === 0) u = Math.random(); v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+let parent = Object.assign({}, CUR), parentScore = score(parent), parentN = 1;
+console.log('gen0 parent score ' + parentScore.toFixed(3));
+for (let gen = 1; gen <= GENS; gen++) {
+  const cands = [];
+  for (let k = 0; k < LAMBDA; k++) {
+    const w = {}; FN.forEach((n) => { w[n] = FROZEN.includes(n) ? 0 : +(parent[n] + gauss() * 0.2 * (Math.abs(parent[n]) + 5)).toFixed(2); });
+    cands.push({ w, score: score(w) });
+  }
+  // הורה נבדק מחדש (ממוצע רץ), כדי להתמודד עם רעש
+  parentScore = (parentScore * parentN + score(parent)) / (parentN + 1); parentN++;
+  cands.sort((x, y) => y.score - x.score);
+  const best = cands[0];
+  if (best.score > parentScore) { parent = best.w; parentScore = best.score; parentN = 1; }
+  console.log('gen' + gen + ' best cand ' + best.score.toFixed(3) + ' parent ' + parentScore.toFixed(3) + ' n=' + parentN);
+  if (gen % 5 === 0) console.log('W ' + JSON.stringify(parent));
+}
+document.getElementById('o').textContent = 'RESULT ' + JSON.stringify({ parentScore, weights: parent });
+</script>

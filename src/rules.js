@@ -254,7 +254,8 @@
 
   function endTurn(s, fast) {
     const p = s.turn;
-    if (winProgress(s, p) >= WIN_PROVINCES) {
+    // בדיקה זולה קודם (מספר פרובינציות בשליטה), ורק אם מספיק – חישוב חיבור הטריטוריה
+    if (provincesHeld(s, p) >= WIN_PROVINCES && winProgress(s, p) >= WIN_PROVINCES) {
       s.winner = p;
       if (!fast) s.log.push(`${NAMES[p]} שולט ב-${winProgress(s, p)} פרובינציות${OPTIONS.provinceTerritory && OPTIONS.winConnected ? ' מחוברות' : ''} וניצח!`);
     } else {

@@ -13,7 +13,7 @@
   const RulesBase = root.Rules || require('./rules.js');
   const WEIGHTS = {
     6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
-    8: { h1: -10.13, h2: -0.44, h3: 20.32, h4: 34.67, h5: 60.09, c2: 12.25, c3: 11.87, c4: 54.85, c5: 102.48, presence: 3.19, strength: -1.19, lead: 7.94, trail: -7.94, alive: 14.82, camp: -1.43, over: -3.45, bridge: 3.35, bridgeLeft: 13.57, territory: 2.05, army: 1.65, terrProv: 25.68, frag: 6.43, secure: -2.02, bases: -1.16, lone: 6.97, weakFront: -17.7, blLow: -2.96, compCtl: -1.13 },
+    8: { h1: -1.82, h2: -0.59, h3: 18.8, h4: 16.59, h5: 76.84, c2: 0.92, c3: 10.56, c4: 28.87, c5: 82.51, presence: 1.09, strength: 11.36, lead: 6.21, trail: -2.95, alive: 7.24, camp: -1.55, over: -1.73, bridge: 0.01, bridgeLeft: 7.12, territory: 0.97, army: 0.64, terrProv: 35.73, frag: -1.2, secure: -7.8, bases: -1.1, lone: 37.29, weakFront: -35.38, blLow: -1.0, compCtl: -3.16, pp2: 2.96, pp3: 3.25, planCost: -0.74, planShort: -9.56, conc: -0.64, expo: 1.89 },
   };
   const WIN = 3000;                       // שווי ניצחון/הפסד (ביחידות של פונקציית ההערכה)
 
@@ -31,9 +31,14 @@
   //  frag         – בסיסים מחוץ לטריטוריה הראשית (פיזור);  secure – פרובינציות בשליטה שמחוברות לטריטוריה הראשית
   //  blLow        – מחסור בגשרים: כמה גשרים חסרים כדי להגיע ל-(מטרה−1) גשרים שנותרו (הכרחיים לחיבור הפרובינציות)
   //  compCtl      – בגרסה 2: כמה רכיבים נפרדים יש לפרובינציות שבשליטתי (ככל שפחות, קרוב יותר לניצחון)
+  //  conc         – ריכוז חיילים: סכום ריבועי החיילים בכל בסיס (פונקציה רציפה; ערימה גדולה היא מטרה להריגה חינמית, אבל גם כוח)
+  //  expo         – חשיפה: סך החיילים בבסיסים שצמוד אליהם בסיס יריב
+  //  planCost     – "מרחק לניצחון": העלות המשוערת (הנחתות, כיבושים וגשרים) להשלמת קבוצה מחוברת של פרובינציות בגודל המטרה, מתוך מה שכבר בשליטה
+  //  planShort    – כמה גשרים חסרים לתוכנית הזו מעבר למה שנשאר (תוכנית בלתי אפשרית)
+  //  pp2/pp3      – ההתקדמות לניצחון בריבוע ובשלישית (מנורמלת למטרה): מחזקים בחדות את הערך ככל שמתקרבים לניצחון, ואת האיום כשהיריב מתקרב
   //  bases/lone   – מספר בסיסים, וכמה מהם עם חייל בודד;  weakFront – בסיסים שצמוד אליהם בסיס יריב חזק מהם
   const FN = ['h1', 'h2', 'h3', 'h4', 'h5', 'c2', 'c3', 'c4', 'c5', 'presence', 'strength', 'lead', 'trail', 'alive', 'camp', 'over', 'bridge', 'bridgeLeft',
-    'territory', 'army', 'terrProv', 'frag', 'secure', 'bases', 'lone', 'weakFront', 'blLow', 'compCtl'];
+    'territory', 'army', 'terrProv', 'frag', 'secure', 'bases', 'lone', 'weakFront', 'blLow', 'compCtl', 'pp2', 'pp3', 'planCost', 'planShort', 'conc', 'expo'];
   const IDX = {}; FN.forEach((n, i) => { IDX[n] = i; });
   // כוונון: רגרסיה לוגיסטית על משחקי מחשב-נגד-מחשב (tests/train.html), מעורבבת חצי-חצי עם המשקלים הידניים
   let Wv = FN.map((n) => DEFAULT_W[n] || 0);   // תכונה שאין לה משקל = 0 (ולא undefined, שהיה הופך את כל ההערכות ל-NaN)
@@ -44,6 +49,70 @@
   const PROV = Array.from({ length: R.CELLS }, (_, i) => R.provinceOf(i));
   const NEI = Array.from({ length: R.CELLS }, (_, i) => R.neighbors(i).map((n) => ({ n, cross: R.crossesRiver(i, n), key: R.bridgeKey(i, n) })));
   const FIRST = Array.from({ length: NP }, (_, k) => R.idx((k % R.PR) * 2, Math.floor(k / R.PR) * 2));
+
+  // שכנות בין פרובינציות: מטריצת שכנות, ולכל זוג שכן מפתחות הגשרים האפשריים בין המשבצות שלהם
+  const ADJM = new Uint8Array(NP * NP), PKEYS = [], PAIRS = [];
+  (() => {
+    const pairs = {};
+    for (let a = 0; a < R.CELLS; a++) for (const e of NEI[a]) {
+      if (!e.cross) continue;
+      const k = PROV[a] * NP + PROV[e.n];
+      (pairs[k] = pairs[k] || []).push(e.key);
+    }
+    for (const k in pairs) { const i = +k; ADJM[i] = 1; PKEYS[i] = pairs[k]; PAIRS.push(i); }
+  })();
+  const EDGE_COST = 1.5;
+
+  // תוכנית ניצחון חמדנית לשחקן x: מתחילים מהרכיב המחובר הגדול של הפרובינציות שבשליטתו, ומוסיפים בכל שלב את הפרובינציה
+  // השכנה הזולה ביותר (הנחתה בפרובינציה ריקה זולה; כיבוש פרובינציה של היריב יקר; גשר חסר עולה) עד שמגיעים לגודל המטרה.
+  function plan(s, x, ctl, cnt) {
+    const y = 1 - x, node = new Float64Array(NP), brd = new Uint8Array(NP * NP);
+    for (let k = 0; k < NP; k++) {
+      node[k] = ctl[k] === x ? 0 : cnt[0][k] + cnt[1][k] === 0 ? 1 : 2 + 0.5 * Math.min(cnt[y][k], 4);
+    }
+    for (let h = 0; h < PAIRS.length; h++) {
+      const i = PAIRS[h], keys = PKEYS[i];
+      for (let j = 0; j < keys.length; j++) if (s.bridges[keys[j]] === x) { brd[i] = 1; break; }
+    }
+    // רכיבים של פרובינציות שבשליטה, מחוברים בגשרים שלי
+    const comp = new Int8Array(NP).fill(-1); let nc = 0, bestC = -1, bestSize = 0;
+    const queue = new Int8Array(NP);
+    for (let k = 0; k < NP; k++) {
+      if (ctl[k] !== x || comp[k] >= 0) continue;
+      let qn = 0; queue[qn++] = k; comp[k] = nc;
+      for (let h = 0; h < qn; h++) {
+        const c = queue[h];
+        for (let q = 0; q < NP; q++) if (brd[c * NP + q] && ctl[q] === x && comp[q] < 0) { comp[q] = nc; queue[qn++] = q; }
+      }
+      if (qn > bestSize) { bestSize = qn; bestC = nc; }
+      nc++;
+    }
+    const inS = new Uint8Array(NP); let size = 0, cost = 0, need = 0;
+    if (bestC >= 0) { for (let k = 0; k < NP; k++) if (comp[k] === bestC) { inS[k] = 1; size++; } }
+    else {   // אין פרובינציות בשליטה: מתחילים מהזולה ביותר
+      let b = 0, bc = 1e9;
+      for (let k = 0; k < NP; k++) { if (node[k] < bc) { bc = node[k]; b = k; } }
+      inS[b] = 1; size = 1; cost = node[b];
+    }
+    while (size < TW) {
+      let bq = -1, bcost = 1e9, bedge = 0;
+      for (let q = 0; q < NP; q++) {
+        if (inS[q]) continue;
+        let edge = -1;
+        for (let p = 0; p < NP; p++) {
+          if (!inS[p] || !ADJM[p * NP + q]) continue;
+          const e = brd[p * NP + q] ? 0 : EDGE_COST;
+          if (edge < 0 || e < edge) { edge = e; if (e === 0) break; }
+        }
+        if (edge < 0) continue;
+        const c = node[q] + edge;
+        if (c < bcost) { bcost = c; bq = q; bedge = edge; }
+      }
+      if (bq < 0) break;
+      inS[bq] = 1; size++; cost += node[bq] + bedge; if (bedge > 0) need++;
+    }
+    return { cost, short: Math.max(0, need - s.bridgesLeft[x]) };
+  }
 
   // ניתוח חד-פעמי של לוח: חיילים לפי פרובינציה, שליטה, צמתי טריטוריה ורכיביה, והתקדמות לניצחון (לשני הצדדים)
   function analyze(s) {
@@ -83,7 +152,8 @@
         compCtl[x] = Object.keys(tally).length;
       }
     }
-    return { cnt, held, comp, best, size, prog, compCtl };
+    const pl = [plan(s, 0, ctl, cnt), plan(s, 1, ctl, cnt)];
+    return { cnt, held, comp, best, size, prog, compCtl, pl };
   }
 
   function features(s, x, A) {
@@ -98,11 +168,12 @@
     }
     const secureProv = new Uint8Array(NP);
     if (best >= 0) for (let i = 0; i < R.CELLS; i++) if (id[i] === best) secureProv[PROV[i]] = 1;
-    let onBoard = 0;
+    let onBoard = 0, conc = 0, expo = 0;
     for (let i = 0; i < R.CELLS; i++) {
       const c = s.cells[i];
       if (c.o !== x) continue;
-      onBoard += c.n;
+      onBoard += c.n; conc += c.n * c.n;
+      for (const e of NEI[i]) { const o = s.cells[e.n]; if (o.o === y) { expo += c.n; break; } }
       f[IDX.bases]++;
       if (c.n === 1) f[IDX.lone]++;
       if (c.n > 6) f[IDX.over] += c.n - 6;
@@ -115,6 +186,9 @@
     f[IDX.bridgeLeft] = s.bridgesLeft[x];
     f[IDX.blLow] = Math.max(0, (TW - 1) - s.bridgesLeft[x]);
     f[IDX.compCtl] = A.compCtl[x];
+    f[IDX.planCost] = A.pl[x].cost; f[IDX.planShort] = A.pl[x].short;
+    f[IDX.conc] = conc / 10; f[IDX.expo] = expo;
+    { const pr = A.prog[x] / TW; f[IDX.pp2] = 100 * pr * pr; f[IDX.pp3] = 100 * pr * pr * pr; }
     f[IDX.territory] = A.size[x];
     for (let k = 0; k < NP; k++) {
       if (secureProv[k]) f[IDX.terrProv]++;
@@ -237,6 +311,7 @@
     list.sort((x, y) => y.v1 - x.v1);
 
     if (list[0].ns.winner === p) return list[0].a;
+    if (level === 'greedy') return list[0].a;   // מהלך חמדן טהור (למהירות באימון אבולוציוני)
     if (level === 'easy') {
       const top = list.slice(0, 4);
       return top[Math.floor(Math.random() * Math.min(top.length, 3))].a;
@@ -246,8 +321,9 @@
     // 'train': גרסה מהירה (פחות מהלכים ופחות הטלות) ליצירת נתוני אימון
     const quick = level === 'quick';   // עוד יותר מהיר (ללוח גדול)
     const fast = level === 'train' || quick;
-    const K = deep ? 8 : quick ? 4 : fast ? 6 : 14, lite = true;
-    const rolls = fast ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, quick ? 4 : 6) : null;
+    const big = R.SIZE > 6;           // לוח גדול: פחות מהלכים ופחות הטלות בחיפוש 'strong', כדי להישאר מהיר
+    const K = deep ? 8 : quick ? 4 : fast ? 6 : big ? 10 : 14, lite = true;
+    const rolls = fast ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, quick ? 4 : 6) : (big && !deep ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, 20) : null);
     // מדגם קבוע של הטלות לעומק השלישי (אותו מדגם לכל המהלכים, כדי שההשוואה ביניהם הוגנת)
     const sample = deep ? ROLLS.slice().sort(() => Math.random() - 0.5).slice(0, 6).map((r) => ({ w: r.w, b: r.b, cells: r.cells })) : null;
     let best = null;
