@@ -30,32 +30,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: relative; max-width: 520px; margin: 0 auto; height: 100dvh;
   padding: env(safe-area-inset-top) 5vw env(safe-area-inset-bottom);
   display: flex; flex-direction: column; justify-content: space-evenly; gap: 0;
-  --pl-h: 81px; --dock-h: 122px;
+  --pl-h: 102px; --board-gap: 16px; --dock-h: 122px;
 }
 
 /* ---------- שחקנים ---------- */
-.pl { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; flex: none; height: var(--pl-h); border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
+.pl { display: flex; flex-direction: column; gap: 8px; padding: 6px 2px; flex: none; height: var(--pl-h); border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
 #pl1 { border-bottom-width: 2px; }
 #pl0 { border-top-width: 2px; }
 #pl1.active { border-bottom-color: var(--c); }
 #pl0.active { border-top-color: var(--c); }
 .pl.active { opacity: 1; }
 .pl .head { display: flex; align-items: center; gap: 9px; }
-.pl .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
-.pl .nm { font-weight: 600; font-size: 15px; letter-spacing: .01em; }
+.pl .swatch { width: 14px; height: 14px; border-radius: 50%; background: var(--c); flex: none; }
+.pl .nm { font-weight: 600; font-size: 18px; letter-spacing: .01em; }
 .pl .tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.pl .line { display: grid; grid-template-columns: 14px 20px 1fr; align-items: center; gap: 6px; min-height: 16px; min-width: 0; }
-.pl .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; }
+.pl .line { display: grid; grid-template-columns: 18px 24px 1fr; align-items: center; gap: 6px; min-height: 22px; min-width: 0; }
+.pl .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 .pl .lab { font-size: 12px; color: var(--muted); }
-.pl .ic { width: 14px; height: 14px; color: var(--muted); }
-.pl .num { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: left; white-space: nowrap; }
+.pl .ic { width: 18px; height: 18px; color: var(--muted); }
+.pl .num { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: left; white-space: nowrap; }
 .pl .num small { font-size: 11px; font-weight: 400; color: var(--muted); }
-.pl .prov { display: flex; gap: 3px; }
-.pl .prov i { width: 10px; height: 10px; border-radius: 3px; background: var(--cell); transition: background .25s; }
+.pl .prov { display: flex; gap: 4px; }
+.pl .prov i { width: 13px; height: 13px; border-radius: 4px; background: var(--cell); transition: background .25s; }
 .pl .prov i.on { background: var(--c); }
 .pl .prov.many { gap: 2px; }
-.pl .prov.many i { width: 9px; height: 9px; border-radius: 2px; }
-.pl .sbar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: transparent; }
+.pl .prov.many i { width: 11px; height: 11px; border-radius: 3px; }
+.pl .sbar { height: 10px; border-radius: 5px; overflow: hidden; display: flex; background: transparent; }
 .pl .sbar i { display: block; height: 100%; transition: width .3s; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
@@ -65,7 +65,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .ticks i.on { background: var(--c); }
 
 /* ---------- לוח ---------- */
-#boardWrap { flex: none; aspect-ratio: 1; width: min(100%, calc(100dvh - 25vw - 2 * var(--pl-h) - var(--dock-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom))); align-self: center; }
+#boardWrap { flex: none; aspect-ratio: 1; margin: var(--board-gap) 0; width: min(100%, calc(100dvh - 15vw - 2 * var(--board-gap) - 2 * var(--pl-h) - var(--dock-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom))); align-self: center; }
 #board { width: 100%; height: 100%; display: block; overflow: visible; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { fill: var(--cell); transition: fill .3s; }
 .cell.deep { fill: var(--cell-deep); }

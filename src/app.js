@@ -25,7 +25,7 @@
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
     ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
     W = 2 * M + n * P + (n / 2 - 1) * G;
-    const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 13, tw = Math.max(3.5, Math.min(4, th * BR / len));
+    const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 16, tw = Math.max(3.5, Math.min(4, th * BR / len));
     document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
     document.documentElement.style.setProperty('--tick-h', th + 'px');
     memo = { state: null, play: null, opts: new Map() };
