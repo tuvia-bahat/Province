@@ -16,8 +16,8 @@
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
   const GEO = {
-    6: { P: 64, G: 34, M: 24, CR: 23, LIFT: 11, RIVER_W: 12, BR: 11, FS: 19 },
-    8: { P: 56, G: 22, M: 12, CR: 22, LIFT: 10, RIVER_W: 9, BR: 9, FS: 18 },
+    6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
+    8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 7, FS: 17 },
   };
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
@@ -305,10 +305,7 @@
       const floating = lit && c.o !== null;
       const ty = floating ? y - LIFT : y;
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
-      if (ctl !== null) {
-        const T = 2 * CR + 6;   // ריבוע מעוגל בגוון של השחקן, מעט גדול מהעיגול
-        h += `<rect class="tile c${ctl}${lit ? ' deep' : ''}" x="${x - T / 2}" y="${y - T / 2}" width="${T}" height="${T}" rx="12"/>`;
-      } else h += `<circle class="cell${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
+      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
