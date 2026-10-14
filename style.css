@@ -20,37 +20,37 @@
   --font: "Heebo", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); }
+html, body { margin: 0; background: var(--bg); color: var(--ink); height: 100%; overflow: hidden; }
 body { font-family: var(--font); min-height: 100vh; min-height: 100dvh; -webkit-text-size-adjust: 100%; }
 button { font: inherit; color: inherit; cursor: pointer; }
 [hidden] { display: none !important; }
 
 #app {
-  max-width: 520px; margin: 0 auto; min-height: 100dvh;
-  padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; gap: 8px;
+  max-width: 520px; margin: 0 auto; height: 100dvh;
+  padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: 4px;
 }
 
 /* ---------- שחקנים ---------- */
-.pl { display: flex; flex-direction: column; gap: 7px; padding: 8px 2px; border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
+.pl { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; flex: none; border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
 #pl1 { border-bottom-width: 2px; }
 #pl0 { border-top-width: 2px; }
 #pl1.active { border-bottom-color: var(--c); }
 #pl0.active { border-top-color: var(--c); }
 .pl.active { opacity: 1; }
-.pl .head { display: flex; align-items: center; gap: 9px; margin-bottom: 2px; }
+.pl .head { display: flex; align-items: center; gap: 9px; }
 .pl .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
-.pl .nm { font-weight: 600; font-size: 16px; letter-spacing: .01em; }
+.pl .nm { font-weight: 600; font-size: 15px; letter-spacing: .01em; }
 .pl .tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.pl .line { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; min-height: 22px; }
+.pl .line { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; min-height: 17px; }
 .pl .lab { font-size: 12px; color: var(--muted); }
 .pl .num { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .pl .num small { font-size: 11px; font-weight: 400; color: var(--muted); }
 .pl .prov { display: flex; gap: 5px; }
-.pl .prov i { width: 15px; height: 15px; border-radius: 4px; background: var(--cell); transition: background .25s; }
+.pl .prov i { width: 14px; height: 14px; border-radius: 4px; background: var(--cell); transition: background .25s; }
 .pl .prov i.on { background: var(--c); }
 .pl .prov.many { gap: 3px; }
-.pl .prov.many i { width: 12px; height: 12px; border-radius: 3px; }
+.pl .prov.many i { width: 11px; height: 11px; border-radius: 3px; }
 .pl .sbar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--cell); }
 .pl .sbar i { display: block; height: 100%; transition: width .3s; }
 .pl .sbar .r { background: var(--c); }
@@ -61,8 +61,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .ticks i.on { background: var(--c); }
 
 /* ---------- לוח ---------- */
-#boardWrap { width: min(100%, calc(100dvh - 400px)); min-width: 290px; margin: 0 auto; }
-#board { width: 100%; height: auto; display: block; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
+#boardWrap { flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+#board { width: 100%; height: 100%; display: block; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { fill: var(--cell); transition: fill .3s; }
 .cell.deep { fill: var(--cell-deep); }
 .cell.c0 { fill: var(--p0-tint); }
@@ -86,12 +86,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- דוק ---------- */
-#dock { display: flex; flex-direction: column; align-items: center; gap: 12px; min-height: 130px; padding-top: 6px; }
-#dice { display: flex; gap: 14px; justify-content: center; min-height: 66px; direction: ltr; }
+#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; flex: none; padding-top: 2px; }
+#dice { display: flex; gap: 14px; justify-content: center; direction: ltr; }
 .die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
 .die {
-  width: 48px; height: 48px; border-radius: 13px; background: var(--die); padding: 9px;
+  width: 40px; height: 40px; border-radius: 11px; background: var(--die); padding: 7px;
   display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); transition: opacity .3s;
 }
 .die i { border-radius: 50%; background: transparent; margin: 1px; }
@@ -103,7 +103,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #dock.sheeting #dice { display: none; }
 #dock.sheeting { min-height: 0; }
-#msg { text-align: center; font-size: 15px; line-height: 1.4; min-height: 22px; color: var(--ink); }
+#msg { text-align: center; font-size: 15px; line-height: 1.3; color: var(--ink); }
+#msg:empty { display: none; }
 #msg .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
 #controls { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 #controls .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; width: 100%; }
@@ -118,17 +119,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn.wide { min-width: 200px; }
 .btn.sm { padding: 8px 18px; min-height: 38px; font-size: 14px; }
 .btn[disabled] { opacity: .35; }
-.link { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 8px 10px; }
+.link { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 4px 10px; }
 .link[disabled] { opacity: .35; }
 
 /* חלון בחירת כמות */
-.sheet { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sheet { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .sheet .title { font-weight: 600; }
 .sheet .note { font-size: 12px; color: var(--muted); min-height: 16px; text-align: center; }
 .stepper { direction: ltr; display: flex; align-items: center; gap: 14px; }
-.stepper .num { font-size: 34px; font-weight: 600; min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
+.stepper .num { font-size: 30px; font-weight: 600; min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
 .stepper .num small { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 4px; }
-.stepper .pm { width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--cell); font-size: 24px; line-height: 1; }
+.stepper .pm { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--cell); font-size: 24px; line-height: 1; }
 .stepper .pm:active { background: var(--faint); }
 .sheet.fixed .pm, .sheet.fixed input[type=range], .sheet.fixed .quick { display: none; }
 .sheet .seg.mini { width: min(260px, 100%); }
@@ -141,8 +142,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sheet input[type=range] { width: 100%; max-width: 320px; direction: ltr; }
 .sheet .quick { display: flex; gap: 6px; }
 
-#bar { display: flex; justify-content: center; gap: 6px; margin-top: auto; }
-#logBox { font-size: 13px; color: var(--muted); max-height: 170px; overflow: auto; border-top: 1px solid var(--cell); padding-top: 6px; }
+#bar { display: flex; justify-content: center; gap: 6px; flex: none; }
+#logBox { position: fixed; left: 10px; right: 10px; bottom: 56px; max-height: 40vh; overflow: auto; z-index: 5; background: #fff; border: 1px solid var(--cell); border-radius: 12px; box-shadow: 0 8px 28px rgba(20,25,40,.16); padding: 8px 12px; font-size: 13px; color: var(--muted); }
 #logBox div { padding: 3px 0; }
 
 /* חלונות */

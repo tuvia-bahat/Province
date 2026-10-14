@@ -25,7 +25,7 @@
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
     ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
     W = 2 * M + n * P + (n / 2 - 1) * G;
-    const len = P + G - 2 * (CR + BRIDGE_GAP), th = 22, tw = Math.max(4, Math.min(9, th * BR / len));
+    const len = P + G - 2 * (CR + BRIDGE_GAP), th = 16, tw = Math.max(3.5, Math.min(9, th * BR / len));
     document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
     document.documentElement.style.setProperty('--tick-h', th + 'px');
     memo = { state: null, play: null, opts: new Map() };
@@ -433,19 +433,14 @@
       const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'Reinforce' : 'Land';
       const toggle = sh.modes && sh.modes.length > 1
         ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'Withdraw'}</button>`).join('')}</div>` : '';
-      box.innerHTML = `${toggle}<div class="title" id="shTitle"></div>
+      box.innerHTML = `${toggle}
         <div class="stepper"><button class="pm" id="minus" aria-label="Less">−</button><div class="num" id="shNum"></div><button class="pm" id="plus" aria-label="More">+</button></div>
-        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers">
-        <div class="quick"><button class="btn soft sm" id="qmin">${sh.min === 0 ? 'Bridge only' : '1'}</button><button class="btn soft sm" id="qhalf">Half</button><button class="btn soft sm" id="qall">All</button></div>
-        <div class="note" id="shNote"></div>`;
+        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers">`;
       ctl.appendChild(box);
       const rng = box.querySelector('#rng');
       // מעדכנים רק את התצוגה (בלי לבנות מחדש את הרכיבים), כדי שגרירת המחוון תמשיך לעבוד
       const view = () => {
-        const t = sheetText(sh);
-        box.querySelector('#shTitle').textContent = t.title;
         box.querySelector('#shNum').innerHTML = `${sh.count}${sh.count === 0 ? '<small>Bridge only</small>' : ''}`;
-        box.querySelector('#shNote').textContent = t.note;
         rng.value = sh.count;
         rng.style.setProperty('--p', (sh.max === sh.min ? 100 : ((sh.count - sh.min) / (sh.max - sh.min)) * 100) + '%');
       };
@@ -457,9 +452,6 @@
       box.querySelector('#minus').onclick = () => set(sh.count - 1);
       box.querySelector('#plus').onclick = () => set(sh.count + 1);
       rng.oninput = (e) => set(+e.target.value);
-      box.querySelector('#qmin').onclick = () => set(sh.min === 0 ? 0 : 1);
-      box.querySelector('#qhalf').onclick = () => set(Math.max(sh.min, Math.ceil(sh.max / 2)));
-      box.querySelector('#qall').onclick = () => set(sh.max);
       const seg = box.querySelector('#modeSeg');
       if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); haptic('select'); renderDock(); };
       view();
