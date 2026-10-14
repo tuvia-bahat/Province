@@ -28,7 +28,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #app {
   position: relative; max-width: 520px; margin: 0 auto; height: 100dvh;
-  padding: max(5dvh, env(safe-area-inset-top)) 5vw max(5dvh, env(safe-area-inset-bottom));
+  padding: max(5vw, env(safe-area-inset-top)) 5vw max(5vw, env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: 6px;
 }
 
@@ -143,13 +143,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sheet input[type=range] { flex: 1; min-width: 0; direction: ltr; }
 .sheet .quick { display: flex; gap: 6px; }
 
-#menuBtn { position: absolute; top: calc(max(5dvh, env(safe-area-inset-top)) - 10px); right: calc(5vw - 10px); z-index: 6; width: 40px; height: 40px; border: 0; background: none; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0; }
+#menuBtn { position: absolute; top: calc(max(5vw, env(safe-area-inset-top)) - 10px); right: calc(5vw - 10px); z-index: 6; width: 40px; height: 40px; border: 0; background: none; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 0; }
 #menuBtn i { display: block; width: 20px; height: 2px; border-radius: 2px; background: var(--ink); }
 #menuBtn:active { background: var(--cell); }
-#bar { position: absolute; top: calc(max(5dvh, env(safe-area-inset-top)) + 32px); right: 5vw; z-index: 6; display: none; flex-direction: column; align-items: stretch; min-width: 150px; padding: 6px; background: #fff; border-radius: 16px; box-shadow: 0 8px 28px rgba(20,25,40,.18), 0 0 0 1px rgba(20,25,40,.06); }
+#bar { position: absolute; top: calc(max(5vw, env(safe-area-inset-top)) + 32px); right: 5vw; z-index: 6; display: none; flex-direction: column; align-items: stretch; min-width: 150px; padding: 6px; background: #fff; border-radius: 16px; box-shadow: 0 8px 28px rgba(20,25,40,.18), 0 0 0 1px rgba(20,25,40,.06); }
 #bar.open { display: flex; }
 #bar .link { text-align: left; padding: 12px 14px; font-size: 14px; color: var(--ink); }
-#logBox { position: fixed; left: 5vw; right: 5vw; bottom: 5dvh; max-height: 40vh; overflow: auto; z-index: 5; background: #fff; border: 1px solid var(--cell); border-radius: 12px; box-shadow: 0 8px 28px rgba(20,25,40,.16); padding: 8px 12px; font-size: 13px; color: var(--muted); }
+#logBox { position: fixed; left: 5vw; right: 5vw; bottom: 5vw; max-height: 40vh; overflow: auto; z-index: 5; background: #fff; border: 1px solid var(--cell); border-radius: 12px; box-shadow: 0 8px 28px rgba(20,25,40,.16); padding: 8px 12px; font-size: 13px; color: var(--muted); }
 #logBox div { padding: 3px 0; }
 
 /* חלונות */
