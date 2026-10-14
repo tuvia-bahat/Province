@@ -339,7 +339,7 @@
   function renderDice() {
     const box = $('dice');
     const info = state.roll || lastRoll;
-    if (!info) { box.innerHTML = ''; return; }
+    if (!info) { box.innerHTML = dieHtml('–', 'X', { old: true }) + dieHtml('–', 'Y', { old: true }); return; }
     const cls = { roll: ui.rolled, old: !state.roll };
     box.innerHTML = dieHtml(info.w, 'X', cls) + dieHtml(info.b, 'Y', cls);
     ui.rolled = false;
