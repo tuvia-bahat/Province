@@ -265,12 +265,12 @@
     const label = (x, y, text, color, t0) => later(t0, () => {
       const t = mk(g, 'text', { x, y, 'text-anchor': 'middle', fill: color, style: 'font:700 16px var(--font);' + HALO });
       t.textContent = text;
-      t.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: 'translateY(-22px)', opacity: 0 }], { duration: 800 * FK, easing: 'ease-out' });
+      t.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: 'translateY(-22px)', opacity: 0 }], { duration: 800 * FK, easing: 'ease-out', fill: 'forwards' });
       later(820, () => t.remove());
     });
     const ring = (i, t0) => later(t0, () => {
       const c = mk(g, 'circle', { cx: cellX(i), cy: cellY(i), r: CR, fill: 'none', stroke: col, 'stroke-width': 3 });
-      c.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: 'scale(1.9)', opacity: 0 }], { duration: 600 * FK, easing: 'ease-out' });
+      c.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: 'scale(1.9)', opacity: 0 }], { duration: 600 * FK, easing: 'ease-out', fill: 'forwards' });
       later(620, () => c.remove());
     });
     const bridgeIn = (from, to) => {
