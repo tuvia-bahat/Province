@@ -439,7 +439,7 @@
     }
 
     msg.innerHTML = '';
-    addBtn(row(), 'Pass', '', doPass);
+    addBtn(row(), 'Pass', 'soft', doPass);
   }
 
   function renderLog() {
