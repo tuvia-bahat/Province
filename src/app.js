@@ -434,13 +434,12 @@
       const toggle = sh.modes && sh.modes.length > 1
         ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'Withdraw'}</button>`).join('')}</div>` : '';
       box.innerHTML = `${toggle}
-        <div class="stepper"><button class="pm" id="minus" aria-label="Less">−</button><div class="num" id="shNum"></div><button class="pm" id="plus" aria-label="More">+</button></div>
-        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers">`;
+        <div class="srow"><button class="pm x" id="cancel" aria-label="Cancel">✕</button><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button></div>`;
       ctl.appendChild(box);
       const rng = box.querySelector('#rng');
       // מעדכנים רק את התצוגה (בלי לבנות מחדש את הרכיבים), כדי שגרירת המחוון תמשיך לעבוד
       const view = () => {
-        box.querySelector('#shNum').innerHTML = `${sh.count}${sh.count === 0 ? '<small>Bridge only</small>' : ''}`;
+        box.querySelector('#shNum').innerHTML = `${sh.count}`;
         rng.value = sh.count;
         rng.style.setProperty('--p', (sh.max === sh.min ? 100 : ((sh.count - sh.min) / (sh.max - sh.min)) * 100) + '%');
       };
@@ -455,9 +454,8 @@
       const seg = box.querySelector('#modeSeg');
       if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); haptic('select'); renderDock(); };
       view();
-      const r = row();
-      addBtn(r, 'Cancel', 'ghost', () => { ui.sheet = null; haptic('soft'); render(); });
-      addBtn(r, 'Confirm', '', () => commit(sh.build(sh.count)));
+      box.querySelector('#cancel').onclick = () => { ui.sheet = null; haptic('soft'); render(); };
+      box.querySelector('#ok').onclick = () => commit(sh.build(sh.count));
       return;
     }
 
