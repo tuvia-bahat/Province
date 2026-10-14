@@ -28,11 +28,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #app {
   max-width: 520px; margin: 0 auto; height: 100dvh;
   padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; gap: 4px;
+  display: flex; flex-direction: column; gap: 10px;
 }
 
 /* ---------- שחקנים ---------- */
-.pl { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; flex: none; border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
+.pl { display: flex; flex-direction: column; gap: 8px; padding: 8px 2px; flex: none; border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
 #pl1 { border-bottom-width: 2px; }
 #pl0 { border-top-width: 2px; }
 #pl1.active { border-bottom-color: var(--c); }
@@ -42,7 +42,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
 .pl .nm { font-weight: 600; font-size: 15px; letter-spacing: .01em; }
 .pl .tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.pl .line { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; min-height: 17px; }
+.pl .line { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; min-height: 20px; }
 .pl .lab { font-size: 12px; color: var(--muted); }
 .pl .num { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 .pl .num small { font-size: 11px; font-weight: 400; color: var(--muted); }
@@ -86,12 +86,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- דוק ---------- */
-#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; flex: none; padding-top: 2px; }
+#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; flex: none; padding-top: 4px; }
 #dice { display: flex; gap: 14px; justify-content: center; direction: ltr; }
 .die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
 .die {
-  width: 40px; height: 40px; border-radius: 11px; background: var(--die); padding: 7px;
+  width: 46px; height: 46px; border-radius: 12px; background: var(--die); padding: 8px;
   display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); transition: opacity .3s;
 }
 .die i { border-radius: 50%; background: transparent; margin: 1px; }
@@ -119,11 +119,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn.wide { min-width: 200px; }
 .btn.sm { padding: 8px 18px; min-height: 38px; font-size: 14px; }
 .btn[disabled] { opacity: .35; }
-.link { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 4px 10px; }
+.link { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 8px 12px; }
 .link[disabled] { opacity: .35; }
 
 /* חלון בחירת כמות */
-.sheet { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sheet { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .sheet .title { font-weight: 600; }
 .sheet .note { font-size: 12px; color: var(--muted); min-height: 16px; text-align: center; }
 .stepper { direction: ltr; display: flex; align-items: center; gap: 14px; }
