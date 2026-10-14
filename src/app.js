@@ -16,8 +16,8 @@
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
   const GEO = {
-    6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
-    8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 8, FS: 17 },
+    6: { P: 64, G: 34, M: -11, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
+    8: { P: 56, G: 22, M: -7, CR: 21, LIFT: 9, RIVER_W: 9, BR: 8, FS: 17 },
   };
   const BRIDGE_FILL = 0.68;   // חלק מהרווח בין שני העיגולים שהגשר (כולל הקצוות העגולים) תופס: אותה פרופורציה בכל גודל לוח
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
@@ -255,7 +255,7 @@
     // נהרות
     for (let k = 1; k <= R.SIZE / 2 - 1; k++) {
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
-      h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="8" x2="${pos}" y2="${W - 8}"/><line class="river" style="stroke-width:${RIVER_W}" x1="8" y1="${pos}" x2="${W - 8}" y2="${pos}"/>`;
+      h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="0" x2="${pos}" y2="${W}"/><line class="river" style="stroke-width:${RIVER_W}" x1="0" y1="${pos}" x2="${W}" y2="${pos}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -322,7 +322,7 @@
       const IC = {
         prov: '<svg class="ic" viewBox="0 0 16 16"><path d="M4.5 1.5h7v4.2a3.5 3.5 0 0 1-7 0z" fill="currentColor"/><path d="M4.5 3H2.5c0 2.6 1 3.8 2.4 4M11.5 3h2c0 2.6-1 3.8-2.4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 9.2V12M5.2 14.5h5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
         sold: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 0.8l1.7 2.2v7H6.3V3z" fill="currentColor"/><rect x="3.8" y="10" width="8.4" height="1.7" rx=".8" fill="currentColor"/><rect x="7.1" y="11.7" width="1.8" height="2.4" fill="currentColor"/><circle cx="8" cy="14.7" r="1.1" fill="currentColor"/></svg>',
-        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M0.8 5.8h14.4M2.8 14V10a5.2 4.4 0 0 1 10.4 0V14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M2 13.5a6 6.5 0 0 1 12 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
         dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       };
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
