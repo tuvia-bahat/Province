@@ -397,8 +397,8 @@
       return;
     }
     if (ph === 'skip') {
-      msg.innerHTML = `${name} · No moves`;
-      addBtn(row(), 'Continue', 'wide', doSkip);
+      msg.innerHTML = '';
+      addBtn(row(), 'Pass', '', doSkip);
       return;
     }
 
