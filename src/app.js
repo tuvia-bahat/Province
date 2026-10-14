@@ -413,7 +413,7 @@
         ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'Withdraw'}</button>`).join('')}</div>` : '';
       const cap = !toggle && sh.kind === 'adjust' ? `<div class="cap">${sh.mode === 'add' ? addLabel : 'Withdraw'}</div>` : '';
       box.innerHTML = `${toggle}${cap}
-        <div class="srow"><button class="pm x" id="cancel" aria-label="Cancel">✕</button><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button></div>`;
+        <div class="srow"><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
       ctl.appendChild(box);
       const rng = box.querySelector('#rng');
       // מעדכנים רק את התצוגה (בלי לבנות מחדש את הרכיבים), כדי שגרירת המחוון תמשיך לעבוד
