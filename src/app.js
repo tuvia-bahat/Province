@@ -70,34 +70,6 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
 
-  // ---------- משוב מישוש ----------
-  // אנדרואיד: navigator.vibrate. אייפון: מתג מערכת נסתר (iOS 17.4+), בשיטה הכי טובה שקיימת בדפדפן.
-  const tickEl = (() => {
-    const l = document.createElement('label');
-    l.setAttribute('aria-hidden', 'true');
-    l.style.cssText = 'position:fixed;left:-99px;top:-99px;opacity:0;pointer-events:none';
-    l.innerHTML = '<input type="checkbox" switch tabindex="-1">';
-    document.body.appendChild(l);
-    return l;
-  })();
-  // משכי זמן קצרים מ-~15ms לא מורגשים ברוב מנועי הרטט באנדרואיד
-  const PATTERNS = { select: 28, tick: 16, soft: 14, confirm: [30, 40, 40], error: [40, 50, 40] };
-  function haptic(kind) {
-    try {
-      if (typeof navigator.vibrate === 'function') { return navigator.vibrate(PATTERNS[kind]); }
-      tickEl.click();
-      return true;
-    } catch (e) { return false; }
-  }
-  function testHaptic() {
-    const out = $('hapticMsg');
-    if (typeof navigator.vibrate !== 'function') {
-      out.textContent = /iP(hone|ad)/.test(navigator.userAgent) ? 'Vibration is limited on iPhone.' : 'Vibration is not supported.';
-      haptic('confirm'); return;
-    }
-    out.textContent = navigator.vibrate([120, 60, 120]) ? 'Vibration sent.' : 'Vibration blocked. Open the page directly in Chrome.';
-  }
-
   // ---------- חישובי אפשרויות ----------
   let memo = { state: null, play: null, opts: new Map() };
   function ensureMemo() { if (memo.state !== state) memo = { state, play: null, opts: new Map() }; }
@@ -158,7 +130,7 @@
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = freshUi();
-    haptic('confirm');
+   
     save(); render();
     return true;
   }
@@ -166,7 +138,7 @@
     state = R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
-    haptic('soft'); save(); render();
+    save(); render();
   }
   function passOrSkip(fn) { history.push(state); lastMove = null; state = fn(state); ui = freshUi(); save(); render(); }
   const doSkip = () => passOrSkip(R.skipTurn);
@@ -449,16 +421,16 @@
       };
       const set = (v) => {
         const nv = Math.max(sh.min, Math.min(sh.max, v));
-        if (nv !== sh.count) { sh.count = nv; haptic('tick'); }
+        if (nv !== sh.count) { sh.count = nv; }
         view();
       };
       box.querySelector('#minus').onclick = () => set(sh.count - 1);
       box.querySelector('#plus').onclick = () => set(sh.count + 1);
       rng.oninput = (e) => set(+e.target.value);
       const seg = box.querySelector('#modeSeg');
-      if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); haptic('select'); renderDock(); };
+      if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); renderDock(); };
       view();
-      box.querySelector('#cancel').onclick = () => { ui.sheet = null; haptic('soft'); render(); };
+      box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
       box.querySelector('#ok').onclick = () => commit(sh.build(sh.count));
       return;
     }
@@ -534,8 +506,7 @@
     if (c === null) return;
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     const pl = playableMap().get(c);
-    if (pl && pl.source) { ui.sel = c; haptic('select'); render(); }
-    else if (pl) haptic('select');
+    if (pl && pl.source) { ui.sel = c; render(); }
   });
 
   svg.addEventListener('pointermove', (e) => {
@@ -546,7 +517,7 @@
     const opts = optionsFrom(ui.sel);
     let hover = cellAt(pos, CR + 14);
     if (hover === ui.sel || (hover !== null && !opts.has(hover))) hover = null;
-    if (hover !== drag.hover) { drag.hover = hover; if (hover !== null) haptic('tick'); }
+    if (hover !== drag.hover) { drag.hover = hover; }
     overlay(pos, hover);
   });
 
@@ -580,7 +551,6 @@
   $('bar').addEventListener('click', (e) => { if (e.target.closest('button')) menu(false); });
   document.addEventListener('click', (e) => { if (!e.target.closest('#bar')) menu(false); });
   $('newBtn').onclick = openNew;
-  $('hapticTest').onclick = testHaptic;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
   $('newStart').onclick = startNew;
   for (const [id, key] of [['grpMode', 'mode'], ['grpBoard', 'board'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
