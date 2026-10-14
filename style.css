@@ -60,7 +60,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
 .pl .sbar .d { background: #7d838e; }
-.pl .ticks { display: flex; gap: 2px; align-items: center; }
+.pl .ticks { display: flex; gap: 4px; align-items: center; }
 .pl .ticks i { width: var(--tick-w, 5px); height: var(--tick-h, 22px); border-radius: 999px; background: var(--cell); flex: none; transition: background .25s; }
 .pl .ticks i.on { background: var(--c); }
 

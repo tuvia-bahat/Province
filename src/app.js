@@ -25,7 +25,7 @@
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
     ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
     W = 2 * M + n * P + (n / 2 - 1) * G;
-    const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 13, tw = Math.max(3, Math.min(9, th * BR / len));
+    const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 13, tw = Math.max(3.5, Math.min(4, th * BR / len));
     document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
     document.documentElement.style.setProperty('--tick-h', th + 'px');
     memo = { state: null, play: null, opts: new Map() };
@@ -322,7 +322,7 @@
       const IC = {
         prov: '<svg class="ic" viewBox="0 0 16 16"><path d="M4.5 1.5h7v4.2a3.5 3.5 0 0 1-7 0z" fill="currentColor"/><path d="M4.5 3H2.5c0 2.6 1 3.8 2.4 4M11.5 3h2c0 2.6-1 3.8-2.4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 9.2V12M5.2 14.5h5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
         sold: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 0.8l1.7 2.2v7H6.3V3z" fill="currentColor"/><rect x="3.8" y="10" width="8.4" height="1.7" rx=".8" fill="currentColor"/><rect x="7.1" y="11.7" width="1.8" height="2.4" fill="currentColor"/><circle cx="8" cy="14.7" r="1.1" fill="currentColor"/></svg>',
-        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M0.8 7.2h14.4M2 7.2V4M14 7.2V4M8 7.2V4.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2.6 14.4V12a5.4 5.4 0 0 1 10.8 0v2.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M2 13.5a6 6.5 0 0 1 12 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
         dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       };
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
