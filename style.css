@@ -30,7 +30,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: relative; max-width: 520px; margin: 0 auto; height: 100dvh;
   padding: env(safe-area-inset-top) 5vw env(safe-area-inset-bottom);
   display: flex; flex-direction: column; justify-content: space-evenly; gap: 0;
-  --pl-h: 102px; --board-gap: 16px; --dock-h: 122px;
+  --pl-h: 102px; --board-gap: 16px; --dock-h: 106px;
 }
 
 /* ---------- שחקנים ---------- */

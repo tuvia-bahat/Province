@@ -336,7 +336,7 @@
   }
 
   function dieHtml(n, label, cls) {
-    return `<div class="die-wrap${cls.old ? ' old' : ''}"><div class="die${cls.roll ? ' roll' : ''}">${n}</div><small>${label}</small></div>`;
+    return `<div class="die-wrap${cls.old ? ' old' : ''}"><div class="die${cls.roll ? ' roll' : ''}">${n}</div></div>`;
   }
   function renderDice() {
     const box = $('dice');
