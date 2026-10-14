@@ -29,11 +29,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #app {
   position: relative; max-width: 520px; margin: 0 auto; height: 100dvh;
   padding: max(5vw, env(safe-area-inset-top)) 5vw max(5vw, env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 6px;
+  --pl-h: 86px; --dock-h: 122px;
 }
 
 /* ---------- שחקנים ---------- */
-.pl { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; flex: none; border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
+.pl { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px; flex: none; height: var(--pl-h); border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
 #pl1 { border-bottom-width: 2px; }
 #pl0 { border-top-width: 2px; }
 #pl1.active { border-bottom-color: var(--c); }
@@ -64,7 +65,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .ticks i.on { background: var(--c); }
 
 /* ---------- לוח ---------- */
-#boardWrap { flex: 1 1 0; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+#boardWrap { flex: none; aspect-ratio: 1; width: min(100%, calc(100dvh - 10vw - 2 * var(--pl-h) - var(--dock-h) - 24px)); align-self: center; }
 #board { width: 100%; height: 100%; display: block; overflow: visible; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { fill: var(--cell); transition: fill .3s; }
 .cell.deep { fill: var(--cell-deep); }
@@ -87,7 +88,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- דוק ---------- */
-#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; flex: none; height: 122px; padding-top: 4px; }
+#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; flex: none; height: var(--dock-h); padding-top: 4px; }
 #dice { display: flex; gap: 14px; justify-content: center; direction: ltr; }
 .die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
