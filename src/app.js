@@ -347,11 +347,17 @@
       const w = (n) => (100 * n / tot).toFixed(2) + '%';
       let ticks = '';
       for (let i = 0; i < R.BRIDGES; i++) ticks += `<i class="${i < state.bridgesLeft[p] ? 'on' : ''}"></i>`;
+      const IC = {
+        prov: '<svg class="ic" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="3" fill="currentColor"/></svg>',
+        sold: '<svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="5" r="3" fill="currentColor"/><path d="M2.5 14c0-3.3 2.4-5 5.5-5s5.5 1.7 5.5 5z" fill="currentColor"/></svg>',
+        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M1 12V5m14 7V5M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
+        dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
+      };
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
-        <div class="line"><span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
-        <div class="line" title="On board ${onB} · Lost ${lost}"><span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
-        <div class="line"><span class="num">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
-        <div class="line"><span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div>`;
+        <div class="line">${IC.prov}<span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
+        <div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
+        <div class="line">${IC.brid}<span class="num">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
+        <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div>`;
     }
   }
 
