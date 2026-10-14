@@ -201,8 +201,14 @@
     parent.appendChild(e);
     return e;
   }
-  const bump = (el, from = 1.35, ms = 170) => { try { el.animate([{ transform: `scale(${from})` }, { transform: 'scale(1)' }], { duration: ms * FK, easing: 'cubic-bezier(.2,.9,.3,1.4)' }); } catch (e) { /* ignore */ } };
+  const bump = (el, from = 1.35, ms = 170) => {
+    try {
+      el.style.transformBox = 'fill-box'; el.style.transformOrigin = 'center';
+      el.animate([{ transform: `scale(${from})` }, { transform: 'scale(1)' }], { duration: ms * FK, easing: 'cubic-bezier(.2,.9,.3,1.4)' });
+    } catch (e) { /* ignore */ }
+  };
   const stats = (s, pl) => ({ prov: R.winProgress(s, pl), sold: R.camp(s, pl), brid: s.bridgesLeft[pl], dead: s.graveyard[pl] });
+  const HALO = 'paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;';
 
   function animateMove(prev, a, next) {
     fxCancel();
@@ -212,24 +218,41 @@
     const g = mk(svg, 'g', { id: 'fx', 'pointer-events': 'none' });
     const real = (i) => svg.querySelectorAll(`[data-i="${i}"]`);
     const hide = (i) => real(i).forEach((e) => { e.style.visibility = 'hidden'; });
-    const show = (i) => real(i).forEach((e) => { e.style.visibility = ''; if (e.tagName === 'circle') bump(e, 1.25, 240); });
+    const show = (i, pop) => real(i).forEach((e) => { e.style.visibility = ''; if (pop && e.tagName === 'circle') bump(e, .5, 300); });
     const ghost = (i, owner, n) => {
       const x = cellX(i), y = cellY(i);
       const c = mk(g, 'circle', { class: `base p${owner}`, cx: x, cy: y, r: CR });
       const t = mk(g, 'text', { class: 'cnt', x, y: y + 1, style: `font-size:${FS}px` });
       t.textContent = n;
-      return { set(v) { t.textContent = v; bump(t, 1.4, 160); }, remove() { c.remove(); t.remove(); } };
+      return {
+        set(v) { t.textContent = v; bump(t, 1.4, 160); },
+        remove() { c.remove(); t.remove(); },
+        fade() { [c, t].forEach((e) => { try { e.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.4)' }], { duration: 350 * FK, fill: 'forwards' }); } catch (er) { /* ignore */ } }); later(360, () => { c.remove(); t.remove(); }); },
+      };
     };
-    // מספר בבסיס שעולה/יורד בהדרגה (עם "רפאים"), ובסוף הבסיס האמיתי צץ
+    // מספר בבסיס שעולה/יורד בהדרגה במקום (בלי רפאים); בסיס חדש צץ פעם אחת; בסיס שנעלם מתכווץ
     function cellTween(i, owner, from, to, t0, step) {
-      hide(i);
-      let gh = from > 0 ? ghost(i, owner, from) : null;
-      const put = (v) => { if (v <= 0) { if (gh) { gh.remove(); gh = null; } } else if (!gh) gh = ghost(i, owner, v); else gh.set(v); };
       const steps = Math.min(Math.abs(to - from), 8);
-      for (let k = 1; k <= steps; k++) { const v = Math.round(from + (to - from) * k / steps); later(t0 + (k - 1) * step, () => put(v)); }
       const end = t0 + Math.max(steps, 1) * step;
-      later(end + 30, () => { if (gh) { gh.remove(); gh = null; } show(i); });
-      return end;
+      if (from === to) return end;
+      const vals = []; for (let k = 1; k <= steps; k++) vals.push(Math.round(from + (to - from) * k / steps));
+      if (to > 0) {
+        const txt = svg.querySelector(`text[data-i="${i}"]`), circ = svg.querySelector(`circle[data-i="${i}"]`);
+        if (!txt || !circ) return end;
+        if (from <= 0) {
+          hide(i);
+          later(t0, () => { show(i, false); bump(circ, .3, 320); bump(txt, .3, 320); });
+          return end;
+        }
+        txt.textContent = from;
+        vals.forEach((v, k) => later(t0 + k * step, () => { txt.textContent = v; bump(txt, 1.35, 170); }));
+        return end;
+      }
+      let gh = ghost(i, owner, from);
+      hide(i);
+      vals.forEach((v, k) => later(t0 + k * step, () => { if (v > 0 && gh) gh.set(v); }));
+      later(end, () => { if (gh) { gh.fade(); gh = null; } });
+      return end + 300;
     }
     const panelEl = (pl, k) => document.querySelector(`#pl${pl} .num[data-k="${k}"]`);
     function panelTween(pl, k, from, to, t0, step) {
@@ -240,7 +263,7 @@
       for (let j = 1; j <= steps; j++) { const v = Math.round(from + (to - from) * j / steps); later(t0 + (j - 1) * step, () => { el.textContent = v; bump(el, 1.35, 200); }); }
     }
     const label = (x, y, text, color, t0) => later(t0, () => {
-      const t = mk(g, 'text', { x, y, 'text-anchor': 'middle', fill: color, style: 'font:700 15px var(--font)' });
+      const t = mk(g, 'text', { x, y, 'text-anchor': 'middle', fill: color, style: 'font:700 16px var(--font);' + HALO });
       t.textContent = text;
       t.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: 'translateY(-22px)', opacity: 0 }], { duration: 800 * FK, easing: 'ease-out' });
       later(820, () => t.remove());
@@ -267,12 +290,12 @@
     if (a.type === 'land') {
       const c = a.to === undefined || a.to === null ? a.R : a.to;
       const from = prev.cells[c].o === p ? prev.cells[c].n : 0, to = next.cells[c].o === p ? next.cells[c].n : 0;
-      ring(c, 0); label(cellX(c), cellY(c) - CR - 4, '+' + n, col, 60);
-      end = cellTween(c, p, from, to, 0, 70);
+      label(cellX(c), cellY(c) - CR - 4, '+' + n, col, 0);
+      end = cellTween(c, p, from, to, 150, 90);
     } else if (a.type === 'withdraw') {
       const c = a.from;
       label(cellX(c), cellY(c) - CR - 4, '−' + n, col, 0);
-      end = cellTween(c, p, prev.cells[c].n, next.cells[c].o === p ? next.cells[c].n : 0, 0, 70);
+      end = cellTween(c, p, prev.cells[c].n, next.cells[c].o === p ? next.cells[c].n : 0, 150, 90);
     } else if (a.type === 'bridge') {
       end = Math.max(bridgeIn(a.from, a.to), 300);
       ring(a.from, 0); ring(a.to, 120);
@@ -280,43 +303,39 @@
       const f = a.from, t = a.to, tB = bridgeIn(f, t);
       const sx = cellX(f), sy = cellY(f), tx = cellX(t), ty = cellY(t);
       const attack = prev.cells[t].o === q;
+      const dl = Math.hypot(tx - sx, ty - sy) || 1;
       if (!attack) {
-        // שבב עם מספר החיילים עף מהמקור ליעד; המספרים מתעדכנים בהדרגה
-        cellTween(f, p, prev.cells[f].n, next.cells[f].o === p ? next.cells[f].n : 0, tB, 55);
+        // קו בצבע השחקן נמתח מהמקור ליעד, עם מספר החיילים באמצעו; המספרים מתעדכנים בהדרגה
+        const e1 = cellTween(f, p, prev.cells[f].n, next.cells[f].o === p ? next.cells[f].n : 0, tB + 100, 90);
         later(tB, () => {
-          const outer = mk(g, 'g', { transform: `translate(${sx} ${sy})` });
-          const chip = mk(outer, 'g', {});
-          mk(chip, 'circle', { r: 15, fill: col });
-          const tx0 = mk(chip, 'text', { 'text-anchor': 'middle', y: 1, fill: '#fff', style: 'font:700 15px var(--font);dominant-baseline:central' });
-          tx0.textContent = n;
-          chip.animate([{ transform: 'translate(0,0) scale(.6)' }, { transform: 'translate(0,0) scale(1)', offset: .15 }, { transform: `translate(${tx - sx}px,${ty - sy}px) scale(1)` }], { duration: 400 * FK, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
-          later(400, () => outer.remove());
+          const ln = mk(g, 'line', { x1: sx, y1: sy, x2: tx, y2: ty, stroke: col, 'stroke-width': 6, 'stroke-linecap': 'round', opacity: .55 });
+          ln.animate([{ strokeDasharray: dl, strokeDashoffset: dl }, { strokeDasharray: dl, strokeDashoffset: 0 }], { duration: 450 * FK, easing: 'ease-out', fill: 'forwards' });
+          const lb = mk(g, 'text', { x: (sx + tx) / 2, y: (sy + ty) / 2 - 8, 'text-anchor': 'middle', fill: col, style: 'font:700 17px var(--font);' + HALO });
+          lb.textContent = n; bump(lb, .4, 320);
+          later(1000, () => { ln.animate([{ opacity: .55 }, { opacity: 0 }], { duration: 400 * FK, fill: 'forwards' }); lb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400 * FK, fill: 'forwards' }); });
         });
         const dFrom = prev.cells[t].o === p ? prev.cells[t].n : 0;
-        end = cellTween(t, p, dFrom, next.cells[t].n, tB + 400, 70);
-        panelT = tB + 400;
+        end = Math.max(e1, cellTween(t, p, dFrom, next.cells[t].n, tB + 450, 90));
+        panelT = tB + 450;
       } else {
         const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 90 : 170;
         hide(f); hide(t);
         const gs = ghost(f, p, prev.cells[f].n), gd = ghost(t, q, def);
-        const mx = (sx + tx) / 2, my = (sy + ty) / 2, dl = Math.hypot(tx - sx, ty - sy) || 1;
+        const mx = (sx + tx) / 2, my = (sy + ty) / 2;
         let px = -(ty - sy) / dl, py = (tx - sx) / dl;
         if (px * (W / 2 - mx) + py * (W / 2 - my) < 0) { px = -px; py = -py; }   // הסימון יוצא לכיוון מרכז הלוח, לא מכסה את המספרים
-        let badge = null, bt = null, sw = null;
+        let bt = null, sw = null, o1 = null;
         const t1 = tB + 120;
         later(tB, () => { const v = prev.cells[f].n - n; if (v > 0) gs.set(v); else gs.remove(); });
         later(t1, () => {
-          const o1 = mk(g, 'g', { transform: `translate(${mx + px * 30} ${my + py * 30})` });
+          o1 = mk(g, 'g', { transform: `translate(${mx + px * 30} ${my + py * 30})` });
           sw = mk(o1, 'g', {});
-          mk(sw, 'circle', { r: 17, fill: '#fff', stroke: '#dcdfe5', 'stroke-width': 1.5, style: 'filter:drop-shadow(0 2px 5px rgba(20,25,40,.25))' });
-          const L = (x1, y1, x2, y2, w) => mk(sw, 'line', { x1, y1, x2, y2, stroke: '#1b1e24', 'stroke-width': w, 'stroke-linecap': 'round' });
-          L(-9, -9, 9, 9, 2.8); L(9, -9, -9, 9, 2.8); L(-1, -8, -8, -1, 2.4); L(8, -1, 1, -8, 2.4);
-          bump(sw, .3, 320);
-          const o2 = mk(g, 'g', { transform: `translate(${mx + px * 30 + 21} ${my + py * 30 - 17})` });
-          badge = mk(o2, 'g', {});
-          mk(badge, 'circle', { r: 12, fill: col, stroke: '#fff', 'stroke-width': 2 });
-          bt = mk(badge, 'text', { 'text-anchor': 'middle', y: 1, fill: '#fff', style: 'font:700 13px var(--font);dominant-baseline:central' });
-          bt.textContent = n; bump(badge, .3, 320);
+          const L = (x1, y1, x2, y2, w, c) => mk(sw, 'line', { x1, y1, x2, y2, stroke: c, 'stroke-width': w, 'stroke-linecap': 'round' });
+          for (const [w, c] of [[7, '#fff'], [2.8, '#1b1e24']]) { L(-9, -9, 9, 9, w, c); L(9, -9, -9, 9, w, c); }
+          for (const [w, c] of [[5, '#fff'], [2.4, '#1b1e24']]) { L(-1, -8, -8, -1, w, c); L(8, -1, 1, -8, w, c); }
+          bt = mk(o1, 'text', { x: 22, y: 6, fill: col, style: 'font:700 17px var(--font);' + HALO });
+          bt.textContent = '×' + n;
+          bump(sw, .3, 320); bump(bt, .3, 320);
         });
         const dead0 = prev.graveyard[q];
         handled.add(q + 'dead');
@@ -324,12 +343,12 @@
         for (let j = 1; j <= k; j++) {
           later(t1 + 340 + (j - 1) * step, () => {
             if (def - j > 0) gd.set(def - j); else gd.remove();
-            if (bt) { bt.textContent = n - j; bump(badge, 1.25, 150); }
+            if (bt) { bt.textContent = '×' + (n - j); bump(bt, 1.3, 150); }
             const el = panelEl(q, 'dead'); if (el) { el.textContent = dead0 + j; bump(el, 1.45, 220); }
           });
         }
         end = t1 + 340 + k * step + 120;
-        later(end, () => { gs.remove(); gd.remove(); show(f); show(t); if (sw) sw.parentNode.remove(); if (badge) badge.parentNode.remove(); });
+        later(end, () => { gs.remove(); gd.remove(); show(f, false); show(t, next.cells[t].o === p); if (o1) o1.remove(); });
         end += 260; panelT = end - 260;
       }
     }
@@ -342,11 +361,10 @@
         panelTween(pl, k, A[k], B[k], panelT, 60);
       }
     }
-    end = Math.max(end, 1150);   // אנימציות קצרות (+N, טבעת) צריכות זמן להיראות
+    end = Math.max(end, 1150);   // אנימציות קצרות צריכות זמן להיראות
     fxUntil = Date.now() + end * FK * (window.__fxScale || 1) + 300;
     // התור של המחשב (אם כבר נקבע) מחכה לסיום האנימציה
     if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; scheduleAi(); }
-    // לוודא שהכל נוקה בסוף
     later(end + 200, () => { if (g.parentNode) g.remove(); });
   }
 
