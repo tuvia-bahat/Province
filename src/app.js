@@ -460,7 +460,7 @@
     }
 
     msg.innerHTML = '';
-    addBtn(row(), 'Pass', 'ghost sm', doPass);
+    addBtn(row(), 'Pass', '', doPass);
   }
 
   function renderLog() {
@@ -571,6 +571,10 @@
   $('undoBtn').onclick = () => (settings.mode === 'watch' ? togglePause() : undo());
   $('speedBtn').onclick = cycleSpeed;
   $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
+  const menu = (open) => { $('bar').classList.toggle('open', open); $('menuBtn').setAttribute('aria-expanded', open); };
+  $('menuBtn').onclick = (e) => { e.stopPropagation(); menu(!$('bar').classList.contains('open')); };
+  $('bar').addEventListener('click', (e) => { if (e.target.closest('button')) menu(false); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('#bar')) menu(false); });
   $('newBtn').onclick = openNew;
   $('hapticTest').onclick = testHaptic;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
