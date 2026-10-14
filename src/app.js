@@ -245,7 +245,8 @@
           return end;
         }
         txt.textContent = from;
-        vals.forEach((v, k) => later(t0 + k * step, () => { txt.textContent = v; bump(txt, 1.35, 170); }));
+        later(t0, () => bump(circ, 1.22, 300));
+        vals.forEach((v, k) => later(t0 + k * step, () => { txt.textContent = v; bump(txt, 1.4, 170); }));
         return end;
       }
       let gh = ghost(i, owner, from);
@@ -307,32 +308,11 @@
       const attack = prev.cells[t].o === q;
       const dl = Math.hypot(tx - sx, ty - sy) || 1;
       if (!attack) {
-        // קו בצבע השחקן נמתח מהמקור ליעד, עם מספר החיילים באמצעו; המספרים מתעדכנים בהדרגה
-        const e1 = cellTween(f, p, prev.cells[f].n, next.cells[f].o === p ? next.cells[f].n : 0, tB + 100, 90);
-        later(tB, () => {
-          // חץ מעוקל דק בצבע השחקן, עם ראש חץ, ומספר החיילים לידו
-          let nx = -(ty - sy) / dl, ny = (tx - sx) / dl;
-          if (nx * (W / 2 - (sx + tx) / 2) + ny * (W / 2 - (sy + ty) / 2) < 0) { nx = -nx; ny = -ny; }
-          const e0 = CR - 2, x1 = sx + nx * e0, y1 = sy + ny * e0, x2 = tx + nx * e0, y2 = ty + ny * e0;
-          const cxp = (sx + tx) / 2 + nx * (CR + 30), cyp = (sy + ty) / 2 + ny * (CR + 30);   // קשת "קפיצה" מעל הזוג
-          const d = `M${x1} ${y1} Q${cxp} ${cyp} ${x2} ${y2}`, plen0 = 120;
-          const halo = mk(g, 'path', { d, fill: 'none', stroke: '#fff', 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .85 });
-          const path = mk(g, 'path', { d, fill: 'none', stroke: col, 'stroke-width': 3.5, 'stroke-linecap': 'round' });
-          const plen = path.getTotalLength() || plen0;
-          for (const e of [halo, path]) e.animate([{ strokeDasharray: plen, strokeDashoffset: plen }, { strokeDasharray: plen, strokeDashoffset: 0 }], { duration: 450 * FK, easing: 'ease-out', fill: 'forwards' });
-          // ראש חץ בקצה הקשת
-          const ax = x2 - cxp, ay = y2 - cyp, al = Math.hypot(ax, ay) || 1, dx = ax / al, dy = ay / al;
-          const hd = `M${x2 - dx * 10 - dy * 7} ${y2 - dy * 10 + dx * 7} L${x2 + dx * 2} ${y2 + dy * 2} L${x2 - dx * 10 + dy * 7} ${y2 - dy * 10 - dx * 7}`;
-          const headH = mk(g, 'path', { d: hd, fill: 'none', stroke: '#fff', 'stroke-width': 8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0 });
-          const head = mk(g, 'path', { d: hd, fill: 'none', stroke: col, 'stroke-width': 3.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0 });
-          for (const e of [headH, head]) e.animate([{ opacity: 0 }, { opacity: 0, offset: .85 }, { opacity: e === headH ? .85 : 1 }], { duration: 450 * FK, fill: 'forwards' });
-          const lb = mk(g, 'text', { x: (x1 + 2 * cxp + x2) / 4 + nx * 14, y: (y1 + 2 * cyp + y2) / 4 + ny * 14 + 6, 'text-anchor': 'middle', fill: col, style: 'font:700 17px var(--font);' + HALO });
-          lb.textContent = n; bump(lb, .4, 320);
-          later(1000, () => { [halo, path, headH, head, lb].forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400 * FK, fill: 'forwards' })); });
-        });
-        const dFrom = prev.cells[t].o === p ? prev.cells[t].n : 0;
-        end = Math.max(e1, cellTween(t, p, dFrom, next.cells[t].n, tB + 450, 90));
-        panelT = tB + 450;
+        // פעימה בבסיס המקור (המספר יורד), ואחריה פעימה בבסיס היעד (המספר עולה)
+        const e1 = cellTween(f, p, prev.cells[f].n, next.cells[f].o === p ? next.cells[f].n : 0, tB + 100, 110);
+        const tD = e1 + 250, dFrom = prev.cells[t].o === p ? prev.cells[t].n : 0;
+        end = cellTween(t, p, dFrom, next.cells[t].n, tD, 110);
+        panelT = tD;
       } else {
         const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 90 : 170;
         hide(f); hide(t);
@@ -344,12 +324,18 @@
         const t1 = tB + 120;
         later(tB, () => { const v = prev.cells[f].n - n; if (v > 0) gs.set(v); else gs.remove(); });
         later(t1, () => {
-          o1 = mk(g, 'g', { transform: `translate(${mx + px * 30} ${my + py * 30})` });
-          sw = mk(o1, 'g', {});
-          const L = (x1, y1, x2, y2, w, c) => mk(sw, 'line', { x1, y1, x2, y2, stroke: c, 'stroke-width': w, 'stroke-linecap': 'round' });
-          for (const [w, c] of [[7, '#fff'], [2.8, '#1b1e24']]) { L(-9, -9, 9, 9, w, c); L(9, -9, -9, 9, w, c); }
-          for (const [w, c] of [[5, '#fff'], [2.4, '#1b1e24']]) { L(-1, -8, -8, -1, w, c); L(8, -1, 1, -8, w, c); }
-          bt = mk(o1, 'text', { x: 22, y: 6, fill: col, style: 'font:700 17px var(--font);' + HALO });
+          o1 = mk(g, 'g', { transform: `translate(${mx + px * 32} ${my + py * 32})` });
+          const big = mk(o1, 'g', { transform: 'scale(1.25)' });
+          sw = mk(big, 'g', {});
+          const st0 = `fill:${col};stroke:#fff;stroke-width:2.4px;paint-order:stroke;stroke-linejoin:round;`;
+          for (const ang of [-42, 42]) {
+            const sd = mk(sw, 'g', { transform: `rotate(${ang})` });
+            mk(sd, 'polygon', { points: '0,-13 2.3,-10 2.3,5 -2.3,5 -2.3,-10', style: st0 });   // להב
+            mk(sd, 'rect', { x: -5.5, y: 5, width: 11, height: 2.6, rx: 1.2, style: st0 });      // מגן
+            mk(sd, 'rect', { x: -1.3, y: 7.6, width: 2.6, height: 4.2, rx: 1, style: st0 });     // ידית
+            mk(sd, 'circle', { cx: 0, cy: 13, r: 1.9, style: st0 });                              // ראש הידית
+          }
+          bt = mk(o1, 'text', { x: 24, y: 6, fill: col, style: 'font:700 19px var(--font);' + HALO });
           bt.textContent = '×' + n;
           bump(sw, .3, 320); bump(bt, .3, 320);
         });
