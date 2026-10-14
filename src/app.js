@@ -128,10 +128,10 @@
   function commit(a) {
     let ns;
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
+    const prev = state;
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = freshUi();
-   
-    save(); render();
+    save(); render(); animateMove(prev, a, ns);
     return true;
   }
   function doRoll() {
@@ -186,10 +186,170 @@
     openSheet({ kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max > 1 ? plan.max - 1 : plan.max, build: (n) => actionFromPlan(plan, n) });
   }
 
+  // ---------- אנימציית מהלך ----------
+  // רצה מיד אחרי render(): מסתירה את הבסיסים המושפעים, ומציירת במקומם "רפאים" שמספריהם מתעדכנים בהדרגה,
+  // יחד עם סימון קטן של המהלך (חרבות, שבב נע, "+N"). כל render() חדש מבטל אותה, והלוח הסופי תמיד נכון.
+  let fxTimers = [], fxUntil = 0;
+  function fxCancel() { fxTimers.forEach(clearTimeout); fxTimers = []; }
+  const later = (ms, fn) => { fxTimers.push(setTimeout(fn, ms * (window.__fxScale || 1))); };
+  const NS = 'http://www.w3.org/2000/svg';
+  function mk(parent, tag, attrs) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    e.style.transformBox = 'fill-box'; e.style.transformOrigin = 'center';
+    parent.appendChild(e);
+    return e;
+  }
+  const bump = (el, from = 1.35, ms = 170) => { try { el.animate([{ transform: `scale(${from})` }, { transform: 'scale(1)' }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.4)' }); } catch (e) { /* ignore */ } };
+  const stats = (s, pl) => ({ prov: R.winProgress(s, pl), sold: R.camp(s, pl), brid: s.bridgesLeft[pl], dead: s.graveyard[pl] });
+
+  function animateMove(prev, a, next) {
+    fxCancel();
+    const svg = $('board');
+    if (!svg || !a || a.type === 'pass') return;
+    const p = prev.turn, q = 1 - p, col = COLORS[p];
+    const g = mk(svg, 'g', { id: 'fx', 'pointer-events': 'none' });
+    const real = (i) => svg.querySelectorAll(`[data-i="${i}"]`);
+    const hide = (i) => real(i).forEach((e) => { e.style.visibility = 'hidden'; });
+    const show = (i) => real(i).forEach((e) => { e.style.visibility = ''; if (e.tagName === 'circle') bump(e, 1.25, 240); });
+    const ghost = (i, owner, n) => {
+      const x = cellX(i), y = cellY(i);
+      const c = mk(g, 'circle', { class: `base p${owner}`, cx: x, cy: y, r: CR });
+      const t = mk(g, 'text', { class: 'cnt', x, y: y + 1, style: `font-size:${FS}px` });
+      t.textContent = n;
+      return { set(v) { t.textContent = v; bump(t, 1.4, 160); }, remove() { c.remove(); t.remove(); } };
+    };
+    // מספר בבסיס שעולה/יורד בהדרגה (עם "רפאים"), ובסוף הבסיס האמיתי צץ
+    function cellTween(i, owner, from, to, t0, step) {
+      hide(i);
+      let gh = from > 0 ? ghost(i, owner, from) : null;
+      const put = (v) => { if (v <= 0) { if (gh) { gh.remove(); gh = null; } } else if (!gh) gh = ghost(i, owner, v); else gh.set(v); };
+      const steps = Math.min(Math.abs(to - from), 8);
+      for (let k = 1; k <= steps; k++) { const v = Math.round(from + (to - from) * k / steps); later(t0 + (k - 1) * step, () => put(v)); }
+      const end = t0 + Math.max(steps, 1) * step;
+      later(end + 30, () => { if (gh) { gh.remove(); gh = null; } show(i); });
+      return end;
+    }
+    const panelEl = (pl, k) => document.querySelector(`#pl${pl} .num[data-k="${k}"]`);
+    function panelTween(pl, k, from, to, t0, step) {
+      const el = panelEl(pl, k);
+      if (!el || from === to) return;
+      el.textContent = from;
+      const steps = Math.min(Math.abs(to - from), 10);
+      for (let j = 1; j <= steps; j++) { const v = Math.round(from + (to - from) * j / steps); later(t0 + (j - 1) * step, () => { el.textContent = v; bump(el, 1.35, 200); }); }
+    }
+    const label = (x, y, text, color, t0) => later(t0, () => {
+      const t = mk(g, 'text', { x, y, 'text-anchor': 'middle', fill: color, style: 'font:700 15px var(--font)' });
+      t.textContent = text;
+      t.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: 'translateY(-22px)', opacity: 0 }], { duration: 800, easing: 'ease-out' });
+      later(820, () => t.remove());
+    });
+    const ring = (i, t0) => later(t0, () => {
+      const c = mk(g, 'circle', { cx: cellX(i), cy: cellY(i), r: CR, fill: 'none', stroke: col, 'stroke-width': 3 });
+      c.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: 'scale(1.9)', opacity: 0 }], { duration: 600, easing: 'ease-out' });
+      later(620, () => c.remove());
+    });
+    const bridgeIn = (from, to) => {
+      const key = R.bridgeKey(from, to);
+      if (prev.bridges[key] === next.bridges[key] || next.bridges[key] !== p) return 0;
+      const el = svg.querySelector(`line[data-key="${key}"]`);
+      if (!el) return 0;
+      const len = el.getTotalLength ? el.getTotalLength() : 40;
+      el.animate([{ strokeDasharray: len, strokeDashoffset: len }, { strokeDasharray: len, strokeDashoffset: 0 }], { duration: 360, easing: 'ease-out' });
+      return 380;
+    };
+
+    const n = a.count | 0;
+    let end = 0, panelT = 0;
+    const handled = new Set();
+
+    if (a.type === 'land') {
+      const c = a.to === undefined || a.to === null ? a.R : a.to;
+      const from = prev.cells[c].o === p ? prev.cells[c].n : 0, to = next.cells[c].o === p ? next.cells[c].n : 0;
+      ring(c, 0); label(cellX(c), cellY(c) - CR - 4, '+' + n, col, 60);
+      end = cellTween(c, p, from, to, 0, 70);
+    } else if (a.type === 'withdraw') {
+      const c = a.from;
+      label(cellX(c), cellY(c) - CR - 4, '−' + n, col, 0);
+      end = cellTween(c, p, prev.cells[c].n, next.cells[c].o === p ? next.cells[c].n : 0, 0, 70);
+    } else if (a.type === 'bridge') {
+      end = Math.max(bridgeIn(a.from, a.to), 300);
+      ring(a.from, 0); ring(a.to, 120);
+    } else {
+      const f = a.from, t = a.to, tB = bridgeIn(f, t);
+      const sx = cellX(f), sy = cellY(f), tx = cellX(t), ty = cellY(t);
+      const attack = prev.cells[t].o === q;
+      if (!attack) {
+        // שבב עם מספר החיילים עף מהמקור ליעד; המספרים מתעדכנים בהדרגה
+        cellTween(f, p, prev.cells[f].n, next.cells[f].o === p ? next.cells[f].n : 0, tB, 55);
+        later(tB, () => {
+          const outer = mk(g, 'g', { transform: `translate(${sx} ${sy})` });
+          const chip = mk(outer, 'g', {});
+          mk(chip, 'circle', { r: 15, fill: col });
+          const tx0 = mk(chip, 'text', { 'text-anchor': 'middle', y: 1, fill: '#fff', style: 'font:700 15px var(--font);dominant-baseline:central' });
+          tx0.textContent = n;
+          chip.animate([{ transform: 'translate(0,0) scale(.6)' }, { transform: 'translate(0,0) scale(1)', offset: .15 }, { transform: `translate(${tx - sx}px,${ty - sy}px) scale(1)` }], { duration: 400, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+          later(400, () => outer.remove());
+        });
+        const dFrom = prev.cells[t].o === p ? prev.cells[t].n : 0;
+        end = cellTween(t, p, dFrom, next.cells[t].n, tB + 400, 70);
+        panelT = tB + 400;
+      } else {
+        const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 90 : 170;
+        hide(f); hide(t);
+        const gs = ghost(f, p, prev.cells[f].n), gd = ghost(t, q, def);
+        const mx = (sx + tx) / 2, my = (sy + ty) / 2, dl = Math.hypot(tx - sx, ty - sy) || 1;
+        let px = -(ty - sy) / dl, py = (tx - sx) / dl;
+        if (px * (W / 2 - mx) + py * (W / 2 - my) < 0) { px = -px; py = -py; }   // הסימון יוצא לכיוון מרכז הלוח, לא מכסה את המספרים
+        let badge = null, bt = null, sw = null;
+        const t1 = tB + 120;
+        later(tB, () => { const v = prev.cells[f].n - n; if (v > 0) gs.set(v); else gs.remove(); });
+        later(t1, () => {
+          const o1 = mk(g, 'g', { transform: `translate(${mx + px * 30} ${my + py * 30})` });
+          sw = mk(o1, 'g', {});
+          mk(sw, 'circle', { r: 17, fill: '#fff', stroke: '#dcdfe5', 'stroke-width': 1.5, style: 'filter:drop-shadow(0 2px 5px rgba(20,25,40,.25))' });
+          const L = (x1, y1, x2, y2, w) => mk(sw, 'line', { x1, y1, x2, y2, stroke: '#1b1e24', 'stroke-width': w, 'stroke-linecap': 'round' });
+          L(-9, -9, 9, 9, 2.8); L(9, -9, -9, 9, 2.8); L(-1, -8, -8, -1, 2.4); L(8, -1, 1, -8, 2.4);
+          bump(sw, .3, 320);
+          const o2 = mk(g, 'g', { transform: `translate(${mx + px * 30 + 21} ${my + py * 30 - 17})` });
+          badge = mk(o2, 'g', {});
+          mk(badge, 'circle', { r: 12, fill: col, stroke: '#fff', 'stroke-width': 2 });
+          bt = mk(badge, 'text', { 'text-anchor': 'middle', y: 1, fill: '#fff', style: 'font:700 13px var(--font);dominant-baseline:central' });
+          bt.textContent = n; bump(badge, .3, 320);
+        });
+        const dead0 = prev.graveyard[q];
+        handled.add(q + 'dead');
+        { const el0 = panelEl(q, 'dead'); if (el0) el0.textContent = dead0; }
+        for (let j = 1; j <= k; j++) {
+          later(t1 + 340 + (j - 1) * step, () => {
+            if (def - j > 0) gd.set(def - j); else gd.remove();
+            if (bt) { bt.textContent = n - j; bump(badge, 1.25, 150); }
+            const el = panelEl(q, 'dead'); if (el) { el.textContent = dead0 + j; bump(el, 1.45, 220); }
+          });
+        }
+        end = t1 + 340 + k * step + 120;
+        later(end, () => { gs.remove(); gd.remove(); show(f); show(t); if (sw) sw.parentNode.remove(); if (badge) badge.parentNode.remove(); });
+        end += 260; panelT = end - 260;
+      }
+    }
+
+    // מוני הפאנלים (ללא ההרוגים בהתקפה, שנספרים תוך כדי הקרב)
+    for (const pl of [0, 1]) {
+      const A = stats(prev, pl), B = stats(next, pl);
+      for (const k of ['prov', 'sold', 'brid', 'dead']) {
+        if (handled.has(pl + k)) continue;
+        panelTween(pl, k, A[k], B[k], panelT, 60);
+      }
+    }
+    fxUntil = Date.now() + end + 300;
+    // לוודא שהכל נוקה בסוף
+    later(end + 200, () => { if (g.parentNode) g.remove(); });
+  }
+
   // ---------- יריב מחשב ----------
   function scheduleAi() {
     if (aiTimer || paused || !isAiTurn()) return;
-    aiTimer = setTimeout(aiStep, (state.roll ? 1000 : 700) * SPEED[settings.speed]);
+    aiTimer = setTimeout(aiStep, Math.max((state.roll ? 1000 : 700) * SPEED[settings.speed], fxUntil - Date.now() + 250));
   }
   function togglePause() {
     paused = !paused;
@@ -210,6 +370,7 @@
     if (R.hasAnyMove(state)) {
       try { a = AIB.chooseAction(state, aiLevel()); } catch (e) { console.error(e); }
     }
+    const prevS = state;
     history.push(state);
     if (!R.hasAnyMove(state)) state = R.skipTurn(state);
     else if (a.type === 'pass') state = R.passTurn(state);
@@ -218,6 +379,7 @@
     }
     lastMove = a.type === 'pass' ? null : { p, a };
     ui = freshUi(); save(); render();
+    if (a.type !== 'pass') animateMove(prevS, a, state);
   }
 
   // ---------- משחק חדש ----------
@@ -267,7 +429,7 @@
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
       const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = (len - ((P + G - 2 * CR) * BRIDGE_FILL - BR)) / 2;
-      h += `<line class="bridge" style="stroke-width:${BR}" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
+      h += `<line data-key="${key}" class="bridge" style="stroke-width:${BR}" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
     // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. רק בסיס מודגש מרחף בהיסט; אצל משבצת ריקה מודגשת
     // האפור מתכהה. כל הטבעות (מקווקו של ההטלה, וטבעת היעד) נמצאות בשכבה שמתחת לעיגול העליון.
@@ -294,12 +456,7 @@
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
       if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
-      if (c.o !== null) h += `<circle class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
-    }
-    if (lastMove) {
-      const la = lastMove.a;
-      const cells = la.type === 'land' ? [la.to === undefined || la.to === null ? la.R : la.to] : la.type === 'withdraw' ? [la.from] : [la.from, la.to];
-      cells.forEach((c) => { if (c !== null && c !== undefined) h += `<circle class="ring-last" cx="${cellX(c)}" cy="${cellY(c)}" r="${CR + 5}" stroke="${COLORS[lastMove.p]}"/>`; });
+      if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
     h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="9" fill="${turnColor}" visibility="hidden"/></g>`;
@@ -328,10 +485,10 @@
         dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       };
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
-        <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
-        <div class="line">${IC.prov}<span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
-        <div class="line">${IC.brid}<span class="num">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
-        <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
+        <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num" data-k="sold" data-p="${p}">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
+        <div class="line">${IC.prov}<span class="num" data-k="prov" data-p="${p}">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
+        <div class="line">${IC.brid}<span class="num" data-k="brid" data-p="${p}">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
+        <div class="line">${IC.dead}<span class="num" data-k="dead" data-p="${p}">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
     }
   }
 
@@ -447,6 +604,7 @@
   }
 
   function render() {
+    fxCancel();
     renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog();
     const watch = settings.mode === 'watch';
     $('undoBtn').textContent = watch ? (paused ? 'Resume' : 'Pause') : 'Undo';
