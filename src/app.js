@@ -278,10 +278,12 @@
       if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
       else if (opts) lit = i === ui.sel || opts.has(i);
       else lit = play.has(i);
-      const floating = lit && c.o !== null;
+      // גרירה: רק הבסיס שנבחר מרחף; בסיסים ביעדים נשארים במקום והמשבצת שלהם מתכהה. אחרת: בסיס מודגש מרחף
+      const dragging = !sheet && !!opts, isDest = dragging && i !== ui.sel;
+      const floating = lit && c.o !== null && !isDest;
       const ty = floating ? y - LIFT : y;
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
-      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && !floating ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
+      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
