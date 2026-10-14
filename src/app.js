@@ -16,8 +16,8 @@
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
   const GEO = {
-    6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
-    8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 7, FS: 17 },
+    6: { P: 64, G: 34, M: 24, CR: 23, LIFT: 11, RIVER_W: 12, BR: 11, FS: 19 },
+    8: { P: 56, G: 22, M: 12, CR: 22, LIFT: 10, RIVER_W: 9, BR: 9, FS: 18 },
   };
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
@@ -305,7 +305,10 @@
       const floating = lit && c.o !== null;
       const ty = floating ? y - LIFT : y;
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
-      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
+      if (ctl !== null) {
+        const T = 2 * CR + 6;   // ריבוע מעוגל בגוון של השחקן, מעט גדול מהעיגול
+        h += `<rect class="tile c${ctl}${lit ? ' deep' : ''}" x="${x - T / 2}" y="${y - T / 2}" width="${T}" height="${T}" rx="12"/>`;
+      } else h += `<circle class="cell${lit ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
@@ -339,8 +342,14 @@
       const held = R.winProgress(state, p);
       let pips = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) pips += `<span class="pip${k < held ? ' on' : ''}"></span>`;
+      // חיילים: פס אחד – מחנה (צבע מלא), על הלוח (גוון בהיר), אבודים (אפור)
+      const tot = R.SOLDIERS, reserve = R.camp(state, p), lost = state.graveyard[p], onB = tot - reserve - lost;
+      const w = (n) => (100 * n / tot).toFixed(2) + '%';
+      let bars = '';
+      for (let i = 0; i < R.BRIDGES; i++) bars += `<b class="bb${i < state.bridgesLeft[p] ? ' on' : ''}"></b>`;
       el.innerHTML = `<div class="top"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span><span class="pips${R.WIN_PROVINCES > 5 ? ' many' : ''}">${pips}</span></div>
-        <div class="meta">Reserve ${R.camp(state, p)} · Lost ${state.graveyard[p]} · Bridges ${state.bridgesLeft[p]}</div>`;
+        <div class="vrow" title="Soldiers: reserve ${reserve}, on board ${onB}, lost ${lost}"><span class="ico dot"></span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i><i class="l" style="width:${w(lost)}"></i></div><span class="num">${reserve}</span></div>
+        <div class="vrow" title="Bridges left: ${state.bridgesLeft[p]}"><span class="ico bar"></span><div class="bridges">${bars}</div><span class="num">${state.bridgesLeft[p]}</span></div>`;
     }
   }
 

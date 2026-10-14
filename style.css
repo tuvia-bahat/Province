@@ -38,7 +38,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #pl1.active { border-bottom-color: var(--c); }
 #pl0.active { border-top-color: var(--c); }
 .pl.active { opacity: 1; }
-.pl .top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+.pl .top { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 16px; }
 .pl .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
 .pl .tag { font-weight: 400; font-size: 12px; color: var(--muted); }
 .pl .pips { display: flex; gap: 4px; margin-inline-start: auto; }
@@ -46,23 +46,35 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .pips.many { gap: 3px; }
 .pl .pips.many .pip { width: 6px; height: 6px; }
 .pl .pip.on { background: var(--c); }
-.pl .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pl .vrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pl .vrow .num { min-width: 22px; text-align: right; font-weight: 600; color: var(--ink); }
+.pl .ico { width: 14px; flex: none; display: grid; place-items: center; }
+.pl .ico.dot::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.pl .ico.bar::before { content: ""; width: 14px; height: 5px; border-radius: 3px; background: var(--c); }
+.pl .sbar { flex: 1; height: 9px; border-radius: 5px; overflow: hidden; display: flex; background: var(--cell); }
+.pl .sbar i { display: block; height: 100%; transition: width .3s; }
+.pl .sbar .r { background: var(--c); }
+.pl .sbar .b { background: color-mix(in srgb, var(--c) 35%, #fff); }
+.pl .sbar .l { background: #8d939f; }
+.pl .bridges { flex: 1; display: flex; gap: 3px; }
+.pl .bb { flex: 1; max-width: 16px; height: 7px; border-radius: 4px; background: var(--cell); transition: background .25s; }
+.pl .bb.on { background: var(--c); }
 
 /* ---------- לוח ---------- */
 #boardWrap { width: min(100%, calc(100dvh - 400px)); min-width: 290px; margin: 0 auto; }
 #board { width: 100%; height: auto; display: block; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { fill: var(--cell); transition: fill .3s; }
 .cell.deep { fill: var(--cell-deep); }
-.cell.c0 { fill: var(--p0-tint); }
-.cell.c1 { fill: var(--p1-tint); }
-.cell.c0.deep { fill: var(--p0-deep); }
-.cell.c1.deep { fill: var(--p1-deep); }
+.tile.c0 { fill: var(--p0-tint); }
+.tile.c1 { fill: var(--p1-tint); }
+.tile.c0.deep { fill: var(--p0-deep); }
+.tile.c1.deep { fill: var(--p1-deep); }
 .ring-float { fill: none; stroke: #8b919a; stroke-width: 2; stroke-dasharray: 4 4; stroke-linecap: round; transform-box: fill-box; transform-origin: center; animation: spin 7s linear infinite; pointer-events: none; }
 .base.p0 { fill: var(--p0); }
 .base.p1 { fill: var(--p1); }
 .cnt { fill: #fff; font: 600 18px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; font-variant-numeric: tabular-nums; }
 .river { stroke: var(--river); stroke-width: 12; stroke-linecap: round; }
-.bridge { stroke-width: 8; stroke-linecap: round; }
+.bridge { stroke-linecap: round; }
 .ring-roll { fill: none; stroke-width: 2.5; stroke-dasharray: 5 6; stroke-linecap: round; transform-box: fill-box; transform-origin: center; animation: spin 9s linear infinite; pointer-events: none; }
 .ring-last { fill: none; stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; opacity: .7; pointer-events: none; }
 .drag-line { stroke-width: 6; stroke-linecap: round; opacity: .35; pointer-events: none; }
