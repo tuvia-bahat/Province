@@ -190,8 +190,9 @@
   // רצה מיד אחרי render(): מסתירה את הבסיסים המושפעים, ומציירת במקומם "רפאים" שמספריהם מתעדכנים בהדרגה,
   // יחד עם סימון קטן של המהלך (חרבות, שבב נע, "+N"). כל render() חדש מבטל אותה, והלוח הסופי תמיד נכון.
   let fxTimers = [], fxUntil = 0;
+  const FK = 1.8;   // מקדם האטה כללי לאנימציות (כל אנימציה נמשכת לפחות ~2 שניות)
   function fxCancel() { fxTimers.forEach(clearTimeout); fxTimers = []; }
-  const later = (ms, fn) => { fxTimers.push(setTimeout(fn, ms * (window.__fxScale || 1))); };
+  const later = (ms, fn) => { fxTimers.push(setTimeout(fn, ms * FK * (window.__fxScale || 1))); };
   const NS = 'http://www.w3.org/2000/svg';
   function mk(parent, tag, attrs) {
     const e = document.createElementNS(NS, tag);
@@ -200,7 +201,7 @@
     parent.appendChild(e);
     return e;
   }
-  const bump = (el, from = 1.35, ms = 170) => { try { el.animate([{ transform: `scale(${from})` }, { transform: 'scale(1)' }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.4)' }); } catch (e) { /* ignore */ } };
+  const bump = (el, from = 1.35, ms = 170) => { try { el.animate([{ transform: `scale(${from})` }, { transform: 'scale(1)' }], { duration: ms * FK, easing: 'cubic-bezier(.2,.9,.3,1.4)' }); } catch (e) { /* ignore */ } };
   const stats = (s, pl) => ({ prov: R.winProgress(s, pl), sold: R.camp(s, pl), brid: s.bridgesLeft[pl], dead: s.graveyard[pl] });
 
   function animateMove(prev, a, next) {
@@ -241,12 +242,12 @@
     const label = (x, y, text, color, t0) => later(t0, () => {
       const t = mk(g, 'text', { x, y, 'text-anchor': 'middle', fill: color, style: 'font:700 15px var(--font)' });
       t.textContent = text;
-      t.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: 'translateY(-22px)', opacity: 0 }], { duration: 800, easing: 'ease-out' });
+      t.animate([{ transform: 'translateY(0)', opacity: 0 }, { opacity: 1, offset: .2 }, { transform: 'translateY(-22px)', opacity: 0 }], { duration: 800 * FK, easing: 'ease-out' });
       later(820, () => t.remove());
     });
     const ring = (i, t0) => later(t0, () => {
       const c = mk(g, 'circle', { cx: cellX(i), cy: cellY(i), r: CR, fill: 'none', stroke: col, 'stroke-width': 3 });
-      c.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: 'scale(1.9)', opacity: 0 }], { duration: 600, easing: 'ease-out' });
+      c.animate([{ transform: 'scale(1)', opacity: .9 }, { transform: 'scale(1.9)', opacity: 0 }], { duration: 600 * FK, easing: 'ease-out' });
       later(620, () => c.remove());
     });
     const bridgeIn = (from, to) => {
@@ -255,7 +256,7 @@
       const el = svg.querySelector(`line[data-key="${key}"]`);
       if (!el) return 0;
       const len = el.getTotalLength ? el.getTotalLength() : 40;
-      el.animate([{ strokeDasharray: len, strokeDashoffset: len }, { strokeDasharray: len, strokeDashoffset: 0 }], { duration: 360, easing: 'ease-out' });
+      el.animate([{ strokeDasharray: len, strokeDashoffset: len }, { strokeDasharray: len, strokeDashoffset: 0 }], { duration: 360 * FK, easing: 'ease-out' });
       return 380;
     };
 
@@ -288,7 +289,7 @@
           mk(chip, 'circle', { r: 15, fill: col });
           const tx0 = mk(chip, 'text', { 'text-anchor': 'middle', y: 1, fill: '#fff', style: 'font:700 15px var(--font);dominant-baseline:central' });
           tx0.textContent = n;
-          chip.animate([{ transform: 'translate(0,0) scale(.6)' }, { transform: 'translate(0,0) scale(1)', offset: .15 }, { transform: `translate(${tx - sx}px,${ty - sy}px) scale(1)` }], { duration: 400, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
+          chip.animate([{ transform: 'translate(0,0) scale(.6)' }, { transform: 'translate(0,0) scale(1)', offset: .15 }, { transform: `translate(${tx - sx}px,${ty - sy}px) scale(1)` }], { duration: 400 * FK, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' });
           later(400, () => outer.remove());
         });
         const dFrom = prev.cells[t].o === p ? prev.cells[t].n : 0;
@@ -341,7 +342,10 @@
         panelTween(pl, k, A[k], B[k], panelT, 60);
       }
     }
-    fxUntil = Date.now() + end + 300;
+    end = Math.max(end, 1150);   // אנימציות קצרות (+N, טבעת) צריכות זמן להיראות
+    fxUntil = Date.now() + end * FK * (window.__fxScale || 1) + 300;
+    // התור של המחשב (אם כבר נקבע) מחכה לסיום האנימציה
+    if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; scheduleAi(); }
     // לוודא שהכל נוקה בסוף
     later(end + 200, () => { if (g.parentNode) g.remove(); });
   }
