@@ -17,15 +17,15 @@
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
   const GEO = {
     6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
-    8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 7, FS: 17 },
+    8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 8, FS: 17 },
   };
-  const BRIDGE_GAP = 9;   // רווח בין קצה הגשר לעיגול
+  const BRIDGE_LEN = 30;   // אורך הגשר: זהה בכל גודל לוח (ביחס לעיגול), ממורכז בין שני העיגולים
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
     ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
     W = 2 * M + n * P + (n / 2 - 1) * G;
-    const len = P + G - 2 * (CR + BRIDGE_GAP), th = 16, tw = Math.max(3.5, Math.min(9, th * BR / len));
+    const len = BRIDGE_LEN, th = 16, tw = Math.max(3.5, Math.min(9, th * BR / len));
     document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
     document.documentElement.style.setProperty('--tick-h', th + 'px');
     memo = { state: null, play: null, opts: new Map() };
@@ -294,7 +294,7 @@
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
-      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + BRIDGE_GAP;
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = (len - BRIDGE_LEN) / 2;
       h += `<line class="bridge" style="stroke-width:${BR}" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
     // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. רק בסיס מודגש מרחף בהיסט; אצל משבצת ריקה מודגשת
