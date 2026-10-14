@@ -211,7 +211,7 @@
   function startMove(from, to) {
     const plan = planFor(from, to);
     if (!plan) { render(); return; }
-    openSheet({ kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max, build: (n) => actionFromPlan(plan, n) });
+    openSheet({ kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max > 1 ? plan.max - 1 : plan.max, build: (n) => actionFromPlan(plan, n) });
   }
 
   // ---------- יריב מחשב ----------
