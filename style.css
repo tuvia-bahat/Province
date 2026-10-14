@@ -53,7 +53,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .prov i.on { background: var(--c); }
 .pl .prov.many { gap: 3px; }
 .pl .prov.many i { width: 11px; height: 11px; border-radius: 3px; }
-.pl .sbar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--cell); }
+.pl .sbar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: transparent; }
 .pl .sbar i { display: block; height: 100%; transition: width .3s; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
