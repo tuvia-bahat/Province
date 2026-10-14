@@ -361,11 +361,8 @@
     }
   }
 
-  const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8], 7: [0, 2, 3, 4, 5, 6, 8], 8: [0, 1, 2, 3, 5, 6, 7, 8] };
   function dieHtml(n, label, cls) {
-    let cells = '';
-    for (let i = 0; i < 9; i++) cells += `<i${PIPS[n].includes(i) ? ' class="on"' : ''}></i>`;
-    return `<div class="die-wrap${cls.old ? ' old' : ''}"><div class="die${cls.roll ? ' roll' : ''}">${cells}</div><small>${label}</small></div>`;
+    return `<div class="die-wrap${cls.old ? ' old' : ''}"><div class="die${cls.roll ? ' roll' : ''}">${n}</div><small>${label}</small></div>`;
   }
   function renderDice() {
     const box = $('dice');

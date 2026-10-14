@@ -93,11 +93,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
 .die {
-  width: 40px; height: 40px; border-radius: 11px; background: var(--die); padding: 7px;
-  display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); transition: opacity .3s;
+  width: 44px; height: 44px; border-radius: 12px; background: var(--die); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; transition: opacity .3s;
 }
-.die i { border-radius: 50%; background: transparent; margin: 1px; }
-.die i.on { background: #fff; }
 .die.roll { animation: tumble .5s cubic-bezier(.2, .8, .3, 1); }
 .die-wrap.old { opacity: .35; }
 @keyframes tumble { 0% { transform: rotate(-160deg) scale(.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
