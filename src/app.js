@@ -279,8 +279,10 @@
       const el = svg.querySelector(`line[data-key="${key}"]`);
       if (!el) return 0;
       const len = el.getTotalLength ? el.getTotalLength() : 40;
-      el.animate([{ strokeDasharray: len, strokeDashoffset: len }, { strokeDasharray: len, strokeDashoffset: 0 }], { duration: 360 * FK, easing: 'ease-out' });
-      return 380;
+      // הקו מצויר מהקצה של המשבצת הנמוכה; אם הגשר נבנה מהצד השני – מציירים בכיוון ההפוך
+      const from0 = Math.min(from, to) === from ? len : -len;
+      el.animate([{ strokeDasharray: len, strokeDashoffset: from0 }, { strokeDasharray: len, strokeDashoffset: 0 }], { duration: 200 * FK, easing: 'ease-out' });
+      return 220;
     };
 
     const n = a.count | 0;
@@ -298,7 +300,7 @@
       end = cellTween(c, p, prev.cells[c].n, next.cells[c].o === p ? next.cells[c].n : 0, 150, 90);
     } else if (a.type === 'bridge') {
       end = Math.max(bridgeIn(a.from, a.to), 300);
-      ring(a.from, 0); ring(a.to, 120);
+      ring(a.from, 0); ring(a.to, 200);
     } else {
       const f = a.from, t = a.to, tB = bridgeIn(f, t);
       const sx = cellX(f), sy = cellY(f), tx = cellX(t), ty = cellY(t);
@@ -308,11 +310,25 @@
         // קו בצבע השחקן נמתח מהמקור ליעד, עם מספר החיילים באמצעו; המספרים מתעדכנים בהדרגה
         const e1 = cellTween(f, p, prev.cells[f].n, next.cells[f].o === p ? next.cells[f].n : 0, tB + 100, 90);
         later(tB, () => {
-          const ln = mk(g, 'line', { x1: sx, y1: sy, x2: tx, y2: ty, stroke: col, 'stroke-width': 6, 'stroke-linecap': 'round', opacity: .55 });
-          ln.animate([{ strokeDasharray: dl, strokeDashoffset: dl }, { strokeDasharray: dl, strokeDashoffset: 0 }], { duration: 450 * FK, easing: 'ease-out', fill: 'forwards' });
-          const lb = mk(g, 'text', { x: (sx + tx) / 2, y: (sy + ty) / 2 - 8, 'text-anchor': 'middle', fill: col, style: 'font:700 17px var(--font);' + HALO });
+          // חץ מעוקל דק בצבע השחקן, עם ראש חץ, ומספר החיילים לידו
+          let nx = -(ty - sy) / dl, ny = (tx - sx) / dl;
+          if (nx * (W / 2 - (sx + tx) / 2) + ny * (W / 2 - (sy + ty) / 2) < 0) { nx = -nx; ny = -ny; }
+          const e0 = CR - 2, x1 = sx + nx * e0, y1 = sy + ny * e0, x2 = tx + nx * e0, y2 = ty + ny * e0;
+          const cxp = (sx + tx) / 2 + nx * (CR + 30), cyp = (sy + ty) / 2 + ny * (CR + 30);   // קשת "קפיצה" מעל הזוג
+          const d = `M${x1} ${y1} Q${cxp} ${cyp} ${x2} ${y2}`, plen0 = 120;
+          const halo = mk(g, 'path', { d, fill: 'none', stroke: '#fff', 'stroke-width': 8, 'stroke-linecap': 'round', opacity: .85 });
+          const path = mk(g, 'path', { d, fill: 'none', stroke: col, 'stroke-width': 3.5, 'stroke-linecap': 'round' });
+          const plen = path.getTotalLength() || plen0;
+          for (const e of [halo, path]) e.animate([{ strokeDasharray: plen, strokeDashoffset: plen }, { strokeDasharray: plen, strokeDashoffset: 0 }], { duration: 450 * FK, easing: 'ease-out', fill: 'forwards' });
+          // ראש חץ בקצה הקשת
+          const ax = x2 - cxp, ay = y2 - cyp, al = Math.hypot(ax, ay) || 1, dx = ax / al, dy = ay / al;
+          const hd = `M${x2 - dx * 10 - dy * 7} ${y2 - dy * 10 + dx * 7} L${x2 + dx * 2} ${y2 + dy * 2} L${x2 - dx * 10 + dy * 7} ${y2 - dy * 10 - dx * 7}`;
+          const headH = mk(g, 'path', { d: hd, fill: 'none', stroke: '#fff', 'stroke-width': 8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0 });
+          const head = mk(g, 'path', { d: hd, fill: 'none', stroke: col, 'stroke-width': 3.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0 });
+          for (const e of [headH, head]) e.animate([{ opacity: 0 }, { opacity: 0, offset: .85 }, { opacity: e === headH ? .85 : 1 }], { duration: 450 * FK, fill: 'forwards' });
+          const lb = mk(g, 'text', { x: (x1 + 2 * cxp + x2) / 4 + nx * 14, y: (y1 + 2 * cyp + y2) / 4 + ny * 14 + 6, 'text-anchor': 'middle', fill: col, style: 'font:700 17px var(--font);' + HALO });
           lb.textContent = n; bump(lb, .4, 320);
-          later(1000, () => { ln.animate([{ opacity: .55 }, { opacity: 0 }], { duration: 400 * FK, fill: 'forwards' }); lb.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400 * FK, fill: 'forwards' }); });
+          later(1000, () => { [halo, path, headH, head, lb].forEach((e) => e.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400 * FK, fill: 'forwards' })); });
         });
         const dFrom = prev.cells[t].o === p ? prev.cells[t].n : 0;
         end = Math.max(e1, cellTween(t, p, dFrom, next.cells[t].n, tB + 450, 90));
@@ -361,7 +377,7 @@
         panelTween(pl, k, A[k], B[k], panelT, 60);
       }
     }
-    end = Math.max(end, 1150);   // אנימציות קצרות צריכות זמן להיראות
+    end = Math.max(end, a.type === 'bridge' ? 700 : 1150);   // אנימציות קצרות צריכות זמן להיראות
     fxUntil = Date.now() + end * FK * (window.__fxScale || 1) + 300;
     // התור של המחשב (אם כבר נקבע) מחכה לסיום האנימציה
     if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; scheduleAi(); }
