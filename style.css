@@ -32,34 +32,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 /* ---------- שחקנים ---------- */
-.pl { display: flex; flex-direction: column; gap: 9px; padding: 8px 2px; border: 0 solid transparent; opacity: .62; transition: opacity .25s, border-color .25s; }
+.pl { display: flex; flex-direction: column; gap: 7px; padding: 8px 2px; border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
 #pl1 { border-bottom-width: 2px; }
 #pl0 { border-top-width: 2px; }
 #pl1.active { border-bottom-color: var(--c); }
 #pl0.active { border-top-color: var(--c); }
 .pl.active { opacity: 1; }
-.pl .head { display: flex; align-items: center; gap: 9px; }
+.pl .head { display: flex; align-items: center; gap: 9px; margin-bottom: 2px; }
 .pl .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
 .pl .nm { font-weight: 600; font-size: 16px; letter-spacing: .01em; }
 .pl .tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.pl .prov { display: flex; gap: 5px; margin-inline-start: auto; }
+.pl .line { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; min-height: 22px; }
+.pl .lab { font-size: 12px; color: var(--muted); }
+.pl .num { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.pl .num small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.pl .prov { display: flex; gap: 5px; }
 .pl .prov i { width: 15px; height: 15px; border-radius: 4px; background: var(--cell); transition: background .25s; }
 .pl .prov i.on { background: var(--c); }
 .pl .prov.many { gap: 3px; }
 .pl .prov.many i { width: 12px; height: 12px; border-radius: 3px; }
-.pl .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-.pl .stat { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.pl .stat .num { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 20px; text-align: right; }
-.pl .ico { flex: none; width: 12px; height: 12px; display: grid; place-items: center; }
-.pl .ico.s::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
-.pl .ico.b::before { content: ""; width: 12px; height: 6px; border-radius: 3px; background: var(--c); }
-.pl .sbar { flex: 1; min-width: 0; height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--cell); }
+.pl .sbar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: var(--cell); }
 .pl .sbar i { display: block; height: 100%; transition: width .3s; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
 .pl .sbar .l { background: #cdd1d8; }
-.pl .ticks { flex: 1; min-width: 0; display: flex; gap: 3px; }
-.pl .ticks i { flex: 1; height: 8px; border-radius: 3px; background: var(--cell); transition: background .25s; }
+.pl .ticks { display: flex; gap: 4px; align-items: center; }
+.pl .ticks i { width: var(--tick-w, 5px); height: var(--tick-h, 22px); border-radius: 999px; background: var(--cell); flex: none; transition: background .25s; }
 .pl .ticks i.on { background: var(--c); }
 
 /* ---------- לוח ---------- */

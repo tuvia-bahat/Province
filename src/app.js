@@ -19,11 +19,15 @@
     6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
     8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 7, FS: 17 },
   };
+  const BRIDGE_GAP = 7;   // רווח בין קצה הגשר לעיגול
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
     ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
     W = 2 * M + n * P + (n / 2 - 1) * G;
+    const len = P + G - 2 * (CR + BRIDGE_GAP), th = 22, tw = Math.max(4, Math.min(9, th * BR / len));
+    document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
+    document.documentElement.style.setProperty('--tick-h', th + 'px');
     memo = { state: null, play: null, opts: new Map() };
   }
   const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
@@ -290,7 +294,7 @@
     for (const key in state.bridges) {
       const [a, b] = key.split('-').map(Number);
       const ax = cellX(a), ay = cellY(a), bx = cellX(b), by = cellY(b);
-      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + P * 0.23;
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len, off = CR + BRIDGE_GAP;
       h += `<line class="bridge" style="stroke-width:${BR}" x1="${ax + ux * off}" y1="${ay + uy * off}" x2="${bx - ux * off}" y2="${by - uy * off}" stroke="${COLORS[state.bridges[key]]}"/>`;
     }
     // משבצות: עיגול אפור קבוע, ומעליו (אם יש בסיס) עיגול הבסיס. רק בסיס מודגש מרחף בהיסט; אצל משבצת ריקה מודגשת
@@ -344,11 +348,10 @@
       const w = (n) => (100 * n / tot).toFixed(2) + '%';
       let ticks = '';
       for (let i = 0; i < R.BRIDGES; i++) ticks += `<i class="${i < state.bridgesLeft[p] ? 'on' : ''}"></i>`;
-      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span><span class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}" title="Provinces">${prov}</span></div>
-        <div class="stats">
-          <div class="stat" title="Soldiers: reserve ${reserve}, on board ${onB}, lost ${lost}"><span class="ico s"></span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i><i class="l" style="width:${w(lost)}"></i></div><span class="num">${reserve}</span></div>
-          <div class="stat" title="Bridges left"><span class="ico b"></span><div class="ticks">${ticks}</div><span class="num">${state.bridgesLeft[p]}</span></div>
-        </div>`;
+      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
+        <div class="line"><span class="lab">Provinces</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div><span class="num">${held}/${R.WIN_PROVINCES}</span></div>
+        <div class="line" title="On board ${onB} · Lost ${lost}"><span class="lab">Soldiers</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i><i class="l" style="width:${w(lost)}"></i></div><span class="num">${reserve}<small> reserve</small></span></div>
+        <div class="line"><span class="lab">Bridges</span><div class="ticks">${ticks}</div><span class="num">${state.bridgesLeft[p]}<small> left</small></span></div>`;
     }
   }
 
