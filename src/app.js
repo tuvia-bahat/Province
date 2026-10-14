@@ -349,8 +349,9 @@
       for (let i = 0; i < R.BRIDGES; i++) ticks += `<i class="${i < state.bridgesLeft[p] ? 'on' : ''}"></i>`;
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
         <div class="line"><span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
-        <div class="line" title="On board ${onB} · Lost ${lost}"><span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i><i class="l" style="width:${w(lost)}"></i></div></div>
-        <div class="line"><span class="num">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>`;
+        <div class="line" title="On board ${onB} · Lost ${lost}"><span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
+        <div class="line"><span class="num">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
+        <div class="line"><span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div>`;
     }
   }
 
