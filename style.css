@@ -90,7 +90,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- דוק ---------- */
-#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; flex: none; height: var(--dock-h); padding: 0; }
+#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; flex: none; height: var(--dock-h); padding: 0; }
 #dice { display: flex; gap: 14px; justify-content: center; direction: ltr; }
 .die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
@@ -108,6 +108,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #msg { text-align: center; font-size: 15px; line-height: 1.3; color: var(--ink); }
 #msg:empty { display: none; }
 #msg .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+#controls .btn { min-height: 40px; padding: 8px 22px; font-size: 14px; }
 #controls { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 #controls .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; width: 100%; }
 
