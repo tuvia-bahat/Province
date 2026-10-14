@@ -19,7 +19,7 @@
     6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
     8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 7, FS: 17 },
   };
-  const BRIDGE_GAP = 7;   // רווח בין קצה הגשר לעיגול
+  const BRIDGE_GAP = 9;   // רווח בין קצה הגשר לעיגול
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
@@ -316,7 +316,7 @@
       } else if (rolled.includes(i)) {
         // משבצת שאי אפשר לשחק בה: טבעת מקווקוו באפור
         const playable = R.actionTypes(state, i).length > 0;
-        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#111'}"/>`;
+        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : COLORS[1 - state.turn]}"/>`;
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
       if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
