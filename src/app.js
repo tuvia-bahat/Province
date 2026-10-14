@@ -279,7 +279,7 @@
       else if (opts) lit = i === ui.sel || opts.has(i);
       else lit = play.has(i);
       // גרירה: רק הבסיס שנבחר מרחף; בסיסים ביעדים נשארים במקום והמשבצת שלהם מתכהה. אחרת: בסיס מודגש מרחף
-      const dragging = !sheet && !!opts, isDest = dragging && i !== ui.sel;
+      const dragging = !sheet && !!opts, isDest = dragging && i !== ui.sel && opts.has(i);
       const floating = lit && c.o !== null && !isDest;
       const ty = floating ? y - LIFT : y;
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
