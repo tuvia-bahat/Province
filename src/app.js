@@ -337,16 +337,18 @@
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
       const tag = settings.mode === 'watch' ? 'CPU' : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
-      let pips = '';
-      for (let k = 0; k < R.WIN_PROVINCES; k++) pips += `<span class="pip${k < held ? ' on' : ''}"></span>`;
-      // חיילים: פס אחד – מחנה (צבע מלא), על הלוח (גוון בהיר), אבודים (אפור)
+      let prov = '';
+      for (let k = 0; k < R.WIN_PROVINCES; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
+      // חיילים: פס אחד – מחנה (צבע מלא), על הלוח (גוון בהיר), אבודים (אפור בהיר)
       const tot = R.SOLDIERS, reserve = R.camp(state, p), lost = state.graveyard[p], onB = tot - reserve - lost;
       const w = (n) => (100 * n / tot).toFixed(2) + '%';
-      let bars = '';
-      for (let i = 0; i < R.BRIDGES; i++) bars += `<b class="bb${i < state.bridgesLeft[p] ? ' on' : ''}"></b>`;
-      el.innerHTML = `<div class="top"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span><span class="pips${R.WIN_PROVINCES > 5 ? ' many' : ''}">${pips}</span></div>
-        <div class="vrow" title="Soldiers: reserve ${reserve}, on board ${onB}, lost ${lost}"><span class="ico dot"></span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i><i class="l" style="width:${w(lost)}"></i></div><span class="num">${reserve}</span></div>
-        <div class="vrow" title="Bridges left: ${state.bridgesLeft[p]}"><span class="ico bar"></span><div class="bridges">${bars}</div><span class="num">${state.bridgesLeft[p]}</span></div>`;
+      let ticks = '';
+      for (let i = 0; i < R.BRIDGES; i++) ticks += `<i class="${i < state.bridgesLeft[p] ? 'on' : ''}"></i>`;
+      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span><span class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}" title="Provinces">${prov}</span></div>
+        <div class="stats">
+          <div class="stat" title="Soldiers: reserve ${reserve}, on board ${onB}, lost ${lost}"><span class="ico s"></span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i><i class="l" style="width:${w(lost)}"></i></div><span class="num">${reserve}</span></div>
+          <div class="stat" title="Bridges left"><span class="ico b"></span><div class="ticks">${ticks}</div><span class="num">${state.bridgesLeft[p]}</span></div>
+        </div>`;
     }
   }
 
