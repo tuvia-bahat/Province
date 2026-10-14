@@ -17,7 +17,7 @@
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
   const GEO = {
     6: { P: 64, G: 34, M: 24, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
-    8: { P: 56, G: 30, M: 22, CR: 19, LIFT: 9, RIVER_W: 11, BR: 7, FS: 16 },
+    8: { P: 56, G: 22, M: 12, CR: 21, LIFT: 9, RIVER_W: 9, BR: 7, FS: 17 },
   };
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
@@ -40,7 +40,7 @@
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
-  const SPEED_LABEL = { slow: 'איטית', normal: 'רגילה', fast: 'מהירה' };
+  const SPEED_LABEL = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
   const isAiTurn = () => state.winner === null &&
     (settings.mode === 'watch' || (settings.mode === 'ai' && state.turn !== settings.human));
   const aiLevel = () => (settings.mode === 'watch' ? (state.turn === 0 ? settings.levelR : settings.levelB) : settings.level);
@@ -88,14 +88,10 @@
   function testHaptic() {
     const out = $('hapticMsg');
     if (typeof navigator.vibrate !== 'function') {
-      out.textContent = /iP(hone|ad)/.test(navigator.userAgent)
-        ? 'באייפון הרטט מוגבל: עובד רק בגרסאות חדשות של Safari.'
-        : 'הדפדפן הזה לא תומך ברטט.';
+      out.textContent = /iP(hone|ad)/.test(navigator.userAgent) ? 'Vibration is limited on iPhone.' : 'Vibration is not supported.';
       haptic('confirm'); return;
     }
-    const ok = navigator.vibrate([120, 60, 120]);
-    out.textContent = ok ? 'נשלח רטט. אם לא הרגשת: ודא שהרטט מופעל בהגדרות הטלפון ושהאתר פתוח ישירות ב-Chrome.'
-      : 'הדפדפן חסם את הרטט (לרוב כי הדף פתוח בתוך חלון או אפליקציה אחרת). פתח את הקישור ישירות ב-Chrome.';
+    out.textContent = navigator.vibrate([120, 60, 120]) ? 'Vibration sent.' : 'Vibration blocked. Open the page directly in Chrome.';
   }
 
   // ---------- חישובי אפשרויות ----------
@@ -256,8 +252,6 @@
     for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
     $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
     $('grpWatchWrap').hidden = pending.mode !== 'watch';
-    const Rb = window.Rules.forSize(+pending.board);
-    $('ruleNote').textContent = `פרובינציה בשליטתך היא חלק מהטריטוריה, והניצחון הוא ${Rb.WIN_PROVINCES} פרובינציות מחוברות. ${Rb.SIZE === 8 ? `לוח גדול: ${Rb.NPROV} פרובינציות, ${Rb.SOLDIERS} חיילים ו-${Rb.BRIDGES} גשרים לכל שחקן.` : ''}${Rb.SIZE === 8 && pending.mode !== 'pvp' && !window.AI.forSize(8).trained ? ' המחשב בלוח הגדול עדיין באימון ולכן חלש יותר.' : ''}`;
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false;
@@ -318,9 +312,12 @@
       } else if (rolled.includes(i)) {
         // משבצת שאי אפשר לשחק בה: טבעת מקווקוו באפור
         const playable = R.actionTypes(state, i).length > 0;
-        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#b4b9c2'}"/>`;
+        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${playable ? turnColor : '#111'}"/>`;
       }
-      if (c.o !== null) h += `<circle class="base p${c.o}${floating ? ' float' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
+      if (c.o !== null) {
+        h += `<circle class="base p${c.o}" cx="${x}" cy="${ty}" r="${CR}"/><text class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
+        if (floating) h += `<circle class="ring-float" cx="${x}" cy="${ty}" r="${CR + 3.5}"/>`;
+      }
     }
     if (lastMove) {
       const la = lastMove.a;
@@ -338,12 +335,12 @@
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
-      const tag = settings.mode === 'watch' ? 'מחשב' : settings.mode === 'ai' ? (p === settings.human ? 'אתה' : 'מחשב') : '';
+      const tag = settings.mode === 'watch' ? 'CPU' : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let pips = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) pips += `<span class="pip${k < held ? ' on' : ''}"></span>`;
-      el.innerHTML = `<div class="top"><span class="swatch"></span><span>${NAME[p]}</span><span class="tag">${tag}</span><span class="pips${R.WIN_PROVINCES > 5 ? ' many' : ''}" title="פרובינציות">${pips}</span></div>
-        <div class="meta">מחנה ${R.camp(state, p)} · קברות ${state.graveyard[p]} · גשרים ${state.bridgesLeft[p]}</div><div class="under"></div>`;
+      el.innerHTML = `<div class="top"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span><span class="pips${R.WIN_PROVINCES > 5 ? ' many' : ''}">${pips}</span></div>
+        <div class="meta">Reserve ${R.camp(state, p)} · Lost ${state.graveyard[p]} · Bridges ${state.bridgesLeft[p]}</div>`;
     }
   }
 
@@ -356,7 +353,7 @@
   function renderDice() {
     const box = $('dice');
     const info = state.roll || lastRoll;
-    if (!info) { box.innerHTML = '<span class="dice-empty">הקוביות עדיין לא הוטלו</span>'; return; }
+    if (!info) { box.innerHTML = ''; return; }
     const cls = { roll: ui.rolled, old: !state.roll };
     box.innerHTML = dieHtml(info.w, 'X', cls) + dieHtml(info.b, 'Y', cls);
     ui.rolled = false;
@@ -369,19 +366,19 @@
     if (sh.kind === 'adjust') {
       if (sh.mode === 'add') {
         const own = state.cells[sh.cell].o === p;
-        return { title: `${own ? 'תגבור' : 'הנחתה'} ב-${lbl(sh.cell)}`, note: `נותרו במחנה ${R.camp(state, p) - n}` };
+        return { title: `${own ? 'Reinforce' : 'Land'} ${lbl(sh.cell)}`, note: `${R.camp(state, p) - n} left in reserve` };
       }
-      return { title: `נסיגה מ-${lbl(sh.cell)} למחנה`, note: `${state.cells[sh.cell].n - n} יישארו בבסיס` };
+      return { title: `Withdraw from ${lbl(sh.cell)}`, note: `${state.cells[sh.cell].n - n} stay` };
     }
     const pl = sh.plan, tg = n === 0 ? pl.bridge.tg : pl.tgt;
-    const bridge = tg.cross === 'place' ? `גשר חדש (נותרו ${state.bridgesLeft[p] - 1})` : tg.cross === 'replace' ? 'החלפת גשר היריב' : '';
-    if (n === 0) return { title: `הנחת גשר אל ${lbl(sh.to)}`, note: bridge };
+    const bridge = tg.cross === 'place' ? `New bridge (${state.bridgesLeft[p] - 1} left)` : tg.cross === 'replace' ? 'Replaces enemy bridge' : '';
+    if (n === 0) return { title: `Bridge to ${lbl(sh.to)}`, note: bridge };
     if (pl.tgt.kind === 'attack') {
       const d = state.cells[sh.to].n, k = Math.min(n, d);
-      const out = n > d ? `${n - d} יישארו וישלטו` : n === d ? 'המשבצת תתרוקן' : `יישארו ${d - n} מגינים`;
-      return { title: `התקפה על ${lbl(sh.to)}`, note: `${n} מול ${d} · ${k} יהרגו · ${out}` + (bridge ? ` · ${bridge}` : '') };
+      const out = n > d ? `${n - d} take the cell` : n === d ? 'cell cleared' : `${d - n} defenders left`;
+      return { title: `Attack ${lbl(sh.to)}`, note: `${n} vs ${d} · ${k} killed · ${out}` + (bridge ? ` · ${bridge}` : '') };
     }
-    return { title: `${pl.type === 'transport' ? 'שינוע' : 'תנועה'} אל ${lbl(sh.to)}`, note: bridge };
+    return { title: `${pl.type === 'transport' ? 'Transport' : 'Move'} to ${lbl(sh.to)}`, note: bridge };
   }
 
   function renderDock() {
@@ -394,27 +391,26 @@
       const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = text; b.onclick = fn; parent.appendChild(b); return b;
     };
     const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
-    const lastLog = state.log.length ? `<span class="sub">${state.log[state.log.length - 1]}</span>` : '';
 
     if (state.winner !== null) {
-      msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${NAME[state.winner]}</b> ניצח`;
-      addBtn(row(), 'משחק חדש', 'wide', openNew);
+      msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${NAME[state.winner]}</b> wins`;
+      addBtn(row(), 'New game', 'wide', openNew);
       return;
     }
     if (isAiTurn()) {
-      const doing = paused ? 'מושהה' : state.roll ? 'חושב…' : 'מטיל קוביות…';
-      msg.innerHTML = `${name} · ${doing}${lastLog}`;
+      const doing = paused ? 'Paused' : state.roll ? 'Thinking…' : 'Rolling…';
+      msg.innerHTML = `${name} · ${doing}`;
       return;
     }
     const ph = phase();
     if (ph === 'roll') {
-      msg.innerHTML = `תור ${name}${lastLog}`;
-      addBtn(row(), 'הטל קוביות', 'wide', doRoll);
+      msg.innerHTML = '';
+      addBtn(row(), 'Roll dice', 'wide', doRoll);
       return;
     }
     if (ph === 'skip') {
-      msg.innerHTML = `${name} · אין מהלך אפשרי<span class="sub">התור עובר ליריב</span>`;
-      addBtn(row(), 'המשך', 'wide', doSkip);
+      msg.innerHTML = `${name} · No moves`;
+      addBtn(row(), 'Continue', 'wide', doSkip);
       return;
     }
 
@@ -424,13 +420,13 @@
       sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
       msg.innerHTML = '';
       const box = document.createElement('div'); box.className = 'sheet' + (sh.min === sh.max ? ' fixed' : '');
-      const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'תגבור' : 'הנחתה';
+      const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'Reinforce' : 'Land';
       const toggle = sh.modes && sh.modes.length > 1
-        ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'נסיגה'}</button>`).join('')}</div>` : '';
+        ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'Withdraw'}</button>`).join('')}</div>` : '';
       box.innerHTML = `${toggle}<div class="title" id="shTitle"></div>
-        <div class="stepper"><button class="pm" id="minus" aria-label="פחות">−</button><div class="num" id="shNum"></div><button class="pm" id="plus" aria-label="יותר">+</button></div>
-        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="כמות חיילים">
-        <div class="quick"><button class="btn soft sm" id="qmin">${sh.min === 0 ? 'גשר בלבד' : '1'}</button><button class="btn soft sm" id="qhalf">חצי</button><button class="btn soft sm" id="qall">הכל</button></div>
+        <div class="stepper"><button class="pm" id="minus" aria-label="Less">−</button><div class="num" id="shNum"></div><button class="pm" id="plus" aria-label="More">+</button></div>
+        <input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers">
+        <div class="quick"><button class="btn soft sm" id="qmin">${sh.min === 0 ? 'Bridge only' : '1'}</button><button class="btn soft sm" id="qhalf">Half</button><button class="btn soft sm" id="qall">All</button></div>
         <div class="note" id="shNote"></div>`;
       ctl.appendChild(box);
       const rng = box.querySelector('#rng');
@@ -438,7 +434,7 @@
       const view = () => {
         const t = sheetText(sh);
         box.querySelector('#shTitle').textContent = t.title;
-        box.querySelector('#shNum').innerHTML = `${sh.count}${sh.count === 0 ? '<small>גשר בלבד</small>' : ''}`;
+        box.querySelector('#shNum').innerHTML = `${sh.count}${sh.count === 0 ? '<small>Bridge only</small>' : ''}`;
         box.querySelector('#shNote').textContent = t.note;
         rng.value = sh.count;
         rng.style.setProperty('--p', (sh.max === sh.min ? 100 : ((sh.count - sh.min) / (sh.max - sh.min)) * 100) + '%');
@@ -458,31 +454,32 @@
       if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); haptic('select'); renderDock(); };
       view();
       const r = row();
-      addBtn(r, 'ביטול', 'ghost', () => { ui.sheet = null; haptic('soft'); render(); });
-      addBtn(r, 'אישור', '', () => commit(sh.build(sh.count)));
+      addBtn(r, 'Cancel', 'ghost', () => { ui.sheet = null; haptic('soft'); render(); });
+      addBtn(r, 'Confirm', '', () => commit(sh.build(sh.count)));
       return;
     }
 
-    msg.innerHTML = `${name} · גרור בסיס מודגש ליעד<span class="sub">לחיצה קצרה: הוספה או משיכה של חיילים</span>`;
-    addBtn(row(), 'דלג על התור', 'ghost sm', doPass);
+    msg.innerHTML = '';
+    addBtn(row(), 'Pass', 'ghost sm', doPass);
   }
 
   function renderLog() {
-    $('logBox').innerHTML = state.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>אין עדיין מהלכים</div>';
+    $('logBox').innerHTML = state.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>No moves yet</div>';
   }
 
   function render() {
     renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog();
     const watch = settings.mode === 'watch';
-    $('undoBtn').textContent = watch ? (paused ? 'המשך' : 'השהה') : 'בטל מהלך';
+    $('undoBtn').textContent = watch ? (paused ? 'Resume' : 'Pause') : 'Undo';
     $('undoBtn').disabled = watch ? state.winner !== null : history.length === 0;
     $('speedBtn').hidden = !watch;
-    $('speedBtn').textContent = 'מהירות: ' + SPEED_LABEL[settings.speed];
+    $('speedBtn').textContent = 'Speed: ' + SPEED_LABEL[settings.speed];
     const o = $('overlay');
     if (state.winner !== null && !o.dataset.dismissed) {
       const w = state.winner;
-      const word = settings.mode === 'ai' ? (w === settings.human ? 'ניצחת' : 'המחשב ניצח') : 'ניצח';
-      $('winTitle').innerHTML = settings.mode === 'ai' ? `<span style="color:${COLORS[w]}">${word}</span>` : `<span style="color:${COLORS[w]}">${NAME[w]}</span> ${word}`;
+      $('winTitle').innerHTML = settings.mode === 'ai'
+        ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
+        : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();

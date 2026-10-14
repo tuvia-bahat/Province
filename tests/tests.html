@@ -9,6 +9,7 @@
 <h3>בדיקות לוגיקה</h3>
 <pre id="out"></pre>
 <script src="../src/rules.js"></script>
+<script src="../src/nn.js"></script>
 <script src="../src/ai.js"></script>
 <script>
 const R = window.Rules, out = document.getElementById('out');
@@ -124,7 +125,7 @@ test('התקפה: שווה משאיר משבצת ריקה', () => {
 });
 test('הוטל בסיס יריב צמוד לבסיס שלי (גם מעבר לנהר)', () => {
   const s = setup({ '1,0': [0, 3], '2,0': [1, 2] }, 0, [2, 0]);
-  eq(R.actionTypes(s, I(2, 0)), ['move']);
+  eq(R.actionTypes(s, I(2, 0)), ['move', 'bridge']);
   eq(R.sources(s, 'move', I(2, 0)), [I(1, 0)]);
 });
 test('הוטל בסיס יריב לא צמוד: אין מהלך', () => {
@@ -328,7 +329,7 @@ test('גרסה 2: פלישה קרקעית מבסיס צמוד דרך גשר', ()
   eq(R.actionTypes(s, I(4, 5)).includes('land'), false);
   // (3,5) שלי צמוד ל-(4,5) מעבר לנהר – תנועה אליו אפשרית (עם גשר חדש)
   const t = setup({ '3,5': [0, 3], '4,4': [1, 2] }, 0, [4, 5]);
-  eq(R.actionTypes(t, I(4, 5)), ['move']);
+  eq(R.actionTypes(t, I(4, 5)), ['move', 'bridge']);
   const u = R.apply(t, { type: 'move', R: I(4, 5), from: I(3, 5), to: I(4, 5), count: 2 });
   eq(u.cells[I(4, 5)], { o: 0, n: 2 }); eq(R.provinceControl(u)[8], null);   // הפרובינציה כבר לא בשליטת היריב
 }));
@@ -433,6 +434,17 @@ test('8×8: המחשב מחזיר פעולה חוקית', () => v2on(() => {
   }
 }));
 
+test('הוטלה משבצת מעבר לנהר: אפשר להניח גשר בלבד מבסיס צמוד', () => {
+  const s = setup({ '1,0': [0, 3] }, 0, [2, 0]);          // (2,0) ריקה מעבר לנהר, בסיס שלי ב-(1,0)
+  eq(R.actionTypes(s, I(2, 0)).includes('bridge'), true);
+  const t = R.apply(s, { type: 'bridge', R: I(2, 0), from: I(1, 0), to: I(2, 0), count: 0 });
+  eq(t.cells[I(1, 0)], { o: 0, n: 3 }); eq(t.cells[I(2, 0)], { o: null, n: 0 });
+  eq(t.bridges[R.bridgeKey(I(1, 0), I(2, 0))], 0); eq(t.bridgesLeft[0], 7);
+});
+test('גשר בלבד מבסיס צמוד: רק אל המשבצת שהוטלה', () => {
+  const s = setup({ '1,0': [0, 3] }, 0, [2, 0]);
+  eq(R.targets(s, 'bridge', I(2, 0), I(1, 0)).map((x) => x.to), [I(2, 0)]);
+});
 out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;
 document.title = `Province tests: ${pass} pass, ${fail} fail`;
 </script>

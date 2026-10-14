@@ -1,0 +1,57 @@
+<!doctype html><meta charset="utf-8"><title>nn_train</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/nn.js"></script><script src="../src/ai.js"></script>
+<script>
+/* יוצר נתוני משחק (מחשב נגד מחשב, ליגה מגוונת + חקירה), מאמן רשת נוירונים שמנבאת מי ינצח, ומשווה את הדיוק
+ * לפונקציית ההערכה הליניארית הנוכחית על אותם מצבים. פרמטרים: board, games, maxt, h1, h2, epochs, every. */
+Rules.OPTIONS.provinceTerritory = true; Rules.OPTIONS.winConnected = true;
+const q = new URLSearchParams(location.search);
+const BOARD = +(q.get('board') || 8), R = Rules.forSize(BOARD), A = AI.forSize(BOARD), FN = A.FN;
+const GAMES = +(q.get('games') || 500), MAXT = +(q.get('maxt') || 300), H1 = +(q.get('h1') || 96), H2 = +(q.get('h2') || 32);
+const EPOCHS = +(q.get('epochs') || 8), EVERY = +(q.get('every') || 3), EPS = +(q.get('eps') || 0.08);
+const full = (o) => { const d = {}; FN.forEach((k) => { d[k] = 0; }); return Object.assign(d, o); };
+const LEAGUE = [
+  full(A.DEFAULT_W),
+  full({ planCost: -60, planShort: -80, alive: 10, h1: 20, h2: 30, h3: 50, h4: 80, c2: 20, c3: 40, c4: 80, presence: 5, weakFront: -10, lead: 8, trail: -8, bridgeLeft: 10, over: -1 }),
+  full({ alive: 60, over: -1, h1: 10, h2: 20, h3: 30, h4: 50, presence: 4, lead: 6, trail: -6, weakFront: -25, planCost: -10, bridgeLeft: 8 }),
+  full({ h1: 15, h2: 30, h3: 50, h4: 80, h5: 120, c2: 40, c3: 80, c4: 160, c5: 300, presence: 5, strength: 1, lead: 8, trail: -8, alive: 8, over: -1, bridge: -4, bridgeLeft: 12, territory: 3, army: 2, terrProv: 30, frag: -4, secure: 6, weakFront: -10, blLow: -8, compCtl: -25, pp2: 3, pp3: 5 }),
+  full(AI.forSize(6).DEFAULT_W),
+];
+const NIN = A.NIN, CAP = Math.ceil(GAMES * 55 * (3 / EVERY));
+let X = new Float32Array(CAP * NIN), Y = new Float32Array(CAP), LIN = new Float32Array(CAP), n = 0;
+let done = 0, unfinished = 0, turns = 0, splitAt = -1;
+const VALGAMES = Math.max(1, Math.round(GAMES * 0.1));   // המשחקים האחרונים משמשים לבדיקה בלבד
+for (let g = 0; g < GAMES; g++) {
+  const w0 = LEAGUE[Math.random() * LEAGUE.length | 0], w1 = LEAGUE[Math.random() * LEAGUE.length | 0];
+  let s = R.newGame(), t = 0; const recs = [];
+  while (s.winner === null && t < MAXT) {
+    s = R.roll(s, 1 + Math.random() * R.SIZE | 0, 1 + Math.random() * R.SIZE | 0);
+    let a;
+    if (Math.random() < EPS) { const c = A.candidates(s, true); a = c[Math.random() * c.length | 0]; }
+    else a = A.chooseAction(s, 'greedy', s.turn === 0 ? w0 : w1);
+    s = a.type === 'pass' ? R.passTurn(s) : R.apply(s, a); t++;
+    if (s.winner === null && t >= 6 && t % EVERY === 0) {
+      const An = A.analyze(s);
+      recs.push([A.encode(s, 0, An), A.encode(s, 1, An), A.evaluate(s, 0)]);
+    }
+  }
+  turns += t;
+  if (s.winner === null) { unfinished++; continue; }
+  done++;
+  if (splitAt < 0 && g >= GAMES - VALGAMES) splitAt = n;
+  for (const [x0, x1, lin] of recs) {
+    if (n + 2 > CAP) break;
+    X.set(x0, n * NIN); Y[n] = s.winner === 0 ? 1 : 0; LIN[n] = lin; n++;
+    X.set(x1, n * NIN); Y[n] = s.winner === 1 ? 1 : 0; LIN[n] = -lin; n++;
+  }
+}
+console.log('data ' + JSON.stringify({ games: GAMES, done, unfinished, avgTurns: Math.round(turns / GAMES), samples: n }));
+// איזון: פיצול אקראי לאימון/בדיקה לפי סדר מעורבב (בתוך nn.train); משווים ליניארי על אותה קבוצת בדיקה
+const net = NN.init(NIN, H1, H2, 11);
+const Xn = X.subarray(0, n * NIN), Yn = Y.subarray(0, n);
+const res = NN.train(net, Xn, Yn, { epochs: EPOCHS, batch: 256, lr: 1e-3, l2: +(q.get('l2') || 1e-4), splitAt: splitAt > 0 ? splitAt : null, valFrac: 0.1, seed: 7,
+  onEpoch: (ep, tr, va) => ep < 0 ? console.log('best epoch ' + (-ep)) : console.log('epoch ' + ep + ' train ' + JSON.stringify(tr) + ' val ' + JSON.stringify(va)) });
+// דיוק ליניארי על אותה בדיקה: ממוצע על כל הדוגמאות (קירוב: סדר המשחקים לא ידוע לפיצול, לכן על כל הקבוצה)
+let linAcc = 0, linN = 0;
+for (let i = Math.max(0, splitAt); i < n; i++) { if (LIN[i] !== 0) { linAcc += (LIN[i] > 0) === (Y[i] > 0.5) ? 1 : 0; linN++; } }
+document.getElementById('o').textContent = 'RESULT ' + JSON.stringify({ games: GAMES, done, unfinished, samples: n, nin: NIN, h1: H1, h2: H2, val: res, linearAccAll: linAcc / Math.max(1, linN), net: NN.toJSON(net) });
+</script>

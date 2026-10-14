@@ -16,7 +16,7 @@
 
   // תצורות לוח: 6×6 (9 פרובינציות) ו-8×8 (16 פרובינציות, בלי שינוי בכללים)
   const CONFIGS = { 6: { SOLDIERS: 36, BRIDGES: 8, WIN: 5 }, 8: { SOLDIERS: 54, BRIDGES: 14, WIN: 8 } };
-  const NAMES = ['אדום', 'כחול'];
+  const NAMES = ['Red', 'Blue'];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
   // אפשרויות חוקים (לניסויים בלבד; ברירת המחדל = החוקים המקוריים ב-RULES.md)
@@ -201,7 +201,11 @@
         }
       }
     } else if (type === 'bridge') {
-      for (const n of neighbors(from)) {
+      const nodes = territoryNodes(s, p);
+      const inTerritory = nodes[R] === 1 && territory(s, R, p, nodes).includes(from);
+      // בסיס מהטריטוריה של המשבצת שהוטלה יכול להניח גשר לכל מעבר; בסיס צמוד אליה (מחוץ לטריטוריה) – רק אל המשבצת שהוטלה
+      const cand = inTerritory ? neighbors(from) : (neighbors(from).includes(R) ? [R] : []);
+      for (const n of cand) {
         if (!crossesRiver(from, n)) continue;
         const cr = crossing(s, p, from, n);
         if (cr && cr.kind !== 'none') out.push({ to: n, kind: 'bridge', cross: cr.kind });
@@ -218,8 +222,8 @@
     let base;
     if (nodes[R]) {   // המשבצת שהוטלה בטריטוריה שלי: מנדט לפעול מכל בסיס בטריטוריה
       base = territory(s, R, p, nodes).filter((i) => s.cells[i].o === p);
-      if (type === 'move') for (const n of neighbors(R)) if (s.cells[n].o === p && !base.includes(n)) base.push(n);
-    } else if (type === 'move') base = neighbors(R).filter((n) => s.cells[n].o === p);
+      if (type === 'move' || type === 'bridge') for (const n of neighbors(R)) if (s.cells[n].o === p && !base.includes(n)) base.push(n);
+    } else if (type === 'move' || type === 'bridge') base = neighbors(R).filter((n) => s.cells[n].o === p);
     else return [];
     if (type === 'withdraw') return base;
     return base.filter((b) => targets(s, type, R, b).length > 0);
@@ -257,7 +261,7 @@
     // בדיקה זולה קודם (מספר פרובינציות בשליטה), ורק אם מספיק – חישוב חיבור הטריטוריה
     if (provincesHeld(s, p) >= WIN_PROVINCES && winProgress(s, p) >= WIN_PROVINCES) {
       s.winner = p;
-      if (!fast) s.log.push(`${NAMES[p]} שולט ב-${winProgress(s, p)} פרובינציות${OPTIONS.provinceTerritory && OPTIONS.winConnected ? ' מחוברות' : ''} וניצח!`);
+      if (!fast) s.log.push(`${NAMES[p]} controls ${winProgress(s, p)} ${OPTIONS.provinceTerritory && OPTIONS.winConnected ? 'connected ' : ''}provinces and wins!`);
     } else {
       s.turn = 1 - p;
     }
@@ -266,7 +270,7 @@
 
   function skipTurn(s) {
     const ns = clone(s);
-    ns.log.push(`${NAMES[ns.turn]}: אין מהלך אפשרי, התור עובר`);
+    ns.log.push(`${NAMES[ns.turn]}: no legal move`);
     endTurn(ns);
     return ns;
   }
@@ -274,7 +278,7 @@
   // דילוג מרצון על התור (תמיד מותר, גם כשיש מהלכים חוקיים)
   function passTurn(s) {
     const ns = clone(s);
-    ns.log.push(`${NAMES[ns.turn]}: דילג על התור`);
+    ns.log.push(`${NAMES[ns.turn]}: passed`);
     endTurn(ns);
     return ns;
   }
@@ -311,14 +315,14 @@
       if (!fast && !landTargets(s, a.R).includes(to)) throw new Error('אי אפשר להנחית חיילים במשבצת הזו');
       if (count < 1 || count > camp(s, p)) throw new Error('מספר חיילים לא חוקי');
       cells[to].o = p; cells[to].n += count;
-      msg = `הנחית ${count} חיילים ב-${cellLabel(to, p)}`;
+      msg = `landed ${count} at ${cellLabel(to, p)}`;
     } else {
       if (!fast && !sources(s, a.type, a.R).includes(a.from)) throw new Error('בסיס מקור לא חוקי');
       const src = cells[a.from];
       if (a.type === 'withdraw') {
         if (count < 1 || count > src.n) throw new Error('מספר חיילים לא חוקי');
         src.n -= count;
-        msg = `משך ${count} חיילים מ-${cellLabel(a.from, p)} למחנה`;
+        msg = `withdrew ${count} from ${cellLabel(a.from, p)}`;
       } else {
         const t = (fast && a.tgt) || targets(s, a.type, a.R, a.from).find((x) => x.to === a.to);
         if (!t) throw new Error('יעד לא חוקי');
@@ -328,13 +332,13 @@
           ns.bridges[bridgeKey(a.from, a.to)] = p;
           ns.bridgesLeft[p] -= 1;
         }
-        const bridgeNote = t.cross === 'place' ? ' + גשר חדש' : t.cross === 'replace' ? ' + החלפת גשר יריב' : '';
+        const bridgeNote = t.cross === 'place' ? ' + new bridge' : t.cross === 'replace' ? ' + replaced enemy bridge' : '';
         const dst = cells[a.to];
 
         if (a.type === 'bridge') {
           msg = t.cross === 'replace'
-            ? `החלפת גשר יריב בין ${cellLabel(a.from, p)} ל-${cellLabel(a.to, p)}`
-            : `הנחת גשר בין ${cellLabel(a.from, p)} ל-${cellLabel(a.to, p)}`;
+            ? `replaced enemy bridge between ${cellLabel(a.from, p)} and ${cellLabel(a.to, p)}`
+            : `built a bridge between ${cellLabel(a.from, p)} and ${cellLabel(a.to, p)}`;
         } else if (t.kind === 'attack') {
           const def = dst.n, killed = Math.min(count, def);
           src.n -= count;
@@ -342,12 +346,12 @@
           if (count > def) { dst.o = p; dst.n = count - def; }
           else if (count === def) { dst.o = null; dst.n = 0; }
           else dst.n = def - count;
-          msg = `תקף מ-${cellLabel(a.from, p)} ל-${cellLabel(a.to, p)} עם ${count} חיילים: ${killed} נהרגו`
-            + (count > def ? `, ${count - def} כבשו את המשבצת` : count === def ? ', המשבצת התרוקנה' : '') + bridgeNote;
+          msg = `attacked ${cellLabel(a.from, p)} → ${cellLabel(a.to, p)} with ${count}: ${killed} killed`
+            + (count > def ? `, ${count - def} took the cell` : count === def ? ', cell cleared' : '') + bridgeNote;
         } else {
           src.n -= count;
           dst.o = p; dst.n += count;
-          msg = `${a.type === 'transport' ? 'שינע' : 'הזיז'} ${count} חיילים מ-${cellLabel(a.from, p)} ל-${cellLabel(a.to, p)}${bridgeNote}`;
+          msg = `${a.type === 'transport' ? 'transported' : 'moved'} ${count} ${cellLabel(a.from, p)} → ${cellLabel(a.to, p)}${bridgeNote}`;
         }
       }
       if (src.n === 0) src.o = null;

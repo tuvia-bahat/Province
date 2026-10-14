@@ -11,6 +11,7 @@
 (function (root) {
   'use strict';
   const RulesBase = root.Rules || require('./rules.js');
+  const NNm = root.NN || (typeof require !== 'undefined' ? require('./nn.js') : null);
   const WEIGHTS = {
     6: { h1: -4.03, h2: 48.3, h3: 44.21, h4: 57.46, h5: 104.03, c2: 16.1, c3: 13.09, c4: 80.2, c5: 0.0, presence: -0.96, strength: -1.17, lead: 11.09, trail: -11.09, alive: 18.46, camp: -0.34, over: -2.53, bridge: 1.33, bridgeLeft: 16.29, territory: 0.95, army: 4.76, terrProv: 36.61, frag: 12.96, secure: -5.67, bases: 2.23, lone: 3.49, weakFront: -15.77, blLow: 0, compCtl: 0 },
     8: { h1: -1.82, h2: -0.59, h3: 18.8, h4: 16.59, h5: 76.84, c2: 0.92, c3: 10.56, c4: 28.87, c5: 82.51, presence: 1.09, strength: 11.36, lead: 6.21, trail: -2.95, alive: 7.24, camp: -1.55, over: -1.73, bridge: 0.01, bridgeLeft: 7.12, territory: 0.97, army: 0.64, terrProv: 35.73, frag: -1.2, secure: -7.8, bases: -1.1, lone: 37.29, weakFront: -35.38, blLow: -1.0, compCtl: -3.16, pp2: 2.96, pp3: 3.25, planCost: -0.74, planShort: -9.56, conc: -0.64, expo: 1.89 },
@@ -153,7 +154,7 @@
       }
     }
     const pl = [plan(s, 0, ctl, cnt), plan(s, 1, ctl, cnt)];
-    return { cnt, held, comp, best, size, prog, compCtl, pl };
+    return { cnt, held, comp, best, size, prog, compCtl, pl, ctl };
   }
 
   function features(s, x, A) {
@@ -204,13 +205,53 @@
     return Array.from(a, (v, i) => v - b[i]);
   }
 
+  // ---------- הערכה ברשת נוירונים (אופציונלי) ----------
+  // קלט: הלוח כולו מנקודת מבטו של שחקן p ("אני") – חיילים, צמתי טריטוריה, גשרים, שליטה בפרובינציות וסקלרים.
+  const E_KEYS = [];
+  (() => { const seen = new Set(); for (let a = 0; a < R.CELLS; a++) for (const e of NEI[a]) if (e.cross && !seen.has(e.key)) { seen.add(e.key); E_KEYS.push(e.key); } })();
+  const NE = E_KEYS.length, NIN = 4 * R.CELLS + 2 * NE + 4 * NP + 13;
+  function encode(s, p, A) {
+    const x = new Float32Array(NIN), q = 1 - p, C = R.CELLS;
+    for (let i = 0; i < C; i++) {
+      const c = s.cells[i];
+      if (c.o === p) x[i] = Math.min(c.n, 12) / 12; else if (c.o === q) x[C + i] = Math.min(c.n, 12) / 12;
+      if (A.comp[p][i] >= 0) x[2 * C + i] = 1;
+      if (A.comp[q][i] >= 0) x[3 * C + i] = 1;
+    }
+    let o = 4 * C;
+    for (let e = 0; e < NE; e++) { const ow = s.bridges[E_KEYS[e]]; if (ow === p) x[o + e] = 1; else if (ow === q) x[o + NE + e] = 1; }
+    o += 2 * NE;
+    for (let k = 0; k < NP; k++) {
+      if (A.ctl[k] === p) x[o + k] = 1; else if (A.ctl[k] === q) x[o + NP + k] = 1;
+      x[o + 2 * NP + k] = Math.min(A.cnt[p][k], 12) / 12; x[o + 3 * NP + k] = Math.min(A.cnt[q][k], 12) / 12;
+    }
+    o += 4 * NP;
+    const sold = R.SOLDIERS, br = R.BRIDGES;
+    const camp = (z) => (sold - R.onBoard(s, z) - s.graveyard[z]) / sold;
+    x[o] = camp(p); x[o + 1] = camp(q);
+    x[o + 2] = s.bridgesLeft[p] / br; x[o + 3] = s.bridgesLeft[q] / br;
+    x[o + 4] = s.graveyard[p] / sold; x[o + 5] = s.graveyard[q] / sold;
+    x[o + 6] = A.prog[p] / TW; x[o + 7] = A.prog[q] / TW;
+    x[o + 8] = A.pl[p].cost / 10; x[o + 9] = A.pl[q].cost / 10;
+    x[o + 10] = A.pl[p].short / 4; x[o + 11] = A.pl[q].short / 4;
+    x[o + 12] = s.turn === p ? 1 : 0;
+    return x;
+  }
+  let NET = null, useNet = false, mixNet = 0;   // mixNet: משקל הרשת בשילוב עם ההערכה הליניארית (0..1)
+  const NET_SCALE = 150;   // יחידות של פונקציית ההערכה לכל יחידת לוגיט
+  function setNet(n) { NET = n ? (n.W1 instanceof Float32Array ? n : NNm.fromJSON(n)) : null; }
+  // ערך אנטי-סימטרי: ההפרש בין הלוגיט מנקודת מבטי ללוגיט מנקודת מבט היריב
+  function netValue(s, p, A) { return NET_SCALE * (NNm.forward(NET, encode(s, p, A)) - NNm.forward(NET, encode(s, 1 - p, A))) / 2; }
+
   // ערך המצב מנקודת מבטו של שחקן p (אנטי-סימטרי: evaluate(s,p) = -evaluate(s,1-p))
   function evaluate(s, p) {
     if (s.winner !== null) return s.winner === p ? WIN : -WIN;
     const A = analyze(s);
+    if (useNet) return netValue(s, p, A);
     const a = features(s, p, A), b = features(s, 1 - p, A);
     let v = 0;
     for (let i = 0; i < Wv.length; i++) v += Wv[i] * (a[i] - b[i]);
+    if (mixNet > 0) v = (1 - mixNet) * v + mixNet * netValue(s, p, A);
     return v;
   }
 
@@ -302,7 +343,10 @@
 
   /* מחזיר פעולה בפורמט של Rules.apply, או { type:'pass' }. */
   function chooseAction(s, level, weights) {
-    setWeights(weights);
+    mixNet = 0;
+    if (typeof weights === 'string' && weights.startsWith('mix') && NET) { mixNet = parseFloat(weights.slice(3)) || 0.5; weights = undefined; }
+    useNet = !!NET && (weights === 'net' || (weights === undefined && AIobj.preferNet && !mixNet));
+    if (!useNet) setWeights(weights === 'net' ? undefined : weights);
     const p = s.turn;
     const list = candidates(s, false).map((a) => {
       const ns = play(s, a);
@@ -335,7 +379,8 @@
     return best.a;
   }
 
-  return { evaluate, candidates, chooseAction, featureDiff, setWeights, FN, DEFAULT_W, R, trained: true };
+  const AIobj = { evaluate, candidates, chooseAction, featureDiff, setWeights, setNet, encode, analyze, NIN, FN, DEFAULT_W, R, trained: true, preferNet: false };
+  return AIobj;
   }
 
   // מופע אחד לכל גודל לוח (לכל גודל משקלים משלו)

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -12,12 +12,11 @@
 </head>
 <body>
 <div id="app">
-  <header id="hud">
-    <div class="pl" id="pl1"></div>
-    <div class="pl" id="pl0"></div>
-  </header>
+  <div class="pl" id="pl1"></div>
 
   <div id="boardWrap"><svg id="board" xmlns="http://www.w3.org/2000/svg"></svg></div>
+
+  <div class="pl" id="pl0"></div>
 
   <section id="dock">
     <div id="dice"></div>
@@ -26,46 +25,46 @@
   </section>
 
   <nav id="bar">
-    <button id="undoBtn" class="link">בטל מהלך</button>
-    <button id="speedBtn" class="link" hidden>מהירות</button>
-    <button id="logBtn" class="link">יומן</button>
-    <button id="newBtn" class="link">משחק חדש</button>
+    <button id="undoBtn" class="link">Undo</button>
+    <button id="speedBtn" class="link" hidden>Speed</button>
+    <button id="logBtn" class="link">Log</button>
+    <button id="newBtn" class="link">New game</button>
   </nav>
   <div id="logBox" hidden></div>
 </div>
 
 <div id="newModal" class="overlay" hidden>
   <div class="modal">
-    <h2>משחק חדש</h2>
+    <h2>New game</h2>
     <div class="seg" id="grpMode">
-      <button data-v="pvp">שני שחקנים</button>
-      <button data-v="ai">נגד המחשב</button>
-      <button data-v="watch">צפייה</button>
+      <button data-v="pvp">2 players</button>
+      <button data-v="ai">Vs computer</button>
+      <button data-v="watch">Watch</button>
     </div>
-    <div id="grpBoardWrap"><div class="lbl">גודל לוח</div>
+    <div id="grpBoardWrap">
+      <div class="lbl">Board</div>
       <div class="seg" id="grpBoard"><button data-v="6">6×6</button><button data-v="8">8×8</button></div>
     </div>
-    <div id="ruleNote" class="rule-note"></div>
     <div id="grpSideWrap">
-      <div class="lbl">אני משחק</div>
-      <div class="seg" id="grpSide"><button data-v="0">אדום · מתחיל</button><button data-v="1">כחול</button></div>
+      <div class="lbl">I play</div>
+      <div class="seg" id="grpSide"><button data-v="0">Red · first</button><button data-v="1">Blue</button></div>
     </div>
     <div id="grpLevelWrap">
-      <div class="lbl">רמת המחשב</div>
-      <div class="seg" id="grpLevel"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
+      <div class="lbl">Computer</div>
+      <div class="seg" id="grpLevel"><button data-v="easy">Easy</button><button data-v="strong">Strong</button></div>
     </div>
     <div id="grpWatchWrap">
-      <div class="lbl">רמת אדום</div>
-      <div class="seg" id="grpLevelR"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
-      <div class="lbl">רמת כחול</div>
-      <div class="seg" id="grpLevelB"><button data-v="easy">קל</button><button data-v="strong">חזק</button></div>
-      <div class="lbl">מהירות</div>
-      <div class="seg" id="grpSpeed"><button data-v="slow">איטית</button><button data-v="normal">רגילה</button><button data-v="fast">מהירה</button></div>
+      <div class="lbl">Red</div>
+      <div class="seg" id="grpLevelR"><button data-v="easy">Easy</button><button data-v="strong">Strong</button></div>
+      <div class="lbl">Blue</div>
+      <div class="seg" id="grpLevelB"><button data-v="easy">Easy</button><button data-v="strong">Strong</button></div>
+      <div class="lbl">Speed</div>
+      <div class="seg" id="grpSpeed"><button data-v="slow">Slow</button><button data-v="normal">Normal</button><button data-v="fast">Fast</button></div>
     </div>
-    <div class="haptic"><button id="hapticTest" class="link" type="button">בדיקת רטט</button><div id="hapticMsg"></div></div>
+    <div class="haptic"><button id="hapticTest" class="link" type="button">Test vibration</button><div id="hapticMsg"></div></div>
     <div class="modal-actions">
-      <button id="newCancel" class="btn ghost">ביטול</button>
-      <button id="newStart" class="btn">התחל</button>
+      <button id="newCancel" class="btn ghost">Cancel</button>
+      <button id="newStart" class="btn">Start</button>
     </div>
   </div>
 </div>
@@ -74,8 +73,8 @@
   <div class="modal">
     <h2 id="winTitle"></h2>
     <div class="modal-actions">
-      <button id="winClose" class="btn ghost">הצג את הלוח</button>
-      <button id="winNew" class="btn">משחק חדש</button>
+      <button id="winClose" class="btn ghost">View board</button>
+      <button id="winNew" class="btn">New game</button>
     </div>
   </div>
 </div>
