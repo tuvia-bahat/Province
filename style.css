@@ -43,22 +43,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .swatch { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; }
 .pl .nm { font-weight: 600; font-size: 15px; letter-spacing: .01em; }
 .pl .tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.pl .line { display: grid; grid-template-columns: 16px 24px 1fr; align-items: center; gap: 10px; min-height: 18px; }
+.pl .line { display: grid; grid-template-columns: 14px 20px 1fr; align-items: center; gap: 6px; min-height: 16px; min-width: 0; }
+.pl .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 16px; }
 .pl .lab { font-size: 12px; color: var(--muted); }
-.pl .ic { width: 16px; height: 16px; color: var(--muted); }
+.pl .ic { width: 14px; height: 14px; color: var(--muted); }
 .pl .num { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: left; white-space: nowrap; }
 .pl .num small { font-size: 11px; font-weight: 400; color: var(--muted); }
-.pl .prov { display: flex; gap: 5px; }
-.pl .prov i { width: 14px; height: 14px; border-radius: 4px; background: var(--cell); transition: background .25s; }
+.pl .prov { display: flex; gap: 3px; }
+.pl .prov i { width: 10px; height: 10px; border-radius: 3px; background: var(--cell); transition: background .25s; }
 .pl .prov i.on { background: var(--c); }
-.pl .prov.many { gap: 3px; }
-.pl .prov.many i { width: 11px; height: 11px; border-radius: 3px; }
+.pl .prov.many { gap: 2px; }
+.pl .prov.many i { width: 9px; height: 9px; border-radius: 2px; }
 .pl .sbar { height: 8px; border-radius: 4px; overflow: hidden; display: flex; background: transparent; }
 .pl .sbar i { display: block; height: 100%; transition: width .3s; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
 .pl .sbar .d { background: #7d838e; }
-.pl .ticks { display: flex; gap: 4px; align-items: center; }
+.pl .ticks { display: flex; gap: 2px; align-items: center; }
 .pl .ticks i { width: var(--tick-w, 5px); height: var(--tick-h, 22px); border-radius: 999px; background: var(--cell); flex: none; transition: background .25s; }
 .pl .ticks i.on { background: var(--c); }
 
@@ -86,7 +87,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ---------- דוק ---------- */
-#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; flex: none; height: 116px; padding-top: 4px; }
+#dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; flex: none; height: 122px; padding-top: 4px; }
 #dice { display: flex; gap: 14px; justify-content: center; direction: ltr; }
 .die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }

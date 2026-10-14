@@ -25,7 +25,7 @@
     R = window.Rules.forSize(n); AIB = window.AI.forSize(n);
     ({ P, G, M, CR, LIFT, RIVER_W, BR, FS } = GEO[n]);
     W = 2 * M + n * P + (n / 2 - 1) * G;
-    const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 16, tw = Math.max(3.5, Math.min(9, th * BR / len));
+    const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 13, tw = Math.max(3, Math.min(9, th * BR / len));
     document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
     document.documentElement.style.setProperty('--tick-h', th + 'px');
     memo = { state: null, play: null, opts: new Map() };
@@ -326,10 +326,10 @@
         dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       };
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
-        <div class="line">${IC.prov}<span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
+        <div class="grid"><div class="line">${IC.prov}<span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
         <div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
         <div class="line">${IC.brid}<span class="num">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
-        <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div>`;
+        <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
     }
   }
 
