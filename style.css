@@ -45,7 +45,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .pl .line { display: grid; grid-template-columns: 16px 24px 1fr; align-items: center; gap: 10px; min-height: 18px; }
 .pl .lab { font-size: 12px; color: var(--muted); }
-.pl .ic { width: 14px; height: 14px; color: var(--muted); }
+.pl .ic { width: 16px; height: 16px; color: var(--muted); }
 .pl .num { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: left; white-space: nowrap; }
 .pl .num small { font-size: 11px; font-weight: 400; color: var(--muted); }
 .pl .prov { display: flex; gap: 5px; }

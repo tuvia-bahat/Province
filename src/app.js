@@ -320,10 +320,10 @@
       let ticks = '';
       for (let i = 0; i < R.BRIDGES; i++) ticks += `<i class="${i < state.bridgesLeft[p] ? 'on' : ''}"></i>`;
       const IC = {
-        prov: '<svg class="ic" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="3" fill="currentColor"/></svg>',
-        sold: '<svg class="ic" viewBox="0 0 16 16"><circle cx="8" cy="5" r="3" fill="currentColor"/><path d="M2.5 14c0-3.3 2.4-5 5.5-5s5.5 1.7 5.5 5z" fill="currentColor"/></svg>',
-        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M1 12V5m14 7V5M1 8h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
-        dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9m0-9l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>',
+        prov: '<svg class="ic" viewBox="0 0 16 16"><path d="M4.5 1.5h7v4.2a3.5 3.5 0 0 1-7 0z" fill="currentColor"/><path d="M4.5 3H2.5c0 2.6 1 3.8 2.4 4M11.5 3h2c0 2.6-1 3.8-2.4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 9.2V12M5.2 14.5h5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+        sold: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 0.8l1.7 2.2v7H6.3V3z" fill="currentColor"/><rect x="3.8" y="10" width="8.4" height="1.7" rx=".8" fill="currentColor"/><rect x="7.1" y="11.7" width="1.8" height="2.4" fill="currentColor"/><circle cx="8" cy="14.7" r="1.1" fill="currentColor"/></svg>',
+        brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M0.8 5.8h14.4M2.8 14V10a5.2 4.4 0 0 1 10.4 0V14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       };
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
         <div class="line">${IC.prov}<span class="num">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
