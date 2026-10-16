@@ -105,7 +105,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   background: var(--ink); color: #fff; transition: transform .1s, opacity .2s;
 }
 .btn:active { transform: scale(.97); }
-.btn.soft { background: var(--cell); color: var(--ink); }
+.btn.soft { background: var(--cell); color: #fff; }
 .btn.ghost { background: transparent; color: var(--muted); }
 .btn.wide { min-width: 200px; }
 .btn.sm { padding: 8px 18px; min-height: 38px; font-size: 14px; }
@@ -120,7 +120,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sheet .note { font-size: 12px; color: var(--muted); min-height: 16px; text-align: center; }
 .srow { direction: ltr; display: flex; align-items: center; gap: 6px; width: 100%; }
 .srow .num { font-size: 22px; font-weight: 600; min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; line-height: 1; }
-.srow .pm { width: 34px; height: 34px; flex: none; border-radius: 50%; border: 0; background: var(--cell); font-size: 20px; line-height: 1; padding: 0; }
+.srow .pm { width: 34px; height: 34px; flex: none; border-radius: 50%; border: 0; background: var(--cell); color: #fff; font-size: 20px; line-height: 1; padding: 0; }
 .srow .pm:active { background: var(--faint); }
 .srow .pm.x { background: transparent; color: var(--muted); }
 .srow .pm.ok { background: var(--ink); color: #fff; }
@@ -153,7 +153,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
 .modal-actions .btn { flex: 1; padding-inline: 14px; }
 .seg { display: flex; background: var(--cell); border-radius: 999px; padding: 3px; gap: 2px; }
-.seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 6px; font-size: 14px; font-weight: 500; color: #2a2e36; transition: background .2s, color .2s; }
+.seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 6px; font-size: 14px; font-weight: 500; color: #fff; transition: background .2s, color .2s; }
 .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(20,25,40,.14); }
 .rule-note { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: -4px; }
 #grpBoardWrap, #grpWatchWrap, #grpSideWrap, #grpLevelWrap { display: flex; flex-direction: column; }
