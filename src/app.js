@@ -651,6 +651,10 @@
         h += `<text class="axis" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
       }
     }
+    // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
+    for (const Rc of rolled) {
+      if (R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"/>`;
+    }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
     if (sheet && sheet.to !== undefined) {   // חלון הכמות פתוח: קו מהבסיס ליעד, מתחת לעיגולים
@@ -684,8 +688,7 @@
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       } else if (rolled.includes(i)) {
         // משבצת שאי אפשר לשחק בה: טבעת מקווקוו באפור
-        const playable = R.actionTypes(state, i).length > 0;   // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן; אחרת העיגול נשאר חלול
-        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"${playable ? ` style="fill:${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"` : ''}/>`;
+        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
       if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
