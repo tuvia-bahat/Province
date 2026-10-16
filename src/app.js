@@ -1087,8 +1087,8 @@
   }
 
   // ---------- לובי ----------
-  const ICON_JOIN = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/></svg>';
-  const ICON_EYE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const TAG_PENDING = '<span class="lb-tag open">Pending</span>';
+  const TAG_LIVE = '<span class="lb-tag live">Live</span>';
   let lobbyUnsub = null, lobbyTimer = null, lobbyDeb = null, lobbyBusy = false, presenceOn = false, lastCount = null;
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLobby(); });
   function closeLobby() {
@@ -1129,11 +1129,11 @@
       let h = '', prev = false;
       const sep = (n) => { const s = prev && n > 0 ? ' sep' : ''; prev = prev || n > 0; return s; };
       let s0 = sep(d.open.length);
-      d.open.forEach((g, k) => { h += row(g, 'open', `<b>${esc(g.name0)}</b>${sz(g)}`, ICON_JOIN, 'open').replace('class="lb-row"', 'class="lb-row"'); });
+      d.open.forEach((g, k) => { h += row(g, 'open', `<b>${esc(g.name0)}</b>${sz(g)}`, TAG_PENDING, 'open').replace('class="lb-row"', 'class="lb-row"'); });
       s0 = sep(d.active.length);
       d.active.forEach((g, k) => {
         const mine = g.p0 === me || g.p1 === me;
-        let r = row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, mine ? ICON_JOIN : ICON_EYE, 'open');
+        let r = row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, TAG_LIVE, 'open');
         if (k === 0 && s0) r = r.replace('class="lb-row"', 'class="lb-row sep"');
         h += r;
       });

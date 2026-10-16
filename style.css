@@ -217,6 +217,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes lbpulse { 0% { box-shadow: 0 0 0 0 rgba(52,201,138,.55); opacity: 1; } 50% { opacity: .55; } 100% { box-shadow: 0 0 0 9px rgba(52,201,138,0); opacity: 1; } }
 .lb-go { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #f1f2f5; color: var(--ink); }
 .lb-go:empty { display: none; }
+.lb-go:has(.lb-tag) { width: auto; height: auto; background: none; border-radius: 0; padding-right: 6px; }
+.lb-tag { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.lb-tag.open { color: var(--p0); }
+.lb-tag.live { color: var(--p1); }
 .lb-empty { text-align: center; font-size: 14px; color: var(--faint); padding: 8px 0; }
 #lbMsg { text-align: center; font-size: 13px; color: #c0392b; }
 #lbMsg:empty { display: none; }
