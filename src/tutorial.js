@@ -57,7 +57,7 @@
     // ───────── 5. הובלה והתקפה מעל הגשר שלך ─────────
     { who: 0, kind: 'transport', dice: [1, 1], act: { type: 'transport', R: L(0, 0), from: L(1, 1), to: L(3, 1), count: 4 },
       title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. Transport soldiers along a straight line through your territory.', instr: 'Drag from the glowing base to the <b>right</b>, over the bridge, to the far square and send <b>4</b> to the front.' },
-    { who: 1, dice: [5, 5], act: { type: 'move', R: L(4, 4), from: L(3, 4), to: L(4, 4), count: 2 } },
+    { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 2 } },
 
     { who: 0, kind: 'attack', dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 1), to: L(3, 2), count: 4 },
       title: 'Your bridge', intro: 'Your bridge is a one-way door: you can attack across it, Blue can\'t.', instr: 'Drag from the glowing base <b>up</b> onto the enemy base and send <b>4</b> against 3.' },
@@ -70,7 +70,7 @@
 
     { who: 0, kind: 'land', dice: [3, 3], act: { type: 'land', R: L(2, 2), to: L(2, 2), count: 2 },
       title: 'Landing rule', intro: 'You may move from any base, but new soldiers land <i>only</i> on the lit square.', instr: 'The lit square is empty and in your territory. Land <b>2</b> on it.' },
-    { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 2 } },
+    { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 3 } },
 
     { who: 0, kind: 'bridge', dice: [3, 2], act: { type: 'bridge', R: L(2, 1), from: L(2, 1), to: L(2, 2), count: 0 },
       title: 'Replace a bridge', intro: 'You now stand on both ends of the bridge Blue used to strike you. Replace it with your own!', instr: 'Drag from the glowing base <b>up</b> to the other base and set <b>0</b>. The bridge turns green.' },
@@ -83,9 +83,8 @@
 
   const recap = [
     'Claim provinces early and link them with bridges.',
-    'Attackers go home, only defenders die: strike first.',
-    'Spread out; never pile soldiers where the enemy can reach.',
-    'Land only on lit circles; act from any base in your territory.',
+    'Attackers return to camp, defenders die for good: strike first.',
+    'In your territory you can act from any base, but new soldiers land only on the lit square.',
   ];
 
   const T = { pages, steps, recap };
