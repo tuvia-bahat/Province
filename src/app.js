@@ -42,15 +42,18 @@
   let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
   let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
   let winShowAt = 0, winTimer = null;   // חלון הניצחון מוצג רק אחרי אנימציית המהלך והבהוב הפרובינציות
+  const TUT = window.TUTORIAL;
+  const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null };
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
   const SPEED_LABEL = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
   const isAiTurn = () => state.winner === null &&
-    (settings.mode === 'watch' || (settings.mode === 'ai' && state.turn !== settings.human));
+    (settings.mode === 'watch' || (settings.mode === 'ai' && state.turn !== settings.human) ||
+      (settings.mode === 'tutorial' && tut.phase === 'game' && state.turn === 1));
   const aiLevel = () => (settings.mode === 'watch' ? (state.turn === 0 ? settings.levelR : settings.levelB) : settings.level);
   const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
-  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null;
+  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game');
 
   function load() {
     try {
@@ -68,6 +71,7 @@
   // כללי גרסה 2 בכל המצבים (פרובינציה בשליטה = טריטוריה; ניצחון ב-5 פרובינציות מחוברות). המחשב אומן עליהם.
   function applyRules() { R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true; }
   function save() {
+    if (tut.active) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
 
@@ -87,6 +91,11 @@
         for (const t of ['move', 'transport', 'withdraw', 'bridge']) for (const f of R.sources(state, t, Rc)) add(f, 'source');
       }
     }
+    if (tut.active) {   // בטוטוריאל מודגש רק מה שהמדריך מבקש לעשות
+      const ex = tutExpect(), f = new Map();
+      if (ex) f.set(ex.tap ? ex.cell : ex.from, ex.tap ? { land: true } : { source: true });
+      return (memo.play = f);
+    }
     return (memo.play = m);
   }
 
@@ -104,6 +113,12 @@
           opts.set(tg.to, o);
         }
       }
+    }
+    if (tut.active) {
+      const ex = tutExpect(), f = new Map();
+      if (ex && !ex.tap && from === ex.from && opts.has(ex.to)) f.set(ex.to, opts.get(ex.to));
+      memo.opts.set(from, f);
+      return f;
     }
     memo.opts.set(from, opts);
     return opts;
@@ -128,8 +143,10 @@
   // ---------- ביצוע ----------
   function commit(a) {
     let ns;
+    if (tut.active && !tutMatches(a)) { tutNudge('Follow the highlighted move'); return false; }
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     const prev = state;
+    if (tut.active) { tut.i++; tut.cardAt = Infinity; }
     winShowAt = ns.winner !== null ? Infinity : 0;
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = freshUi();
@@ -137,7 +154,8 @@
     return true;
   }
   function doRoll() {
-    state = R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
+    const sc = tut.active ? tutStepNow() : null;
+    state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
     save(); render();
@@ -161,6 +179,7 @@
   }
   // לחיצה קצרה על משבצת: הוספת חיילים מהמחנה (תגבור/הנחתה) ו/או משיכת חיילים בחזרה למחנה
   function startAdjust(c) {
+    if (tut.active) { const ex = tutExpect(); if (!ex || !ex.tap || ex.cell !== c) return false; }
     const p = state.turn, cell = state.cells[c], modes = [];
     const rl = landR(c), rw = cell.o === p ? withdrawR(c) : undefined;
     if (rl !== undefined && R.camp(state, p) > 0) modes.push('add');
@@ -168,6 +187,7 @@
     if (!modes.length) return false;
     const sh = { kind: 'adjust', cell: c, modes, mode: modes[0], rl, rw };
     setMode(sh, modes[0]);
+    tutPrep(sh);
     ui.sheet = sh; render();
     return true;
   }
@@ -185,7 +205,9 @@
   function startMove(from, to) {
     const plan = planFor(from, to);
     if (!plan) { render(); return; }
-    openSheet({ kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max > 1 ? plan.max - 1 : plan.max, build: (n) => actionFromPlan(plan, n) });
+    const sh = { kind: 'move', plan, from, to, min: plan.min, max: plan.max, count: plan.max > 1 ? plan.max - 1 : plan.max, build: (n) => actionFromPlan(plan, n) };
+    tutPrep(sh);
+    openSheet(sh);
   }
 
   // ---------- אנימציית מהלך ----------
@@ -424,6 +446,7 @@
   function aiStep() {
     aiTimer = null;
     if (!isAiTurn()) return;
+    if (tut.active) { tutAiStep(); return; }
     if (!state.roll) { doRoll(); return; }
     const p = state.turn;
     let a = { type: 'pass' };
@@ -443,6 +466,138 @@
     if (a.type !== 'pass') animateMove(prevS, a, state);
   }
 
+
+  // ---------- טוטוריאל ----------
+  // משחק מתוסרט על 6×6 (src/tutorial.js): האדם משחק אדום, המחשב מבצע מהלכים קבועים. כל צעד של האדם מוכתב: מסומן על הלוח בדיוק מה לעשות,
+  // ומעל פאנל היריב מופיע כרטיס הסבר שנסגר אחרי כל מהלך.
+  const tIdx = (c) => R.idx(c[0], c[1]);
+  const tutStepNow = () => (tut.active && tut.phase === 'game' ? TUT.steps[tut.i] || null : null);
+  function tutExpect() {   // הפעולה הצפויה בצעד הנוכחי של האדם (אחרי ההטלה), או null
+    const st = tutStepNow();
+    if (!st || st.who !== 0 || state.turn !== 0 || !state.roll || state.winner !== null) return null;
+    const a = st.act, ex = { kind: st.kind, type: a.type, count: a.count };
+    if (a.from) ex.from = tIdx(a.from);
+    if (a.to) ex.to = tIdx(a.to);
+    ex.tap = a.type === 'land' || a.type === 'withdraw';
+    ex.cell = a.type === 'land' ? ex.to : a.type === 'withdraw' ? ex.from : null;
+    return ex;
+  }
+  function tutMatches(a) {
+    const ex = tutExpect();
+    if (!ex) return false;
+    return a.type === ex.type && (a.count | 0) === ex.count && (ex.from === undefined || a.from === ex.from) && (ex.to === undefined || a.to === ex.to);
+  }
+  function tutPrep(sh) {   // חלון הכמות נפתח כבר עם ההגדרה הנכונה
+    if (!tut.active) return;
+    const ex = tutExpect();
+    if (!ex) return;
+    sh.tut = ex;
+    if (sh.kind === 'adjust') { const want = ex.type === 'withdraw' ? 'withdraw' : 'add'; if (sh.modes.includes(want) && sh.mode !== want) setMode(sh, want); }
+    sh.count = Math.max(sh.min, Math.min(sh.max, ex.count));
+  }
+  function tutSheetOk(sh) {
+    const ex = sh.tut;
+    if (!ex) return false;
+    if (sh.kind === 'adjust') return sh.mode === (ex.type === 'withdraw' ? 'withdraw' : 'add') && sh.count === ex.count;
+    return sh.count === ex.count;
+  }
+  function tutGuideSvg(ex) {
+    const ring = (i, n) => {
+      const x = cellX(i), y = cellY(i);
+      return `<circle class="guide-ring" cx="${x}" cy="${y}" r="${CR + 10}"/>` +
+        (n ? `<circle cx="${x + CR + 4}" cy="${y - CR - 4}" r="10" fill="#1b1e24"/><text class="guide-n" x="${x + CR + 4}" y="${y - CR - 3}">${n}</text>` : '');
+    };
+    if (ex.tap) return ring(ex.cell, '');
+    return `<line class="guide-line" x1="${cellX(ex.from)}" y1="${cellY(ex.from)}" x2="${cellX(ex.to)}" y2="${cellY(ex.to)}"/>` + ring(ex.from, '1') + ring(ex.to, '2');
+  }
+  function tutNudge(msg) {
+    const el = $('coachNudge');
+    el.textContent = msg;
+    const c = $('coach');
+    c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+    clearTimeout(tut.nudgeTimer);
+    tut.nudgeTimer = setTimeout(() => { el.textContent = ''; }, 2800);
+  }
+  function renderCoach() {
+    const el = $('coach');
+    if (!tut.active || state.winner !== null) { el.hidden = true; return; }
+    let step, title, body, foot = '';
+    if (tut.phase === 'pages') {
+      const pg = TUT.pages[tut.page];
+      step = `${tut.page + 1} / ${TUT.pages.length}`; title = pg.title; body = pg.body;
+      foot = `<button class="btn sm" id="coachNext" type="button">${tut.page < TUT.pages.length - 1 ? 'Next' : "Let's play"}</button>`;
+    } else {
+      const st = tutStepNow();
+      if (!st || st.who !== 0 || state.turn !== 0 || Date.now() < tut.cardAt) { el.hidden = true; return; }
+      const humans = TUT.steps.filter((x) => x.who === 0), n = humans.indexOf(st) + 1;
+      step = `Lesson ${n} of ${humans.length}`; title = st.title; body = state.roll ? st.instr : st.intro;
+    }
+    $('coachStep').textContent = step;
+    $('coachTitle').textContent = title;
+    $('coachBody').innerHTML = body;
+    $('coachFoot').innerHTML = foot;
+    const nb = $('coachNext');
+    if (nb) nb.onclick = () => {
+      if (tut.page < TUT.pages.length - 1) tut.page++;
+      else { tut.phase = 'game'; tut.i = 0; tut.cardAt = 0; }
+      render();
+    };
+    el.hidden = false;
+    // הכרטיס מכסה את פאנל היריב (ואת הרווח שמתחתיו עד הלוח)
+    const pl = $('pl1').getBoundingClientRect(), bw = $('boardWrap').getBoundingClientRect();
+    el.style.left = (pl.left - 6) + 'px'; el.style.width = (pl.width + 12) + 'px';
+    el.style.top = Math.max(4, pl.top - 8) + 'px';
+    el.style.minHeight = (pl.height + 14) + 'px';
+    el.style.maxHeight = Math.max(pl.height + 14, bw.top - (pl.top - 8) - 2) + 'px';
+    el.classList.remove('tight');
+    if (el.scrollHeight > el.clientHeight + 1) el.classList.add('tight');   // מסך נמוך: טקסט קצת קטן יותר במקום גלילה
+  }
+  function tutScheduleCard() {
+    const delay = Math.max(0, fxUntil - Date.now()) + 500;
+    tut.cardAt = Date.now() + delay;
+    clearTimeout(tut.cardTimer);
+    tut.cardTimer = setTimeout(() => { if (tut.active) render(); }, delay + 30);
+  }
+  function tutAiStep() {
+    const st = tutStepNow();
+    if (!st || st.who !== 1) return;
+    if (!state.roll) { doRoll(); return; }
+    const a = { type: st.act.type, count: st.act.count };
+    if (st.act.R) a.R = tIdx(st.act.R);
+    if (st.act.from) a.from = tIdx(st.act.from);
+    if (st.act.to) a.to = tIdx(st.act.to);
+    const prevS = state;
+    history.push(state);
+    let act = a;
+    try { state = R.apply(state, a); } catch (e) { console.error(e); state = R.passTurn(state); act = { type: 'pass' }; }
+    tut.i++;
+    lastMove = { p: 1, a: act };
+    winShowAt = state.winner !== null && act.type !== 'pass' ? Infinity : 0;
+    ui = freshUi(); render();
+    if (act.type !== 'pass') animateMove(prevS, act, state);
+    tutScheduleCard();
+  }
+  function startTutorial() {
+    clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0; fxCancel();
+    if (!tut.active) tut.backup = { state, history, settings: Object.assign({}, settings) };
+    tut.active = true; tut.i = 0; tut.page = 0; tut.phase = 'pages'; tut.cardAt = 0;
+    settings = Object.assign({}, settings, { mode: 'tutorial', human: 0, board: 6 });
+    useBoard(6); applyRules();
+    state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
+    $('newModal').hidden = true; $('overlay').dataset.dismissed = ''; $('overlay').hidden = true;
+    render();
+  }
+  function tutExit() {
+    if (!tut.active) return;
+    clearTimeout(aiTimer); aiTimer = null; clearTimeout(winTimer); winShowAt = 0; fxCancel(); clearTimeout(tut.cardTimer);
+    tut.active = false;
+    const b = tut.backup; tut.backup = null;
+    if (b) { settings = b.settings; state = b.state; history = b.history; }
+    useBoard(settings.board); applyRules();
+    lastMove = lastRoll = null; ui = freshUi(); $('overlay').hidden = true; $('coach').hidden = true;
+    render();
+  }
+
   // ---------- משחק חדש ----------
   let pending = null;
   function openNew() { pending = Object.assign({}, settings); renderNewModal(); $('newModal').hidden = false; }
@@ -454,6 +609,7 @@
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
+    tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
     settings = Object.assign({}, pending); settings.human = +settings.human; settings.board = +settings.board;
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
@@ -518,6 +674,7 @@
       if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}${floating ? ' float' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
+    if (tut.active && !sheet) { const ex = canAct() ? tutExpect() : null; if (ex) h += tutGuideSvg(ex); }
     // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
     h += `<g id="dragLayer"><line id="dragLine" class="drag-line" stroke="${turnColor}" visibility="hidden"/><circle id="dragDot" class="drag-dot" r="9" fill="${turnColor}" visibility="hidden"/></g>`;
     svg.innerHTML = h;
@@ -529,7 +686,7 @@
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
-      const tag = settings.mode === 'watch' ? 'CPU' : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
+      const tag = settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'watch' ? 'CPU' : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let prov = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
@@ -611,7 +768,8 @@
     const ph = phase();
     if (ph === 'roll') {
       msg.innerHTML = '';
-      addBtn(row(), 'Roll dice', 'wide', doRoll);
+      if (tut.active && (tut.phase !== 'game' || Date.now() < tut.cardAt)) return;
+      addBtn(row(), 'Roll dice', 'wide' + (tut.active ? ' guide' : ''), doRoll);
       return;
     }
     if (ph === 'skip') {
@@ -629,7 +787,7 @@
       const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'Reinforce' : 'Land';
       const toggle = sh.modes && sh.modes.length > 1
         ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'Withdraw'}</button>`).join('')}</div>` : '';
-      const cap = !toggle && sh.kind === 'adjust' ? `<div class="cap">${sh.mode === 'add' ? addLabel : 'Withdraw'}</div>` : '';
+      const cap = !toggle && sh.kind === 'adjust' ? `<div class="cap">${sh.mode === 'add' ? addLabel : 'Withdraw'}</div>` : (tut.active && sh.kind === 'move' ? '<div class="cap" id="shCap"></div>' : '');
       box.innerHTML = `${toggle}${cap}
         <div class="srow"><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
       ctl.appendChild(box);
@@ -639,6 +797,12 @@
         box.querySelector('#shNum').innerHTML = `${sh.count}`;
         rng.value = sh.count;
         rng.style.setProperty('--p', (sh.max === sh.min ? 100 : ((sh.count - sh.min) / (sh.max - sh.min)) * 100) + '%');
+        if (tut.active) {
+          const sc = box.querySelector('#shCap');
+          if (sc) sc.textContent = sh.count === 0 ? 'Bridge only' : sh.plan.type === 'transport' ? 'Transport' : sh.plan.tgt.kind === 'attack' ? 'Attack' : 'Move';
+          const okb = box.querySelector('#ok');
+          if (okb) okb.classList.toggle('guide', tutSheetOk(sh));
+        }
       };
       const set = (v) => {
         const nv = Math.max(sh.min, Math.min(sh.max, v));
@@ -652,11 +816,12 @@
       if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); renderDock(); };
       view();
       box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
-      box.querySelector('#ok').onclick = () => commit(sh.build(sh.count));
+      box.querySelector('#ok').onclick = () => { if (tut.active && !tutSheetOk(sh)) { tutNudge(sh.tut ? (sh.kind === 'adjust' && sh.mode !== (sh.tut.type === 'withdraw' ? 'withdraw' : 'add') ? 'Pick the highlighted option' : `Set the amount to ${sh.tut.count}`) : 'Follow the highlighted move'); return; } commit(sh.build(sh.count)); };
       return;
     }
 
     msg.innerHTML = '';
+    if (tut.active) return;
     addBtn(row(), 'Pass', 'soft', doPass);
   }
 
@@ -666,18 +831,23 @@
 
   function render() {
     fxCancel();
-    renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog();
+    renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog(); renderCoach();
     const watch = settings.mode === 'watch';
     $('undoBtn').textContent = watch ? (paused ? 'Resume' : 'Pause') : 'Undo';
-    $('undoBtn').disabled = watch ? state.winner !== null : history.length === 0;
+    $('undoBtn').disabled = tut.active || (watch ? state.winner !== null : history.length === 0);
     $('speedBtn').hidden = !watch;
     $('speedBtn').textContent = 'Speed: ' + SPEED_LABEL[settings.speed];
     const o = $('overlay');
     if (state.winner !== null && !o.dataset.dismissed && Date.now() >= winShowAt) {
       const w = state.winner;
-      $('winTitle').innerHTML = settings.mode === 'ai'
-        ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
-        : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
+      $('winTitle').innerHTML = tut.active
+        ? `<span style="color:${COLORS[0]}">You win!</span>`
+        : settings.mode === 'ai'
+          ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
+          : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
+      $('winText').hidden = !tut.active;
+      $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
+      $('winNew').textContent = tut.active ? 'Play vs computer' : 'New game';
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -778,7 +948,14 @@
   for (const [id, key] of [['grpMode', 'mode'], ['grpBoard', 'board'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
     $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
   }
-  $('winNew').onclick = () => { $('overlay').hidden = true; openNew(); };
+  $('winNew').onclick = () => {
+    $('overlay').hidden = true;
+    if (tut.active) { pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0 }); startNew(); } else openNew();
+  };
+  $('tutBtn').onclick = startTutorial;
+  $('tutLink').onclick = startTutorial;
+  $('coachExit').onclick = tutExit;
+  window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
   load(); useBoard(settings.board); applyRules(); render();

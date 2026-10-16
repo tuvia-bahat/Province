@@ -11,6 +11,7 @@
 <script src="../src/rules.js"></script>
 <script src="../src/nn.js"></script>
 <script src="../src/ai.js"></script>
+<script src="../src/tutorial.js"></script>
 <script>
 const R = window.Rules, out = document.getElementById('out');
 let pass = 0, fail = 0;
@@ -444,6 +445,11 @@ test('הוטלה משבצת מעבר לנהר: אפשר להניח גשר בלב
 test('גשר בלבד מבסיס צמוד: רק אל המשבצת שהוטלה', () => {
   const s = setup({ '1,0': [0, 3] }, 0, [2, 0]);
   eq(R.targets(s, 'bridge', I(2, 0), I(1, 0)).map((x) => x.to), [I(2, 0)]);
+});
+test('טוטוריאל: התסריט חוקי והאדם מנצח בצעד האחרון', () => {
+  const saved = Object.assign({}, R.OPTIONS);
+  try { const r = TUTORIAL.verify(Rules); if (!r.ok) throw new Error(r.error); eq(r.log.length, TUTORIAL.steps.length); }
+  finally { Object.assign(R.OPTIONS, saved); }
 });
 out.innerHTML += `\n<b>${pass} עברו, ${fail} נכשלו</b>`;
 document.title = `Province tests: ${pass} pass, ${fail} fail`;

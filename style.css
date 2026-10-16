@@ -170,3 +170,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .rule-note { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: -4px; }
 #grpBoardWrap, #grpWatchWrap, #grpSideWrap, #grpLevelWrap { display: flex; flex-direction: column; }
 #grpWatchWrap > .seg { margin-bottom: 10px; }
+
+/* ---------- טוטוריאל ---------- */
+#coach { position: fixed; z-index: 5; background: #fff; border-radius: 16px; box-shadow: 0 6px 26px rgba(20,25,40,.18), 0 0 0 1px rgba(20,25,40,.07); padding: 9px 14px 10px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
+#coach[hidden] { display: none; }
+.coach-top { display: flex; align-items: center; justify-content: space-between; padding-right: 44px; min-height: 26px; }
+.coach-actions { display: flex; align-items: center; gap: 6px; }
+#coachStep { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#coachExit { padding: 2px 6px; font-size: 11px; }
+#coach h3 { margin: 0; font-size: 16px; font-weight: 600; }
+#coachBody { font-size: 13px; line-height: 1.36; color: var(--ink); }
+#coachBody b { font-weight: 600; }
+#coachNudge { font-size: 12.5px; font-weight: 600; color: var(--p0); min-height: 0; }
+#coachNudge:empty { display: none; }
+#coachFoot:empty { display: none; }
+#coachFoot .btn { min-height: 28px; padding: 4px 14px; font-size: 12px; }
+#coach.shake { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.guide-ring { fill: none; stroke: #1b1e24; stroke-width: 3; pointer-events: none; transform-box: fill-box; transform-origin: center; animation: gpulse 1.3s ease-in-out infinite; }
+@keyframes gpulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(1.13); } }
+.guide-n { fill: #fff; font: 700 12px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.guide-line { stroke: #1b1e24; stroke-width: 3; stroke-dasharray: 2 8; stroke-linecap: round; opacity: .55; pointer-events: none; }
+.btn.guide, .pm.guide { animation: bpulse 1.3s ease-in-out infinite; }
+@keyframes bpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,30,36,.35); } 50% { box-shadow: 0 0 0 9px rgba(27,30,36,0); } }
+#winText { text-align: left; font-size: 13.5px; line-height: 1.4; color: var(--ink); }
+#winText ul { margin: 6px 0 0; padding-left: 18px; }
+#winText li { margin: 3px 0; }
+#tutLink { align-self: center; }
+#coach.tight { padding: 6px 13px 7px; gap: 2px; }
+#coach.tight .coach-top { min-height: 22px; }
+#coach.tight h3 { font-size: 15px; }
+#coach.tight #coachBody { font-size: 12px; line-height: 1.3; }

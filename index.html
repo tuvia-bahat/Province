@@ -26,6 +26,7 @@
   </section>
 
   <nav id="bar">
+    <button id="tutBtn" class="link">Tutorial</button>
     <button id="undoBtn" class="link">Undo</button>
     <button id="speedBtn" class="link" hidden>Speed</button>
     <button id="logBtn" class="link">Log</button>
@@ -33,6 +34,13 @@
   </nav>
   <div id="logBox" hidden></div>
 </div>
+
+<aside id="coach" hidden>
+  <div class="coach-top"><span id="coachStep"></span><span class="coach-actions"><span id="coachFoot"></span><button id="coachExit" class="link" type="button">Exit</button></span></div>
+  <h3 id="coachTitle"></h3>
+  <div id="coachBody"></div>
+  <div id="coachNudge"></div>
+</aside>
 
 <div id="newModal" class="overlay" hidden>
   <div class="modal">
@@ -62,6 +70,7 @@
       <div class="lbl">Speed</div>
       <div class="seg" id="grpSpeed"><button data-v="slow">Slow</button><button data-v="normal">Normal</button><button data-v="fast">Fast</button></div>
     </div>
+    <button id="tutLink" class="link" type="button">New here? Play the tutorial</button>
     <div class="modal-actions">
       <button id="newCancel" class="btn ghost">Cancel</button>
       <button id="newStart" class="btn">Start</button>
@@ -72,6 +81,7 @@
 <div id="overlay" class="overlay" hidden>
   <div class="modal">
     <h2 id="winTitle"></h2>
+    <div id="winText" hidden></div>
     <div class="modal-actions">
       <button id="winClose" class="btn ghost">View board</button>
       <button id="winNew" class="btn">New game</button>
@@ -81,6 +91,7 @@
 
 <script src="src/rules.js"></script>
 <script src="src/ai.js"></script>
+<script src="src/tutorial.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>
