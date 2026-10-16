@@ -221,3 +221,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #app.flip #boardWrap { order: 2; }
 #app.flip #pl1 { order: 3; }
 #app.flip #dock { order: 4; }
+
+/* ---------- מחשב: לוח גדול משמאל, שחקנים וכפתורים בעמודה מימין ---------- */
+@media (min-width: 860px) and (min-height: 540px) {
+  #app { max-width: none; display: grid; grid-template-columns: auto 360px; grid-template-rows: auto 1fr auto; column-gap: 56px; justify-content: center; align-content: stretch; padding: 4dvh 5vw; --pl-h: 108px; }
+  #boardWrap { grid-column: 1; grid-row: 1 / span 3; align-self: center; margin: 0; width: min(88dvh, calc(100vw - 360px - 56px - 10vw)); }
+  #pl1 { grid-column: 2; grid-row: 1; }
+  #dock { grid-column: 2; grid-row: 2; align-self: center; width: 100%; }
+  #pl0 { grid-column: 2; grid-row: 3; }
+  #app.flip #pl0 { grid-row: 1; order: 0; }
+  #app.flip #pl1 { grid-row: 3; order: 0; }
+  #app.flip #boardWrap, #app.flip #dock { order: 0; }
+  #menuBtn { right: 20px; top: 14px; }
+  #bar { right: 20px; top: 56px; }
+}

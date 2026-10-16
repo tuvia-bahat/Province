@@ -557,10 +557,11 @@
     const pl = $('pl1').getBoundingClientRect(), bw = $('boardWrap').getBoundingClientRect();
     // אותם שוליים כמו שאר המסך (5% מהצדדים ומלמעלה), והכרטיס מסתיים לפני כפתור התפריט
     const mb = $('menuBtn').getBoundingClientRect(), top = Math.max(innerWidth * 0.05, pl.top - 8);
-    el.style.left = pl.left + 'px'; el.style.width = Math.max(160, mb.left - 8 - pl.left) + 'px';
+    const wide = getComputedStyle($('app')).display === 'grid';   // פריסת מחשב: הכרטיס על פני העמודה הימנית, עד הכפתורים
+    el.style.left = pl.left + 'px'; el.style.width = Math.max(160, Math.min(pl.width, mb.left - 8 - pl.left)) + 'px';
     el.style.top = top + 'px';
     el.style.minHeight = (pl.height + 14) + 'px';
-    el.style.maxHeight = Math.max(pl.height + 14, bw.top - top - 2) + 'px';
+    el.style.maxHeight = Math.max(pl.height + 14, (wide ? $('dock').getBoundingClientRect().top - 10 : bw.top - 2) - top) + 'px';
     el.classList.remove('tight');
     if (el.scrollHeight > el.clientHeight + 1) el.classList.add('tight');   // מסך נמוך: טקסט קצת קטן יותר במקום גלילה
   }
@@ -655,6 +656,10 @@
         { const tx = cx(k), ty = cy(R.SIZE - 1) - CR - 15; h += `<text class="axis a1" x="${tx}" y="${ty}" transform="rotate(180 ${tx} ${ty})">${R.SIZE - k}</text>`; }
         { const tx = cx(R.SIZE - 1) + CR + 10, ty = cy(k) + 1; h += `<text class="axis a1" x="${tx}" y="${ty}" transform="rotate(180 ${tx} ${ty})">${R.SIZE - k}</text>`; }
       }
+    }
+    // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
+    for (const Rc of rolled) {
+      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -987,10 +992,12 @@
   }
   function onGameRow(g) {
     if (!online) return;
-    const was = online.game.status;
+    const old = online.game, hadWinner = state.winner !== null;
     markFinished(g);
     if (g.status === 'cancelled') { openLobby(); return; }
-    if (was === 'open' && g.status === 'active') { online.n = 0; state = R.newGame(); lastMove = lastRoll = null; }
+    if (old.status === 'open' && g.status === 'active') { online.n = 0; state = R.newGame(); lastMove = lastRoll = null; }
+    // כל מהלך מעדכן גם את שורת המשחק; מציירים מחדש רק כשמשהו השתנה באמת (אחרת האנימציה של המהלך נקטעת)
+    else if (old.name1 === g.name1 && (hadWinner || state.winner === null)) return;
     render();
   }
   async function resync() {
