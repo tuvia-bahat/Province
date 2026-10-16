@@ -684,7 +684,8 @@
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       } else if (rolled.includes(i)) {
         // משבצת שאי אפשר לשחק בה: טבעת מקווקוו באפור
-        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
+        const playable = R.actionTypes(state, i).length > 0;   // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן; אחרת העיגול נשאר חלול
+        h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"${playable ? ` style="fill:${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"` : ''}/>`;
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
       if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
