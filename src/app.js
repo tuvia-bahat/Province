@@ -33,8 +33,9 @@
     document.documentElement.style.setProperty('--tick-gap', (R.BRIDGES <= 8 ? 8 : 4) + 'px');
     memo = { state: null, play: null, opts: new Map() };
   }
-  const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
-  const cy = (y) => { const r = R.SIZE - 1 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
+  let FLIP = false;   // הלוח מסתובב 180° לשחקן הכחול, כדי שיראה את עצמו למטה
+  const cx = (x) => { if (FLIP) x = R.SIZE - 1 - x; return M + x * P + Math.floor(x / 2) * G + P / 2; };
+  const cy = (y) => { const r = FLIP ? y : R.SIZE - 1 - y; return M + r * P + Math.floor(r / 2) * G + P / 2; };
   const cellX = (i) => cx(R.xy(i)[0]);
   const cellY = (i) => cy(R.xy(i)[1]);
 
@@ -427,7 +428,7 @@
       const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
       const tintLight = ['#e5f6ed', '#e6eefd'][wp];
       for (const k of group) {
-        const pxk = k % R.PR, pyk = Math.floor(k / R.PR), top = R.PR - 1 - pyk;   // שורה מלמעלה
+        const pxk = FLIP ? R.PR - 1 - (k % R.PR) : k % R.PR, pyk = Math.floor(k / R.PR), top = FLIP ? pyk : R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
         r0.setAttribute('x', edges[pxk]); r0.setAttribute('y', edges[top]);
         r0.setAttribute('width', edges[pxk + 1] - edges[pxk]); r0.setAttribute('height', edges[top + 1] - edges[top]);
@@ -845,6 +846,8 @@
 
   function render() {
     fxCancel();
+    FLIP = !tut.active && (online ? online.seat === 1 : settings.mode === 'ai' && settings.human === 1);
+    $('app').classList.toggle('flip', FLIP);
     renderPanels(); renderBoard(); ui.rolled = false; renderDock(); renderLog(); renderCoach();
     const canResign = !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.winner === null;
     $('undoBtn').textContent = online ? 'Resign' : 'Undo';

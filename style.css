@@ -217,3 +217,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-btn { flex: none; min-height: 34px; padding: 6px 16px; font-size: 12px; }
 .lb-empty { font-size: 13px; color: var(--faint); padding: 4px 2px; }
 .lb-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
+#app.flip #pl0 { order: 1; }
+#app.flip #boardWrap { order: 2; }
+#app.flip #pl1 { order: 3; }
+#app.flip #dock { order: 4; }
