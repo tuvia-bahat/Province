@@ -13,22 +13,22 @@
 
   // כרטיס פתיחה יחיד
   const pages = [
-    { title: 'Learn Province', body: 'You are <b>Green</b>. Win by controlling <b>5 connected provinces</b>, before Blue does. Roll, play the glowing circles, and learn as you go.' },
+    { title: 'Learn Province', body: 'You are <b>Green</b>. Win by controlling <b>5 connected provinces</b>, before Blue does. Roll, and learn as you go.' },
   ];
 
   const L = (x, y) => [x, y];   // קיצור לקריאות
   const steps = [
     // ───────── 1. בונים בסיס ─────────
     { who: 0, kind: 'land', dice: [2, 2], act: { type: 'land', R: L(1, 1), to: L(1, 1), count: 8 },
-      title: 'Land soldiers', intro: 'The two dice are <b>coordinates</b>: first the column, then the row. Each player counts from their own side: you from the bottom-left, Blue from the top-right. Tap <b>Roll dice</b>.', instr: 'Your 2 and 2 is column 2, row 2 (green numbers). Blue counts from its side, so its 2 and 2 (blue numbers) is the opposite circle: that is why two glow. Tap yours and land <b>8</b>.' },
+      title: 'Land soldiers', intro: 'The two dice are <b>coordinates</b>: first the column, then the row. Axis counts from both board perspectives for two opposing squares. Tap <b>Roll dice</b>.', instr: 'Tap one square and land <b>8</b>.' },
     { who: 1, dice: [5, 5], act: { type: 'land', R: L(4, 4), to: L(4, 4), count: 4 } },
 
     { who: 0, kind: 'land', dice: [3, 2], act: { type: 'land', R: L(2, 1), to: L(2, 1), count: 4 },
-      title: 'Choose a circle', intro: 'Every roll lights two circles. You pick one.', instr: 'Both are empty, so both work. Land <b>4</b> on the glowing one for a second province.' },
+      title: 'Choose a square', intro: 'Every roll lights two squares. You pick one.', instr: 'Both are empty, so both work. Land <b>4</b> on the glowing one to control a second province.' },
     { who: 1, dice: [4, 4], act: { type: 'land', R: L(3, 3), to: L(3, 3), count: 3 } },
 
     { who: 0, kind: 'skip', dice: [3, 4], act: { type: 'skip' },
-      title: 'No move?', intro: 'Sometimes a roll gives you nothing to play. Tap <b>Roll dice</b> to see.', instr: 'Bad luck: both circles lie in enemy territory, far from your bases, so nothing can be played. Tap <b>Pass</b>. (You may also pass any time.)' },
+      title: 'No move?', intro: 'Sometimes a roll gives you nothing to play. Tap <b>Roll dice</b> to see.', instr: 'Bad luck: both squares lie in enemy territory, far from your bases, so nothing can be played. Tap <b>Pass</b>. (You may also pass any time.)' },
 
     // ───────── 2. כחול נוחת לידך ותוקף ─────────
     { who: 1, dice: [3, 3], act: { type: 'land', R: L(2, 2), to: L(2, 2), count: 4 } },
@@ -38,25 +38,25 @@
 
     // ───────── 3. מתפזרים ותוקפים ראשונים ─────────
     { who: 0, kind: 'move', dice: [4, 2], act: { type: 'move', R: L(3, 1), from: L(2, 1), to: L(3, 1), count: 6 },
-      title: 'Spread out', intro: 'Ouch! Blue struck across the river: 4 of yours died for good, though you had more. Never pile soldiers in one place.', instr: 'Drag from the glowing base one circle to the <b>right</b> and move <b>6</b> soldiers.' },
+      title: 'Spread out', intro: 'Ouch! Blue struck across the river. A bridge can only be used by its owner.', instr: 'Drag from the glowing base one square to the <b>right</b> and move <b>6</b> soldiers.' },
     { who: 1, dice: [4, 3], act: { type: 'land', R: L(3, 2), to: L(3, 2), count: 2 } },
 
     { who: 0, kind: 'attack', dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 1), to: L(3, 2), count: 5 },
-      title: 'Attack', intro: 'Blue landed beside your new base. Strike first: each attacker kills a defender for good, and attackers go home to camp.', instr: 'Drag from the glowing base <b>up</b> onto the enemy base: send <b>5</b> against 2. The extra soldiers take the cell. (Crossing a river builds a bridge for you.)' },
+      title: 'Attack', intro: 'Blue landed beside your new base. Strike first: each attacker kills a defender for good, and attackers return to camp.', instr: 'Drag from the glowing base <b>up</b> onto the enemy base: send <b>5</b> soldiers. (Crossing a river builds a bridge for you.)' },
     { who: 1, dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 3), to: L(3, 2), count: 3 } },
 
     // ───────── 4. טריטוריה ומנדט ─────────
     { who: 0, kind: 'move', dice: [1, 1], act: { type: 'move', R: L(0, 0), from: L(1, 1), to: L(1, 2), count: 3 },
-      title: 'Territory', intro: 'Blue hit back and wiped out your base, and its own. Your linked bases plus the provinces you control are your <b>territory</b> (tinted).', instr: 'A lit circle in your territory lets you act from <i>any</i> base. Drag from the glowing base <b>up</b> across the river and move <b>3</b> to claim a new province.' },
+      title: 'Territory', intro: 'Blue hit back and wiped out your base, and its own. Your linked bases plus the provinces you control are your <b>territory</b> (tinted).', instr: 'A square in your territory lets you act from <i>any</i> base. Drag from the glowing base <b>up</b> across the river and move <b>3</b> to claim a new province.' },
     { who: 1, dice: [4, 5], act: { type: 'land', R: L(3, 4), to: L(3, 4), count: 3 } },
 
     { who: 0, kind: 'bridge', dice: [3, 2], act: { type: 'bridge', R: L(2, 1), from: L(1, 1), to: L(2, 1), count: 0 },
-      title: 'Bridge only', intro: 'Two of your provinces are split by a river. A <b>bridge</b> links them. You own 8, and only you can cross yours.', instr: 'Drag from the glowing base to the base on its <b>right</b> and set <b>0</b>: a bridge, no soldiers.' },
+      title: 'Bridge only', intro: 'Two of your provinces are split by a river. A <b>bridge</b> links them.', instr: 'Drag from the glowing base to the base on its <b>right</b> and set <b>0</b>: a bridge, no soldiers.' },
     { who: 1, dice: [4, 3], act: { type: 'land', R: L(3, 2), to: L(3, 2), count: 3 } },
 
     // ───────── 5. הובלה והתקפה מעל הגשר שלך ─────────
     { who: 0, kind: 'transport', dice: [1, 1], act: { type: 'transport', R: L(0, 0), from: L(1, 1), to: L(3, 1), count: 4 },
-      title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. <b>Transport</b> slides soldiers along a straight line through your territory.', instr: 'Drag from the glowing base to the <b>right</b>, over the bridge, to the far circle and send <b>4</b> to the front. They all arrive at one place.' },
+      title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. Transport soldiers along a straight line through your territory.', instr: 'Drag from the glowing base to the <b>right</b>, over the bridge, to the far square and send <b>4</b> to the front.' },
     { who: 1, dice: [5, 5], act: { type: 'move', R: L(4, 4), from: L(3, 4), to: L(4, 4), count: 2 } },
 
     { who: 0, kind: 'attack', dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 1), to: L(3, 2), count: 4 },
