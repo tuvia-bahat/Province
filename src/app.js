@@ -1134,8 +1134,8 @@
         h += row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, mine ? ICON_JOIN : ICON_EYE, 'open');
       }
       for (const g of d.finished) {
-        const win = g.winner === null ? '' : `<span class="lb-win" style="color:${COLORS[g.winner]}">${esc(g.winner === 0 ? g.name0 : g.name1)}</span>`;
-        h += row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, win, 'replay');
+        const win = g.winner === null ? '' : `<span class="lb-win" style="color:${COLORS[g.winner]}">${esc(g.winner === 0 ? g.name0 : g.name1)} wins</span>`;
+        h += row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}${win}`, '', 'replay');
       }
       $('lbList').innerHTML = h || '<div class="lb-empty">No games yet</div>';
       $('lbMsg').textContent = '';
@@ -1155,16 +1155,19 @@
   }
   $('lbPlus').onclick = () => {
     $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0);
+    $('startMain').hidden = false; $('startSize').hidden = true;
     $('startModal').hidden = false;
   };
-  $('startCancel').onclick = () => { $('startModal').hidden = true; };
-  $('lbBoard').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $('lbBoard').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); });
-  $('lbCreate').onclick = async () => {
-    const size = +$('lbBoard').querySelector('.on').dataset.v;
+  $('startModal').addEventListener('click', (e) => { if (e.target === $('startModal')) $('startModal').hidden = true; });
+  $('lbOnline').onclick = () => { $('startMain').hidden = true; $('startSize').hidden = false; };
+  $('startBack').onclick = () => { $('startMain').hidden = false; $('startSize').hidden = true; };
+  $('startSize').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-size]'); if (!b) return;
+    const size = +b.dataset.size;
     $('startModal').hidden = true;
     const n = await askName(); if (!n) return;
-    try { const id = await O.createGame(size, n); await openOnline(id); } catch (e) { netErr(e); }
-  };
+    try { const id = await O.createGame(size, n); await openOnline(id); } catch (er) { netErr(er); }
+  });
   $('lbList').addEventListener('click', async (e) => {
     const r = e.target.closest('.lb-row'); if (!r) return;
     const id = r.dataset.id, a = r.dataset.a;

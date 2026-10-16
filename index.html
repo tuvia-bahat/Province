@@ -70,16 +70,17 @@
 
 <div id="startModal" class="overlay" hidden>
   <div class="modal">
-    <h2>Play</h2>
-    <div>
-      <div class="lbl">Online game</div>
-      <div class="seg" id="lbBoard"><button data-v="6" class="on">6×6</button><button data-v="8">8×8</button></div>
+    <div id="startMain" class="stack">
+      <button id="lbOnline" class="btn">Online</button>
+      <button id="lbAi" class="btn soft">Vs computer</button>
+      <button id="lbCont" class="btn soft" hidden>Continue</button>
+      <button id="lbTut" class="btn soft">Tutorial</button>
     </div>
-    <button id="lbCreate" class="btn">Create online game</button>
-    <button id="lbAi" class="btn soft">Vs computer</button>
-    <button id="lbCont" class="btn soft" hidden>Continue game</button>
-    <button id="lbTut" class="link" type="button">Tutorial</button>
-    <button id="startCancel" class="link" type="button">Close</button>
+    <div id="startSize" class="stack" hidden>
+      <button class="btn" data-size="6">6×6</button>
+      <button class="btn" data-size="8">8×8</button>
+      <button id="startBack" class="link" type="button">Back</button>
+    </div>
   </div>
 </div>
 
