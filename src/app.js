@@ -651,8 +651,8 @@
       for (let k = 0; k < R.SIZE; k++) {
         h += `<text class="axis a0" x="${cx(k)}" y="${cy(0) + CR + 16}">${k + 1}</text>`;
         h += `<text class="axis a0" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
-        h += `<text class="axis a1" x="${cx(k)}" y="${cy(R.SIZE - 1) - CR - 15}">${R.SIZE - k}</text>`;
-        h += `<text class="axis a1" x="${cx(R.SIZE - 1) + CR + 10}" y="${cy(k) + 1}">${R.SIZE - k}</text>`;
+        { const tx = cx(k), ty = cy(R.SIZE - 1) - CR - 15; h += `<text class="axis a1" x="${tx}" y="${ty}" transform="rotate(180 ${tx} ${ty})">${R.SIZE - k}</text>`; }
+        { const tx = cx(R.SIZE - 1) + CR + 10, ty = cy(k) + 1; h += `<text class="axis a1" x="${tx}" y="${ty}" transform="rotate(180 ${tx} ${ty})">${R.SIZE - k}</text>`; }
       }
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)

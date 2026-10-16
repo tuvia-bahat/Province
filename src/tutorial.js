@@ -28,7 +28,7 @@
     { who: 1, dice: [4, 4], act: { type: 'land', R: L(3, 3), to: L(3, 3), count: 3 } },
 
     { who: 0, kind: 'skip', dice: [3, 4], act: { type: 'skip' },
-      title: 'No move', intro: 'Roll again.', instr: 'Bad luck: both circles lie in enemy territory, far from your bases. Tap <b>Pass</b>. (You can pass any time.)' },
+      title: 'No move?', intro: 'Sometimes a roll gives you nothing to play. Tap <b>Roll dice</b> to see.', instr: 'Bad luck: both circles lie in enemy territory, far from your bases, so nothing can be played. Tap <b>Pass</b>. (You may also pass any time.)' },
 
     // ───────── 2. כחול נוחת לידך ותוקף ─────────
     { who: 1, dice: [3, 3], act: { type: 'land', R: L(2, 2), to: L(2, 2), count: 4 } },
