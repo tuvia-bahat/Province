@@ -681,7 +681,7 @@
       const floating = lit && c.o !== null && !isDest;
       const ty = y;   // בלי ריחוף: הבסיס נשאר במקומו, והטבעת המקווקוות מסמנת מה אפשר לשחק
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
-      const cellR = c.o !== null ? CR : DOT_R;
+      const cellR = DOT_R;   // גם מתחת לבסיס רק נקודה: כשהבסיס מוסתר באנימציה לא נחשף עיגול ריק
       h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${cellR}"/>`;
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
