@@ -160,7 +160,11 @@
     ui = freshUi(); ui.rolled = true;
     save(); render();
   }
-  function passOrSkip(fn) { history.push(state); lastMove = null; state = fn(state); ui = freshUi(); save(); render(); }
+  function passOrSkip(fn) {
+    history.push(state); lastMove = null; state = fn(state); ui = freshUi();
+    if (tut.active) { tut.i++; tut.cardAt = Infinity; }
+    save(); render();
+  }
   const doSkip = () => passOrSkip(R.skipTurn);
   const doPass = () => passOrSkip(R.passTurn);
 
@@ -502,13 +506,15 @@
     return sh.count === ex.count;
   }
   function tutGuideSvg(ex) {
-    const ring = (i, n) => {
+    const halo = (i, cls, n) => {
       const x = cellX(i), y = cellY(i);
-      return `<circle class="guide-ring" cx="${x}" cy="${y}" r="${CR + 10}"/>` +
-        (n ? `<circle cx="${x + CR + 4}" cy="${y - CR - 4}" r="10" fill="#1b1e24"/><text class="guide-n" x="${x + CR + 4}" y="${y - CR - 3}">${n}</text>` : '');
+      return `<circle class="${cls}" cx="${x}" cy="${y}" r="${CR + 8}"/>` + (n ? `<text class="guide-n" x="${x}" y="${y - CR - 14}">${n}</text>` : '');
     };
-    if (ex.tap) return ring(ex.cell, '');
-    return `<line class="guide-line" x1="${cellX(ex.from)}" y1="${cellY(ex.from)}" x2="${cellX(ex.to)}" y2="${cellY(ex.to)}"/>` + ring(ex.from, '1') + ring(ex.to, '2');
+    if (ex.tap) return halo(ex.cell, 'guide-halo', '');
+    const sx = cellX(ex.from), sy = cellY(ex.from), tx = cellX(ex.to), ty = cellY(ex.to), d = Math.hypot(tx - sx, ty - sy) || 1;
+    const ux = (tx - sx) / d, uy = (ty - sy) / d, pad = CR + 12;
+    const line = d > 2 * pad + 6 ? `<line class="guide-line" x1="${sx + ux * pad}" y1="${sy + uy * pad}" x2="${tx - ux * pad}" y2="${ty - uy * pad}"/>` : '';
+    return line + halo(ex.from, 'guide-halo', '1') + halo(ex.to, 'guide-ring', '2');
   }
   function tutNudge(msg) {
     const el = $('coachNudge');
@@ -765,7 +771,7 @@
     }
     if (ph === 'skip') {
       msg.innerHTML = '';
-      addBtn(row(), 'Pass', '', doSkip);
+      addBtn(row(), 'Pass', tut.active ? 'guide' : '', doSkip);
       return;
     }
 

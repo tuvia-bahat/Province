@@ -179,12 +179,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #coachFoot .btn { min-height: 28px; padding: 4px 14px; font-size: 12px; }
 #coach.shake { animation: shake .35s; }
 @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
-.guide-ring { fill: none; stroke: #1b1e24; stroke-width: 3; pointer-events: none; transform-box: fill-box; transform-origin: center; animation: gpulse 1.3s ease-in-out infinite; }
-@keyframes gpulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(1.13); } }
-.guide-n { fill: #fff; font: 700 12px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.guide-line { stroke: #1b1e24; stroke-width: 3; stroke-dasharray: 2 8; stroke-linecap: round; opacity: .55; pointer-events: none; }
+.guide-halo, .guide-ring { pointer-events: none; transform-box: fill-box; transform-origin: center; animation: gpulse 1.7s ease-in-out infinite; }
+.guide-halo { fill: rgba(229,72,77,.16); stroke: rgba(229,72,77,.5); stroke-width: 1.5; }
+.guide-ring { fill: none; stroke: rgba(229,72,77,.7); stroke-width: 2; }
+@keyframes gpulse { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
+.guide-n { fill: #e5484d; font: 700 11px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.guide-line { stroke: rgba(229,72,77,.4); stroke-width: 2; stroke-dasharray: 1 7; stroke-linecap: round; pointer-events: none; }
 .btn.guide, .pm.guide { animation: bpulse 1.3s ease-in-out infinite; }
-@keyframes bpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,30,36,.35); } 50% { box-shadow: 0 0 0 9px rgba(27,30,36,0); } }
+@keyframes bpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,.4); } 50% { box-shadow: 0 0 0 8px rgba(229,72,77,0); } }
 #winText { text-align: left; font-size: 13.5px; line-height: 1.4; color: var(--ink); }
 #winText ul { margin: 6px 0 0; padding-left: 18px; }
 #winText li { margin: 3px 0; }
