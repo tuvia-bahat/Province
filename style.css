@@ -208,7 +208,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-txt b { font-weight: 600; letter-spacing: .005em; }
 .lb-txt .dim { color: var(--faint); font-weight: 400; font-size: 14px; }
 .lb-txt .sz { padding: 2px 9px; border-radius: 999px; background: #f1f2f5; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-left: 4px; }
-.lb-win { font-size: 14px; font-weight: 600; margin-left: 18px; white-space: nowrap; }
+.lb-win { font-size: 14px; font-weight: 600; margin-left: 38px; white-space: nowrap; }
 .lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #d3d6dd; }
 .lb-dot.open { background: var(--p0); animation: lbpulse 1.6s ease-out infinite; }
 .lb-dot.live { background: var(--p1); }
