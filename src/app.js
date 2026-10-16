@@ -517,7 +517,7 @@
     const sx = cellX(ex.from), sy = cellY(ex.from), tx = cellX(ex.to), ty = cellY(ex.to), d = Math.hypot(tx - sx, ty - sy) || 1;
     const ux = (tx - sx) / d, uy = (ty - sy) / d, pad = CR + 12;
     const line = d > 2 * pad + 6 ? `<line class="guide-line" x1="${sx + ux * pad}" y1="${sy + uy * pad}" x2="${tx - ux * pad}" y2="${ty - uy * pad}"/>` : '';
-    return line + halo(ex.from, 'guide-halo', '1') + halo(ex.to, 'guide-ring', '2');
+    return line + halo(ex.from, 'guide-halo', '') + halo(ex.to, 'guide-ring', '');
   }
   function tutNudge(msg) {
     const el = $('coachNudge');

@@ -38,29 +38,29 @@
 
     // ───────── 3. מתפזרים ותוקפים ראשונים ─────────
     { who: 0, kind: 'move', dice: [4, 2], act: { type: 'move', R: L(3, 1), from: L(2, 1), to: L(3, 1), count: 6 },
-      title: 'Spread out', intro: 'Ouch! Blue struck across the river: 4 of yours died for good, though you had more. Never pile soldiers in one place.', instr: 'Drag from <b>1</b> to <b>2</b> and move <b>6</b> to the next circle.' },
+      title: 'Spread out', intro: 'Ouch! Blue struck across the river: 4 of yours died for good, though you had more. Never pile soldiers in one place.', instr: 'Drag from the glowing base one circle to the <b>right</b> and move <b>6</b> soldiers.' },
     { who: 1, dice: [4, 3], act: { type: 'land', R: L(3, 2), to: L(3, 2), count: 2 } },
 
     { who: 0, kind: 'attack', dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 1), to: L(3, 2), count: 5 },
-      title: 'Attack', intro: 'Blue landed beside your new base. Strike first: each attacker kills a defender for good, and attackers go home to camp.', instr: 'Drag <b>1</b> onto the enemy base <b>2</b> and send <b>5</b> against 2. The extra soldiers take the cell. (Crossing a river builds a bridge for you.)' },
+      title: 'Attack', intro: 'Blue landed beside your new base. Strike first: each attacker kills a defender for good, and attackers go home to camp.', instr: 'Drag from the glowing base <b>up</b> onto the enemy base: send <b>5</b> against 2. The extra soldiers take the cell. (Crossing a river builds a bridge for you.)' },
     { who: 1, dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 3), to: L(3, 2), count: 3 } },
 
     // ───────── 4. טריטוריה ומנדט ─────────
     { who: 0, kind: 'move', dice: [1, 1], act: { type: 'move', R: L(0, 0), from: L(1, 1), to: L(1, 2), count: 3 },
-      title: 'Territory', intro: 'Blue hit back and wiped out your base, and its own. Your linked bases plus the provinces you control are your <b>territory</b> (tinted).', instr: 'A lit circle in your territory lets you act from <i>any</i> base. Drag from <b>1</b> to <b>2</b> and move <b>3</b> to claim a new province.' },
+      title: 'Territory', intro: 'Blue hit back and wiped out your base, and its own. Your linked bases plus the provinces you control are your <b>territory</b> (tinted).', instr: 'A lit circle in your territory lets you act from <i>any</i> base. Drag from the glowing base <b>up</b> across the river and move <b>3</b> to claim a new province.' },
     { who: 1, dice: [4, 5], act: { type: 'land', R: L(3, 4), to: L(3, 4), count: 3 } },
 
     { who: 0, kind: 'bridge', dice: [3, 2], act: { type: 'bridge', R: L(2, 1), from: L(1, 1), to: L(2, 1), count: 0 },
-      title: 'Bridge only', intro: 'Two of your provinces are split by a river. A <b>bridge</b> links them. You own 8, and only you can cross yours.', instr: 'Drag from <b>1</b> to <b>2</b> and set <b>0</b>: a bridge, no soldiers.' },
+      title: 'Bridge only', intro: 'Two of your provinces are split by a river. A <b>bridge</b> links them. You own 8, and only you can cross yours.', instr: 'Drag from the glowing base to the base on its <b>right</b> and set <b>0</b>: a bridge, no soldiers.' },
     { who: 1, dice: [4, 3], act: { type: 'land', R: L(3, 2), to: L(3, 2), count: 3 } },
 
     // ───────── 5. הובלה והתקפה מעל הגשר שלך ─────────
     { who: 0, kind: 'transport', dice: [1, 1], act: { type: 'transport', R: L(0, 0), from: L(1, 1), to: L(3, 1), count: 4 },
-      title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. <b>Transport</b> slides soldiers along a straight line through your territory.', instr: 'Drag from <b>1</b> to <b>2</b> and send <b>4</b> to the front. They all arrive at one place.' },
+      title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. <b>Transport</b> slides soldiers along a straight line through your territory.', instr: 'Drag from the glowing base to the <b>right</b>, over the bridge, to the far circle and send <b>4</b> to the front. They all arrive at one place.' },
     { who: 1, dice: [5, 5], act: { type: 'move', R: L(4, 4), from: L(3, 4), to: L(4, 4), count: 2 } },
 
     { who: 0, kind: 'attack', dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 1), to: L(3, 2), count: 4 },
-      title: 'Your bridge', intro: 'Your bridge is a one-way door: you can attack across it, Blue can\'t.', instr: 'Drag <b>1</b> onto <b>2</b> and send <b>4</b> against 3.' },
+      title: 'Your bridge', intro: 'Your bridge is a one-way door: you can attack across it, Blue can\'t.', instr: 'Drag from the glowing base <b>up</b> onto the enemy base and send <b>4</b> against 3.' },
     { who: 1, dice: [2, 5], act: { type: 'land', R: L(1, 4), to: L(1, 4), count: 3 } },
 
     // ───────── 6. נסיגה, חוק ההנחתה, החלפת גשר ─────────
@@ -73,12 +73,12 @@
     { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 2 } },
 
     { who: 0, kind: 'bridge', dice: [3, 2], act: { type: 'bridge', R: L(2, 1), from: L(2, 1), to: L(2, 2), count: 0 },
-      title: 'Replace a bridge', intro: 'You now stand on both ends of the bridge Blue used to strike you. Replace it with your own!', instr: 'Drag from <b>1</b> to <b>2</b> and set <b>0</b>. The bridge turns green.' },
+      title: 'Replace a bridge', intro: 'You now stand on both ends of the bridge Blue used to strike you. Replace it with your own!', instr: 'Drag from the glowing base <b>up</b> to the other base and set <b>0</b>. The bridge turns green.' },
     { who: 1, dice: [5, 4], act: { type: 'bridge', R: L(4, 3), from: L(4, 4), to: L(4, 3), count: 0 } },
 
     // ───────── 7. הניצחון ─────────
     { who: 0, kind: 'move', dice: [5, 2], act: { type: 'move', R: L(4, 1), from: L(3, 1), to: L(4, 1), count: 1 },
-      title: 'The final move', intro: 'Blue is at <b>4 of 5</b>! You need one more province, now.', instr: 'Drag from <b>1</b> to <b>2</b> and move <b>1</b> soldier across the river. Five connected provinces win!' },
+      title: 'The final move', intro: 'Blue is at <b>4 of 5</b>! You need one more province, now.', instr: 'Drag from the glowing base to the <b>right</b>, across the river, and move <b>1</b> soldier. Five connected provinces win!' },
   ];
 
   const recap = [
