@@ -1134,9 +1134,8 @@
         h += row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, mine ? ICON_JOIN : ICON_EYE, 'open');
       }
       for (const g of d.finished) {
-        const w0 = g.winner === 0 ? 'b' : 'span class="dim"', w1 = g.winner === 1 ? 'b' : 'span class="dim"';
-        const c0 = g.winner === 0 ? 'b' : 'span', c1 = g.winner === 1 ? 'b' : 'span';
-        h += row(g, 'done', `<${w0}>${esc(g.name0)}</${c0}> <span class="dim">vs</span> <${w1}>${esc(g.name1)}</${c1}>${sz(g)}`, '', 'replay');
+        const win = g.winner === null ? '' : `<span class="lb-win" style="color:${COLORS[g.winner]}">${esc(g.winner === 0 ? g.name0 : g.name1)}</span>`;
+        h += row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, win, 'replay');
       }
       $('lbList').innerHTML = h || '<div class="lb-empty">No games yet</div>';
       $('lbMsg').textContent = '';
