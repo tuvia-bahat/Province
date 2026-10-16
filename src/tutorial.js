@@ -20,7 +20,7 @@
   const steps = [
     // ───────── 1. בונים בסיס ─────────
     { who: 0, kind: 'land', dice: [2, 2], act: { type: 'land', R: L(1, 1), to: L(1, 1), count: 8 },
-      title: 'Land soldiers', intro: 'The two dice are <b>coordinates</b>: the first is the column, the second the row. Each player counts from their own side, so every roll lights <b>two opposite squares</b>. Tap <b>Roll dice</b>.', instr: 'Your 2 and 2 is column 2, row 2 (green numbers). Blue counts from the other side (blue numbers), so the same 2 and 2 is the opposite square. Tap your glowing square and land <b>8</b>.' },
+      title: 'Land soldiers', intro: 'The dice are <b>coordinates</b>: column, then row. Each player counts from their own side, so one roll lights <b>two opposite squares</b>. Tap <b>Roll dice</b>.', instr: 'Same 2 and 2, seen from both sides. Tap your glowing square and land <b>8</b>.' },
     { who: 1, dice: [5, 5], act: { type: 'land', R: L(4, 4), to: L(4, 4), count: 4 } },
 
     { who: 0, kind: 'land', dice: [3, 2], act: { type: 'land', R: L(2, 1), to: L(2, 1), count: 4 },
