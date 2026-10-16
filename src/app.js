@@ -41,6 +41,7 @@
   // mode: pvp | ai | watch
   let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
   let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
+  let winShowAt = 0, winTimer = null;   // חלון הניצחון מוצג רק אחרי אנימציית המהלך והבהוב הפרובינציות
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
@@ -129,6 +130,7 @@
     let ns;
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     const prev = state;
+    winShowAt = ns.winner !== null ? Infinity : 0;
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = freshUi();
     save(); render(); animateMove(prev, a, ns);
@@ -146,7 +148,7 @@
 
   function undo() {
     if (!history.length) return;
-    clearTimeout(aiTimer); aiTimer = null;
+    clearTimeout(aiTimer); aiTimer = null; clearTimeout(winTimer); winShowAt = 0;
     state = history.pop();
     // נגד המחשב: חוזרים עד לתור האדם (ביטול מהלך המחשב יחד עם מהלך האדם)
     while (isAiTurn() && history.length) state = history.pop();
@@ -213,7 +215,7 @@
   function animateMove(prev, a, next) {
     fxCancel();
     const svg = $('board');
-    if (!svg || !a || a.type === 'pass') return;
+    if (!svg || !a || a.type === 'pass') { releaseWin(0); return; }
     const p = prev.turn, q = 1 - p, col = COLORS[p];
     const g = mk(svg, 'g', { id: 'fx', 'pointer-events': 'none' });
     const real = (i) => svg.querySelectorAll(`[data-i="${i}"]`);
@@ -227,7 +229,7 @@
       return {
         set(v) { t.textContent = v; bump(t, 1.4, 160); },
         remove() { c.remove(); t.remove(); },
-        flick() { [c, t].forEach((e) => { try { e.animate([{ opacity: 1 }, { opacity: .25 }, { opacity: 1 }, { opacity: .5 }, { opacity: 1 }], { duration: 260 * FK }); } catch (er) { /* ignore */ } }); },
+        flick() { [c, t].forEach((e) => { try { e.animate([{ opacity: 1 }, { opacity: .25 }, { opacity: 1 }], { duration: 340 * FK, easing: 'ease-in-out' }); } catch (er) { /* ignore */ } }); },
         fade() { [c, t].forEach((e) => { try { e.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.4)' }], { duration: 350 * FK, fill: 'forwards' }); } catch (er) { /* ignore */ } }); later(360, () => { c.remove(); t.remove(); }); },
       };
     };
@@ -315,7 +317,7 @@
         end = cellTween(t, p, dFrom, next.cells[t].n, tD, 110);
         panelT = tD;
       } else {
-        const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 110 : 220;
+        const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 200 : 360;
         hide(f); hide(t);
         const gs = ghost(f, p, prev.cells[f].n), gd = ghost(t, q, def);
         const mx = (sx + tx) / 2, my = (sy + ty) / 2;
@@ -369,6 +371,39 @@
     // התור של המחשב (אם כבר נקבע) מחכה לסיום האנימציה
     if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; scheduleAi(); }
     later(end + 200, () => { if (g.parentNode) g.remove(); });
+    if (next.winner !== null) {
+      // אחרי המהלך: הפרובינציות המחוברות של המנצח מהבהבות 3 פעמים לאט ברקע בצבעו, ורק אחר כך מופיע חלון הניצחון
+      const wp = next.winner, startMs = (end + 250) * FK * (window.__fxScale || 1);
+      const ctl = R.provinceControl(next), first = (k) => R.idx((k % R.PR) * 2, Math.floor(k / R.PR) * 2);
+      let group = [];
+      for (let k = 0; k < R.NPROV && !group.length; k++) {
+        if (ctl[k] !== wp) continue;
+        const comp = R.territory(next, first(k), wp), grp = [];
+        for (let j = 0; j < R.NPROV; j++) if (ctl[j] === wp && comp.includes(first(j))) grp.push(j);
+        if (grp.length >= R.WIN_PROVINCES) group = grp;
+      }
+      if (!group.length) for (let k = 0; k < R.NPROV; k++) if (ctl[k] === wp) group.push(k);
+      const PULSE = 1200;
+      const wg = document.createElementNS(NS, 'g');
+      wg.setAttribute('pointer-events', 'none');
+      svg.insertBefore(wg, svg.firstChild);
+      for (const k of group) {
+        const a0 = first(k), b0 = R.idx((k % R.PR) * 2 + 1, Math.floor(k / R.PR) * 2 + 1), m = CR + 8;
+        const r0 = document.createElementNS(NS, 'rect');
+        r0.setAttribute('x', cellX(a0) - m); r0.setAttribute('y', Math.min(cellY(a0), cellY(b0)) - m);
+        r0.setAttribute('width', Math.abs(cellX(b0) - cellX(a0)) + 2 * m); r0.setAttribute('height', Math.abs(cellY(b0) - cellY(a0)) + 2 * m);
+        r0.setAttribute('rx', 16); r0.setAttribute('fill', COLORS[wp]); r0.setAttribute('opacity', 0);
+        wg.appendChild(r0);
+        try { r0.animate([{ opacity: 0 }, { opacity: .42, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
+      }
+      releaseWin(startMs + 3 * PULSE + 350);
+    }
+  }
+  // חלון הניצחון נחשף אחרי השהיה (ms), גם אם האנימציה בוטלה באמצע
+  function releaseWin(ms) {
+    clearTimeout(winTimer);
+    winShowAt = Date.now() + ms;
+    winTimer = setTimeout(() => { winShowAt = 0; render(); }, ms + 20);
   }
 
   // ---------- יריב מחשב ----------
@@ -403,6 +438,7 @@
       try { state = R.apply(state, a); } catch (e) { console.error(e); state = R.passTurn(state); a = { type: 'pass' }; }
     }
     lastMove = a.type === 'pass' ? null : { p, a };
+    winShowAt = state.winner !== null && a.type !== 'pass' ? Infinity : 0;
     ui = freshUi(); save(); render();
     if (a.type !== 'pass') animateMove(prevS, a, state);
   }
@@ -417,7 +453,7 @@
     $('grpWatchWrap').hidden = pending.mode !== 'watch';
   }
   function startNew() {
-    clearTimeout(aiTimer); aiTimer = null; paused = false;
+    clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
     settings = Object.assign({}, pending); settings.human = +settings.human; settings.board = +settings.board;
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
@@ -522,6 +558,7 @@
   }
   function renderDice() {
     const box = $('dice');
+    if (state.winner !== null) { box.innerHTML = ''; return; }   // כשהמשחק נגמר הקוביות נעלמות
     const info = state.roll || lastRoll;
     if (!info) { box.innerHTML = dieHtml('–', 'X', { old: true }) + dieHtml('–', 'Y', { old: true }); return; }
     const cls = { roll: ui.rolled, old: !state.roll };
@@ -637,7 +674,7 @@
     $('speedBtn').hidden = !watch;
     $('speedBtn').textContent = 'Speed: ' + SPEED_LABEL[settings.speed];
     const o = $('overlay');
-    if (state.winner !== null && !o.dataset.dismissed) {
+    if (state.winner !== null && !o.dataset.dismissed && Date.now() >= winShowAt) {
       const w = state.winner;
       $('winTitle').innerHTML = settings.mode === 'ai'
         ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
