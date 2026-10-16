@@ -1088,9 +1088,11 @@
   }
 
   // ---------- לובי ----------
-  let lobbyUnsub = null, lobbyTimer = null, lobbyBusy = false;
+  const ICON_JOIN = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/></svg>';
+  const ICON_EYE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  let lobbyUnsub = null, lobbyTimer = null, lobbyBusy = false, presenceOn = false;
   function closeLobby() {
-    $('lobby').hidden = true;
+    $('lobby').hidden = true; $('startModal').hidden = true; $('nameModal').hidden = true;
     if (lobbyUnsub) { lobbyUnsub(); lobbyUnsub = null; }
     clearInterval(lobbyTimer); lobbyTimer = null;
   }
@@ -1108,57 +1110,73 @@
   }
   function openLobby() {
     leaveOnline();
-    $('newModal').hidden = true; $('bar').classList.remove('open');
+    $('newModal').hidden = true; $('startModal').hidden = true; $('nameModal').hidden = true; $('bar').classList.remove('open');
     if (tut.active) tutExit();
     $('lobby').hidden = false;
-    $('nameIn').value = O.getName();
-    $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0);
     $('lbMsg').textContent = '';
     refreshLobby();
     clearInterval(lobbyTimer); lobbyTimer = setInterval(refreshLobby, 15000);
+    if (!presenceOn) { presenceOn = true; O.presence((n) => { $('lbCount').textContent = n; }).catch(() => { presenceOn = false; }); }
   }
-  const ago = (iso) => { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); return s < 90 ? 'now' : s < 5400 ? Math.round(s / 60) + 'm ago' : s < 129600 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };
-  const dot = (p) => `<i class="lb-dot" style="background:${COLORS[p]}"></i>`;
+  const dot = (cls) => `<i class="lb-dot ${cls}"></i>`;
   async function refreshLobby() {
     if ($('lobby').hidden || lobbyBusy) return;
     lobbyBusy = true;
     try {
       const d = await O.lobby();
       if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { setTimeout(refreshLobby, 300); }); } catch (e) { /* ignore */ } }
-      const me = O.uid, sz = (g) => `${g.size}×${g.size}`;
-      const rowHtml = (g, mid, btn, id) => `<div class="lb-row"><div class="lb-txt">${mid}</div><button class="btn sm lb-btn" data-id="${g.id}" data-a="${id}">${btn}</button></div>`;
-      const empty = (s) => `<div class="lb-empty">${s}</div>`;
-      $('lbOpen').innerHTML = d.open.map((g) => rowHtml(g, `${dot(0)}<b>${esc(g.name0)}</b> <span>${sz(g)} · ${ago(g.created_at)}</span>`, g.p0 === me ? 'Open' : 'Join', g.p0 === me ? 'open' : 'join')).join('') || empty('No open games');
-      $('lbLive').innerHTML = d.active.map((g) => {
+      const me = O.uid, sz = (g) => `<span class="sz">${g.size}×${g.size}</span>`;
+      const row = (g, d0, txt, icon, a) => `<div class="lb-row" data-id="${g.id}" data-a="${a}">${dot(d0)}<div class="lb-txt">${txt}</div><div class="lb-go">${icon || ''}</div></div>`;
+      let h = '';
+      for (const g of d.open) h += row(g, 'open', `<b>${esc(g.name0)}</b>${sz(g)}`, ICON_JOIN, 'open');
+      for (const g of d.active) {
         const mine = g.p0 === me || g.p1 === me;
-        return rowHtml(g, `${dot(0)}<b>${esc(g.name0)}</b> vs ${dot(1)}<b>${esc(g.name1)}</b> <span>${sz(g)} · move ${g.moves_count}</span>`, mine ? 'Play' : 'Watch', 'open');
-      }).join('') || empty('No live games');
-      $('lbDone').innerHTML = d.finished.map((g) => rowHtml(g, `${dot(0)}<b>${esc(g.name0)}</b> vs ${dot(1)}<b>${esc(g.name1)}</b> <span>${g.winner === null ? '' : esc(g.winner === 0 ? g.name0 : g.name1) + ' won · '}${sz(g)} · ${ago(g.last_move_at)}</span>`, 'Replay', 'replay')).join('') || empty('No finished games yet');
+        h += row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, mine ? ICON_JOIN : ICON_EYE, 'open');
+      }
+      for (const g of d.finished) {
+        const w0 = g.winner === 0 ? 'b' : 'span class="dim"', w1 = g.winner === 1 ? 'b' : 'span class="dim"';
+        const c0 = g.winner === 0 ? 'b' : 'span', c1 = g.winner === 1 ? 'b' : 'span';
+        h += row(g, 'done', `<${w0}>${esc(g.name0)}</${c0}> <span class="dim">vs</span> <${w1}>${esc(g.name1)}</${c1}>${sz(g)}`, '', 'replay');
+      }
+      $('lbList').innerHTML = h || '<div class="lb-empty">No games yet</div>';
       $('lbMsg').textContent = '';
-    } catch (e) { $('lbMsg').textContent = 'Can\'t reach the server. You can still play vs the computer.'; console.error(e); }
+    } catch (e) { $('lbMsg').textContent = 'Can\'t reach the server'; console.error(e); }
     lobbyBusy = false;
   }
-  function needName() {
-    const n = O.cleanName($('nameIn').value);
-    if (!n) { $('lbMsg').textContent = 'Enter your name first.'; $('nameIn').focus(); return null; }
-    O.setName(n); return n;
+  // חלון השם: מופיע רק כשנכנסים למשחק (יצירה/הצטרפות), עם השם השמור לעריכה
+  function askName() {
+    return new Promise((resolve) => {
+      const m = $('nameModal'), inp = $('nameIn');
+      inp.value = O.getName(); m.hidden = false; setTimeout(() => { inp.focus(); inp.select(); }, 50);
+      const done = (v) => { m.hidden = true; $('nameOk').onclick = $('nameCancel').onclick = inp.onkeydown = null; resolve(v); };
+      const ok = () => { const n = O.cleanName(inp.value); if (!n) { inp.focus(); return; } O.setName(n); done(n); };
+      $('nameOk').onclick = ok; $('nameCancel').onclick = () => done(null);
+      inp.onkeydown = (e) => { if (e.key === 'Enter') ok(); else if (e.key === 'Escape') done(null); };
+    });
   }
-  $('nameIn').addEventListener('input', () => O.setName(O.cleanName($('nameIn').value)));
+  $('lbPlus').onclick = () => {
+    $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0);
+    $('startModal').hidden = false;
+  };
+  $('startCancel').onclick = () => { $('startModal').hidden = true; };
   $('lbBoard').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $('lbBoard').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); });
   $('lbCreate').onclick = async () => {
-    const n = needName(); if (!n) return;
-    try { const size = +$('lbBoard').querySelector('.on').dataset.v; const id = await O.createGame(size, n); await openOnline(id); } catch (e) { netErr(e); }
+    const size = +$('lbBoard').querySelector('.on').dataset.v;
+    $('startModal').hidden = true;
+    const n = await askName(); if (!n) return;
+    try { const id = await O.createGame(size, n); await openOnline(id); } catch (e) { netErr(e); }
   };
-  $('lobby').addEventListener('click', async (e) => {
-    const b = e.target.closest('.lb-btn'); if (!b) return;
-    const id = b.dataset.id, a = b.dataset.a;
+  $('lbList').addEventListener('click', async (e) => {
+    const r = e.target.closest('.lb-row'); if (!r) return;
+    const id = r.dataset.id, a = r.dataset.a;
     try {
-      if (a === 'join') { const n = needName(); if (!n) return; await O.joinGame(id, n); await openOnline(id); }
-      else if (a === 'open') await openOnline(id);
+      const g = a === 'open' ? await O.getGame(id) : null;
+      if (g && g.status === 'open' && g.p0 !== O.uid) { const n = await askName(); if (!n) return; await O.joinGame(id, n); await openOnline(id); }
       else if (a === 'replay') await openOnline(id, { replay: true });
+      else await openOnline(id);
     } catch (er) { netErr(er); refreshLobby(); }
   });
-  $('lbAi').onclick = openNew;
+  $('lbAi').onclick = () => { $('startModal').hidden = true; openNew(); };
   $('lbCont').onclick = closeLobby;
   $('lbTut').onclick = startTutorial;
 

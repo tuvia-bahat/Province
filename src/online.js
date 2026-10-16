@@ -63,8 +63,18 @@
     return () => sb.removeChannel(ch);
   }
 
+  // כמה אנשים מחוברים כרגע (Presence): ערוץ אחד פתוח כל עוד האתר פתוח
+  let pres = null;
+  async function presence(cb) {
+    await init();
+    if (pres) return;
+    pres = sb.channel('presence-online', { config: { presence: { key: uid } } });
+    pres.on('presence', { event: 'sync' }, () => cb(Object.keys(pres.presenceState()).length))
+      .subscribe(async (status) => { if (status === 'SUBSCRIBED') await pres.track({ at: Date.now() }); });
+  }
+
   root.Online = {
-    init, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
+    init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };
 })(window);

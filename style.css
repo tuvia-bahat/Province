@@ -196,31 +196,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .axis.a1 { fill: #3b6ef5; }
 
 /* ---------- לובי ---------- */
-.screen { position: fixed; inset: 0; z-index: 8; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.screen { position: fixed; inset: 0; z-index: 8; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; }
 .screen[hidden] { display: none; }
-.lobby-in { max-width: 520px; margin: 0 auto; padding: max(5vw, env(safe-area-inset-top)) 5vw calc(5vw + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
-.lobby-in h1 { margin: 0 0 4px; font-size: 28px; font-weight: 700; letter-spacing: .02em; }
-.lobby-in h2 { margin: 18px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-#nameIn { width: 100%; border: 0; border-radius: 14px; background: #eef0f3; padding: 13px 16px; font: inherit; font-size: 16px; color: var(--ink); outline: none; }
-#nameIn:focus { box-shadow: 0 0 0 2px var(--ink); }
-.lb-actions { display: flex; gap: 10px; align-items: center; }
-.lb-actions .seg { flex: none; width: 138px; }
-.lb-actions .btn { flex: 1; }
-#lbMsg { min-height: 0; font-size: 13px; color: #c0392b; }
+.lobby-in { width: min(420px, 100%); margin: auto; padding: max(5vw, env(safe-area-inset-top)) 5vw calc(5vw + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: stretch; gap: 22px; }
+.lb-online { align-self: center; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lb-list { display: flex; flex-direction: column; gap: 8px; }
+.lb-row { display: flex; align-items: center; gap: 14px; padding: 0 16px; min-height: 54px; border-radius: 16px; background: #f4f5f7; cursor: pointer; transition: background .15s; }
+.lb-row:active { background: #e8eaee; }
+.lb-txt { flex: 1; min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
+.lb-txt .sz { color: var(--faint); font-size: 12px; margin-left: 6px; }
+.lb-txt .dim { color: var(--muted); font-weight: 400; }
+.lb-txt b { font-weight: 600; }
+.lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #c3c7d0; }
+.lb-dot.open { background: var(--p0); animation: lbblink 1.4s ease-in-out infinite; }
+.lb-dot.live { background: var(--p1); }
+@keyframes lbblink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.lb-go { flex: none; display: flex; color: var(--ink); }
+.lb-empty { text-align: center; font-size: 14px; color: var(--faint); padding: 8px 0; }
+#lbMsg { text-align: center; font-size: 13px; color: #c0392b; }
 #lbMsg:empty { display: none; }
-.lb-list { display: flex; flex-direction: column; gap: 6px; }
-.lb-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #f4f5f7; }
-.lb-txt { flex: 1; min-width: 0; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
-.lb-txt span { display: block; font-size: 12px; color: var(--muted); }
-.lb-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
-.lb-txt .lb-dot ~ .lb-dot, .lb-txt b ~ .lb-dot { margin-left: 2px; }
-.lb-btn { flex: none; min-height: 34px; padding: 6px 16px; font-size: 12px; }
-.lb-empty { font-size: 13px; color: var(--faint); padding: 4px 2px; }
-.lb-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
-#app.flip #pl0 { order: 1; }
-#app.flip #boardWrap { order: 2; }
-#app.flip #pl1 { order: 3; }
-#app.flip #dock { order: 4; }
+.lb-plus { align-self: center; width: 52px; height: 52px; border: 0; border-radius: 50%; background: var(--ink); color: #fff; font-size: 28px; line-height: 1; padding: 0 0 3px; box-shadow: 0 4px 14px rgba(20,25,40,.22); }
+.lb-plus:active { transform: scale(.96); }
+#startModal .modal .btn { width: 100%; }
+#nameIn { width: 100%; border: 0; border-radius: 14px; background: #eef0f3; padding: 13px 16px; font: inherit; font-size: 17px; text-align: center; color: var(--ink); outline: none; }
+#nameIn:focus { box-shadow: 0 0 0 2px var(--ink); }
 
 /* ---------- מחשב: לוח גדול משמאל, שחקנים וכפתורים בעמודה מימין ---------- */
 @media (min-width: 860px) and (min-height: 540px) {
@@ -236,19 +235,3 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #bar { right: 20px; top: 56px; }
 }
 
-/* ---------- לובי במחשב: שלוש עמודות ---------- */
-@media (min-width: 860px) {
-  .lobby-in { max-width: 1080px; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 28px; row-gap: 10px; align-items: start; padding-top: 6dvh; }
-  .lobby-in h1 { grid-column: 1 / -1; grid-row: 1; font-size: 34px; }
-  #nameIn { grid-column: 1; grid-row: 2; }
-  .lb-actions { grid-column: 2 / 4; grid-row: 2; }
-  .lb-actions .seg { width: 150px; }
-  .lb-actions .btn { flex: none; min-width: 200px; }
-  #lbMsg { grid-column: 1 / -1; grid-row: 3; }
-  .lobby-in h2 { grid-row: 4; margin-top: 22px; }
-  .lobby-in h2:nth-of-type(1), #lbOpen { grid-column: 1; }
-  .lobby-in h2:nth-of-type(2), #lbLive { grid-column: 2; }
-  .lobby-in h2:nth-of-type(3), #lbDone { grid-column: 3; }
-  .lb-list { grid-row: 5; }
-  .lb-foot { grid-column: 1 / -1; grid-row: 6; justify-content: flex-start; gap: 18px; margin-top: 26px; }
-}
