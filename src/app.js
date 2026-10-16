@@ -29,6 +29,7 @@
     const len = (P + G - 2 * CR) * BRIDGE_FILL - BR, th = 16, tw = Math.max(3.5, Math.min(4, th * BR / len));
     document.documentElement.style.setProperty('--tick-w', tw.toFixed(1) + 'px');
     document.documentElement.style.setProperty('--tick-h', th + 'px');
+    document.documentElement.style.setProperty('--tick-gap', (R.BRIDGES <= 8 ? 8 : 4) + 'px');
     memo = { state: null, play: null, opts: new Map() };
   }
   const cx = (x) => M + x * P + Math.floor(x / 2) * G + P / 2;
@@ -554,10 +555,12 @@
     el.hidden = false;
     // הכרטיס מכסה את פאנל היריב (ואת הרווח שמתחתיו עד הלוח)
     const pl = $('pl1').getBoundingClientRect(), bw = $('boardWrap').getBoundingClientRect();
-    el.style.left = (pl.left - 6) + 'px'; el.style.width = (pl.width + 12) + 'px';
-    el.style.top = Math.max(4, pl.top - 8) + 'px';
+    // אותם שוליים כמו שאר המסך (5% מהצדדים ומלמעלה), והכרטיס מסתיים לפני כפתור התפריט
+    const mb = $('menuBtn').getBoundingClientRect(), top = Math.max(innerWidth * 0.05, pl.top - 8);
+    el.style.left = pl.left + 'px'; el.style.width = Math.max(160, mb.left - 8 - pl.left) + 'px';
+    el.style.top = top + 'px';
     el.style.minHeight = (pl.height + 14) + 'px';
-    el.style.maxHeight = Math.max(pl.height + 14, bw.top - (pl.top - 8) - 2) + 'px';
+    el.style.maxHeight = Math.max(pl.height + 14, bw.top - top - 2) + 'px';
     el.classList.remove('tight');
     if (el.scrollHeight > el.clientHeight + 1) el.classList.add('tight');   // מסך נמוך: טקסט קצת קטן יותר במקום גלילה
   }

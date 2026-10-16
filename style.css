@@ -56,7 +56,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
 .pl .sbar .d { background: #4a505b; }
-.pl .ticks { display: flex; gap: 4px; align-items: center; }
+.pl .ticks { display: flex; gap: var(--tick-gap, 4px); align-items: center; }
 .pl .ticks i { width: var(--tick-w, 5px); height: var(--tick-h, 22px); border-radius: 999px; background: var(--cell); flex: none; transition: background .25s; }
 .pl .ticks i.on { background: var(--c); }
 
@@ -162,7 +162,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ---------- טוטוריאל ---------- */
 #coach { position: fixed; z-index: 5; background: #fff; border-radius: 16px; box-shadow: 0 6px 26px rgba(20,25,40,.18), 0 0 0 1px rgba(20,25,40,.07); padding: 9px 14px 10px; overflow: auto; display: flex; flex-direction: column; gap: 3px; }
 #coach[hidden] { display: none; }
-.coach-top { display: flex; align-items: center; justify-content: space-between; padding-right: 44px; min-height: 26px; }
+.coach-top { display: flex; align-items: center; justify-content: space-between; min-height: 26px; }
 .coach-actions { display: flex; align-items: center; gap: 6px; }
 #coachStep { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 #coachExit { padding: 2px 6px; font-size: 11px; }
