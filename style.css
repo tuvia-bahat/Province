@@ -8,15 +8,15 @@
   --cell: #a8aeb9;       /* עיגולי הלוח והנהרות */
   --river: #a8aeb9;
   --cell-deep: #3d424c;   /* העיגול האפור שמתחת לעיגול מרחף */
-  --p0-tint: #bfe8d2;      /* רקע משבצת בפרובינציה שנשלטת */
-  --p1-tint: #b9cdf8;
-  --p0-deep: #7fcaa2;     /* העיגול הצבוע שמתחת לבסיס מרחף */
-  --p1-deep: #86a3e6;
+  --p0-tint: #baedd7;      /* רקע משבצת בפרובינציה שנשלטת */
+  --p1-tint: #bcddfc;
+  --p0-deep: #81deb6;     /* העיגול הצבוע שמתחת לבסיס מרחף */
+  --p1-deep: #85c2f9;
   --die: #5a606c;
-  --p0: #2eb872;
-  --p1: #3b6ef5;
-  --p0-soft: #d6f1e2;    /* עיגול ריק בפרובינציה שנשלטת – גוון דהוי של השחקן */
-  --p1-soft: #d2defb;
+  --p0: #34c98a;
+  --p1: #3a9cf5;
+  --p0-soft: #d6f4e8;    /* עיגול ריק בפרובינציה שנשלטת – גוון דהוי של השחקן */
+  --p1-soft: #d8ebfd;
   --font: "Heebo", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -73,8 +73,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .base.p0 { fill: var(--p0); }
 .base.p1 { fill: var(--p1); }
 .base.float { stroke: #fff; stroke-width: 1.6; }
-.base.p0.dest { fill: #1e8654; }
-.base.p1.dest { fill: #2a4fbf; }
+.base.p0.dest { fill: #299d6c; }
+.base.p1.dest { fill: #2d7abf; }
 .cnt { fill: #fff; font: 600 18px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; font-variant-numeric: tabular-nums; }
 .river { stroke: var(--river); stroke-width: 12; stroke-linecap: round; }
 .bridge { stroke-linecap: round; }
@@ -176,13 +176,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #coach.shake { animation: shake .35s; }
 @keyframes shake { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 .guide-halo, .guide-ring { pointer-events: none; transform-box: fill-box; transform-origin: center; animation: gpulse 1.7s ease-in-out infinite; }
-.guide-halo { fill: rgba(46,184,114,.16); stroke: rgba(46,184,114,.5); stroke-width: 1.5; }
-.guide-ring { fill: none; stroke: rgba(46,184,114,.7); stroke-width: 2; }
+.guide-halo { fill: rgba(52,201,138,.16); stroke: rgba(52,201,138,.5); stroke-width: 1.5; }
+.guide-ring { fill: none; stroke: rgba(52,201,138,.7); stroke-width: 2; }
 @keyframes gpulse { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.08); } }
-.guide-n { fill: #2eb872; font: 700 11px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.guide-line { stroke: rgba(46,184,114,.4); stroke-width: 2; stroke-dasharray: 1 7; stroke-linecap: round; pointer-events: none; }
+.guide-n { fill: #34c98a; font: 700 11px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.guide-line { stroke: rgba(52,201,138,.4); stroke-width: 2; stroke-dasharray: 1 7; stroke-linecap: round; pointer-events: none; }
 .btn.guide, .pm.guide { animation: bpulse 1.3s ease-in-out infinite; }
-@keyframes bpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(46,184,114,.4); } 50% { box-shadow: 0 0 0 8px rgba(46,184,114,0); } }
+@keyframes bpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(52,201,138,.4); } 50% { box-shadow: 0 0 0 8px rgba(52,201,138,0); } }
 #winText { text-align: left; font-size: 13.5px; line-height: 1.4; color: var(--ink); }
 #winText ul { margin: 6px 0 0; padding-left: 18px; }
 #winText li { margin: 3px 0; }
@@ -192,8 +192,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #coach.tight h3 { font-size: 15px; }
 #coach.tight #coachBody { font-size: 12px; line-height: 1.3; }
 .axis { fill: #a8aeb9; font: 700 12px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-.axis.a0 { fill: #2eb872; }
-.axis.a1 { fill: #3b6ef5; }
+.axis.a0 { fill: #34c98a; }
+.axis.a1 { fill: #3a9cf5; }
 
 /* ---------- לובי ---------- */
 .screen { position: fixed; inset: 0; z-index: 8; background: linear-gradient(#f7f8fa, #fff 38%); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; padding: max(5vw, env(safe-area-inset-top)) 5vw calc(5vw + env(safe-area-inset-bottom)); }
@@ -212,14 +212,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #d3d6dd; }
 .lb-dot.open { background: var(--p0); animation: lbpulse 1.6s ease-out infinite; }
 .lb-dot.live { background: var(--p1); }
-@keyframes lbpulse { 0% { box-shadow: 0 0 0 0 rgba(46,184,114,.55); opacity: 1; } 50% { opacity: .55; } 100% { box-shadow: 0 0 0 9px rgba(46,184,114,0); opacity: 1; } }
+@keyframes lbpulse { 0% { box-shadow: 0 0 0 0 rgba(52,201,138,.55); opacity: 1; } 50% { opacity: .55; } 100% { box-shadow: 0 0 0 9px rgba(52,201,138,0); opacity: 1; } }
 .lb-go { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #f1f2f5; color: var(--ink); }
 .lb-go:empty { display: none; }
 .lb-empty { text-align: center; font-size: 14px; color: var(--faint); padding: 8px 0; }
 #lbMsg { text-align: center; font-size: 13px; color: #c0392b; }
 #lbMsg:empty { display: none; }
-.lb-plus { flex: none; align-self: center; width: 58px; height: 58px; border: 0; border-radius: 50%; background: var(--cell); color: #fff; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 22px -10px rgba(50,60,80,.55); transition: transform .12s; }
+.lb-plus { flex: none; align-self: center; width: 62px; height: 62px; border: 0; border-radius: 50%; background: linear-gradient(150deg, #c4c9d3, #9aa2b0); color: #fff; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 7px rgba(168,174,185,.16), inset 0 1px 0 rgba(255,255,255,.55), 0 16px 26px -12px rgba(55,65,85,.6); transition: transform .15s, box-shadow .2s; }
+.lb-plus svg { width: 26px; height: 26px; filter: drop-shadow(0 1px 1px rgba(60,70,90,.35)); transition: transform .25s cubic-bezier(.2,.8,.3,1.2); }
 .lb-plus:active { transform: scale(.94); }
+.lb-plus:active svg { transform: rotate(90deg); }
 
 /* תפריט משחק חדש ושם */
 #startModal .modal, #nameModal .modal { border-radius: 28px; padding: 14px; gap: 0; width: min(340px, 100%); box-shadow: 0 24px 60px -18px rgba(20,25,40,.28), 0 0 0 1px rgba(20,25,40,.05); }

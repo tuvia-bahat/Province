@@ -12,7 +12,7 @@
   const SAVE_KEY = 'province.save.v7';
   const NAME = window.Rules.NAMES;
   const O = window.Online;
-  const COLORS = ['#2eb872', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
+  const COLORS = ['#34c98a', '#3a9cf5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
@@ -426,7 +426,7 @@
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
       const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
-      const tintLight = ['#e5f6ed', '#e6eefd'][wp];
+      const tintLight = ['#e7f9f1', '#e7f3fe'][wp];
       for (const k of group) {
         const pxk = FLIP ? R.PR - 1 - (k % R.PR) : k % R.PR, pyk = Math.floor(k / R.PR), top = FLIP ? pyk : R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
@@ -657,7 +657,7 @@
     }
     // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
     for (const Rc of rolled) {
-      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"/>`;
+      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
