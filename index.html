@@ -27,9 +27,8 @@
   <nav id="bar">
     <button id="tutBtn" class="link">Tutorial</button>
     <button id="undoBtn" class="link">Undo</button>
-    <button id="speedBtn" class="link" hidden>Speed</button>
     <button id="logBtn" class="link">Log</button>
-    <button id="newBtn" class="link">New game</button>
+    <button id="newBtn" class="link">Lobby</button>
   </nav>
   <div id="logBox" hidden></div>
 </div>
@@ -43,12 +42,7 @@
 
 <div id="newModal" class="overlay" hidden>
   <div class="modal">
-    <h2>New game</h2>
-    <div class="seg" id="grpMode">
-      <button data-v="pvp">2 players</button>
-      <button data-v="ai">Vs computer</button>
-      <button data-v="watch">Watch</button>
-    </div>
+    <h2>Vs computer</h2>
     <div id="grpBoardWrap">
       <div class="lbl">Board</div>
       <div class="seg" id="grpBoard"><button data-v="6">6×6</button><button data-v="8">8×8</button></div>
@@ -61,18 +55,29 @@
       <div class="lbl">Computer</div>
       <div class="seg" id="grpLevel"><button data-v="easy">Easy</button><button data-v="strong">Strong</button></div>
     </div>
-    <div id="grpWatchWrap">
-      <div class="lbl">Green</div>
-      <div class="seg" id="grpLevelR"><button data-v="easy">Easy</button><button data-v="strong">Strong</button></div>
-      <div class="lbl">Blue</div>
-      <div class="seg" id="grpLevelB"><button data-v="easy">Easy</button><button data-v="strong">Strong</button></div>
-      <div class="lbl">Speed</div>
-      <div class="seg" id="grpSpeed"><button data-v="slow">Slow</button><button data-v="normal">Normal</button><button data-v="fast">Fast</button></div>
-    </div>
-    <button id="tutLink" class="link" type="button">New here? Play the tutorial</button>
     <div class="modal-actions">
       <button id="newCancel" class="btn ghost">Cancel</button>
       <button id="newStart" class="btn">Start</button>
+    </div>
+  </div>
+</div>
+
+<div id="lobby" class="screen" hidden>
+  <div class="lobby-in">
+    <h1>Province</h1>
+    <input id="nameIn" maxlength="20" placeholder="Your name" autocomplete="off" spellcheck="false">
+    <div class="lb-actions">
+      <div class="seg" id="lbBoard"><button data-v="6" class="on">6×6</button><button data-v="8">8×8</button></div>
+      <button id="lbCreate" class="btn">Create game</button>
+    </div>
+    <div id="lbMsg"></div>
+    <h2>Open games</h2><div id="lbOpen" class="lb-list"></div>
+    <h2>Live</h2><div id="lbLive" class="lb-list"></div>
+    <h2>History</h2><div id="lbDone" class="lb-list"></div>
+    <div class="lb-foot">
+      <button id="lbAi" class="btn soft sm">Vs computer</button>
+      <button id="lbCont" class="link" hidden>Continue game</button>
+      <button id="lbTut" class="link">Tutorial</button>
     </div>
   </div>
 </div>
@@ -88,9 +93,11 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="src/rules.js"></script>
 <script src="src/ai.js"></script>
 <script src="src/tutorial.js"></script>
+<script src="src/online.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

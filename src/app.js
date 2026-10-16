@@ -11,6 +11,7 @@
   let R = window.Rules, AIB = window.AI;   // כללי המשחק והמחשב של גודל הלוח הנוכחי (useBoard)
   const SAVE_KEY = 'province.save.v7';
   const NAME = window.Rules.NAMES;
+  const O = window.Online;
   const COLORS = ['#2eb872', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
@@ -40,8 +41,11 @@
   // ---------- מצב ----------
   const $ = (id) => document.getElementById(id);
   let state, history;
-  // mode: pvp | ai | watch
-  let settings = { mode: 'pvp', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
+  let online = null, localBak = null;   // online: { id, game, seat, n, replay, ... }
+  const pname = (p) => (online && online.game ? (p === 0 ? online.game.name0 : online.game.name1 || '…') : NAME[p]);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // mode: ai | online | tutorial
+  let settings = { mode: 'ai', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
   let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
   let winShowAt = 0, winTimer = null;   // חלון הניצחון מוצג רק אחרי אנימציית המהלך והבהוב הפרובינציות
   const TUT = window.TUTORIAL;
@@ -51,11 +55,11 @@
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
   const SPEED_LABEL = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
   const isAiTurn = () => state.winner === null &&
-    (settings.mode === 'watch' || (settings.mode === 'ai' && state.turn !== settings.human) ||
+    ((settings.mode === 'ai' && state.turn !== settings.human) ||
       (settings.mode === 'tutorial' && tut.phase === 'game' && state.turn === 1));
-  const aiLevel = () => (settings.mode === 'watch' ? (state.turn === 0 ? settings.levelR : settings.levelB) : settings.level);
+  const aiLevel = () => settings.level;
   const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
-  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game');
+  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game') && (!online || onlineMyTurn());
 
   function load() {
     try {
@@ -70,10 +74,11 @@
     } catch (e) { /* ignore */ }
     state = window.Rules.forSize(settings.board).newGame(); history = [];
   }
+  function afterLoad() { if (settings.mode !== 'ai') { settings.mode = 'ai'; settings.human = 0; state = window.Rules.forSize(settings.board).newGame(); history = []; } }
   // כללי גרסה 2 בכל המצבים (פרובינציה בשליטה = טריטוריה; ניצחון ב-5 פרובינציות מחוברות). המחשב אומן עליהם.
   function applyRules() { R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true; }
   function save() {
-    if (tut.active) return;
+    if (tut.active || online) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
 
@@ -152,6 +157,7 @@
     winShowAt = ns.winner !== null ? Infinity : 0;
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = freshUi();
+    if (online) emit('act', a);
     save(); render(); animateMove(prev, a, ns);
     return true;
   }
@@ -160,10 +166,13 @@
     state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
+    if (online) emit('roll', { w: state.roll.w, b: state.roll.b });
     save(); render();
   }
   function passOrSkip(fn) {
+    const isPass = fn === R.passTurn;
     history.push(state); lastMove = null; state = fn(state); ui = freshUi();
+    if (online) emit('skip', isPass ? { pass: true } : {});
     if (tut.active) { tut.i++; tut.cardAt = Infinity; }
     save(); render();
   }
@@ -441,16 +450,6 @@
     if (aiTimer || paused || !isAiTurn()) return;
     aiTimer = setTimeout(aiStep, Math.max((state.roll ? 1000 : 700) * SPEED[settings.speed], fxUntil - Date.now() + 250));
   }
-  function togglePause() {
-    paused = !paused;
-    if (paused) { clearTimeout(aiTimer); aiTimer = null; }
-    render();
-  }
-  function cycleSpeed() {
-    const order = ['slow', 'normal', 'fast'];
-    settings.speed = order[(order.indexOf(settings.speed) + 1) % order.length];
-    save(); render();
-  }
   function aiStep() {
     aiTimer = null;
     if (!isAiTurn()) return;
@@ -596,7 +595,7 @@
     settings = Object.assign({}, settings, { mode: 'tutorial', human: 0, board: 6 });
     useBoard(6); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
-    $('newModal').hidden = true; $('overlay').dataset.dismissed = ''; $('overlay').hidden = true;
+    $('newModal').hidden = true; $('overlay').dataset.dismissed = ''; $('overlay').hidden = true; closeLobby();
     render();
   }
   function tutExit() {
@@ -612,17 +611,15 @@
 
   // ---------- משחק חדש ----------
   let pending = null;
-  function openNew() { pending = Object.assign({}, settings); renderNewModal(); $('newModal').hidden = false; }
+  function openNew() { pending = Object.assign({}, settings, { mode: 'ai' }); renderNewModal(); $('newModal').hidden = false; }
   function renderNewModal() {
-    const groups = { grpMode: 'mode', grpBoard: 'board', grpSide: 'human', grpLevel: 'level', grpLevelR: 'levelR', grpLevelB: 'levelB', grpSpeed: 'speed' };
+    const groups = { grpBoard: 'board', grpSide: 'human', grpLevel: 'level' };
     for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
-    $('grpSideWrap').hidden = $('grpLevelWrap').hidden = pending.mode !== 'ai';
-    $('grpWatchWrap').hidden = pending.mode !== 'watch';
   }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
-    settings = Object.assign({}, pending); settings.human = +settings.human; settings.board = +settings.board;
+    settings = Object.assign({}, pending, { mode: 'ai' }); closeLobby(); settings.human = +settings.human; settings.board = +settings.board;
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('newModal').hidden = true; $('overlay').dataset.dismissed = '';
@@ -710,7 +707,7 @@
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
-      const tag = settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'watch' ? 'CPU' : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
+      const tag = settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let prov = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
@@ -727,7 +724,7 @@
       };
       const diceHtml = state.roll && state.winner === null && state.turn === p
         ? `<span class="dice">${dieHtml(state.roll.w, ui.rolled)}${dieHtml(state.roll.b, ui.rolled)}</span>` : '';
-      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span>${diceHtml}</div>
+      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${esc(pname(p))}</span><span class="tag">${tag}</span>${diceHtml}</div>
         <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num" data-k="sold" data-p="${p}">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
         <div class="line">${IC.prov}<span class="num" data-k="prov" data-p="${p}">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
         <div class="line">${IC.brid}<span class="num" data-k="brid" data-p="${p}">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
@@ -761,7 +758,7 @@
   function renderDock() {
     const msg = $('msg'), ctl = $('controls');
     const p = state.turn;
-    const name = `<b style="color:${COLORS[p]}">${NAME[p]}</b>`;
+    const name = `<b style="color:${COLORS[p]}">${esc(pname(p))}</b>`;
     ctl.textContent = '';
     $('dock').classList.toggle('sheeting', !!ui.sheet);
     const addBtn = (parent, text, cls, fn) => {
@@ -769,6 +766,7 @@
     };
     const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
 
+    if (online && renderOnlineDock(msg, addBtn, row)) return;
     if (state.winner !== null) {
       msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${NAME[state.winner]}</b> wins`;
       addBtn(row(), 'New game', 'wide', openNew);
@@ -848,22 +846,25 @@
   function render() {
     fxCancel();
     renderPanels(); renderBoard(); ui.rolled = false; renderDock(); renderLog(); renderCoach();
-    const watch = settings.mode === 'watch';
-    $('undoBtn').textContent = watch ? (paused ? 'Resume' : 'Pause') : 'Undo';
-    $('undoBtn').disabled = tut.active || (watch ? state.winner !== null : history.length === 0);
-    $('speedBtn').hidden = !watch;
-    $('speedBtn').textContent = 'Speed: ' + SPEED_LABEL[settings.speed];
+    const canResign = !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.winner === null;
+    $('undoBtn').textContent = online ? 'Resign' : 'Undo';
+    $('undoBtn').hidden = !!online && !canResign;
+    $('undoBtn').disabled = tut.active || (!online && history.length === 0);
+    $('tutBtn').hidden = !!online;
     const o = $('overlay');
     if (state.winner !== null && !o.dataset.dismissed && Date.now() >= winShowAt) {
       const w = state.winner;
+      const by = online && online.game.ended_by;
       $('winTitle').innerHTML = tut.active
         ? `<span style="color:${COLORS[0]}">You win!</span>`
-        : settings.mode === 'ai'
+        : online
+          ? `<span style="color:${COLORS[w]}">${esc(pname(w))}</span> wins${by === 'resign' ? ' (resigned)' : by === 'timeout' ? ' (timeout)' : ''}`
+          : settings.mode === 'ai'
           ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
           : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
       $('winText').hidden = !tut.active;
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
-      $('winNew').textContent = tut.active ? 'Play vs computer' : 'New game';
+      $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -950,30 +951,229 @@
   svg.addEventListener('pointercancel', (e) => endPointer(e, true));
   svg.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  // ---------- אונליין ----------
+  const netErr = (e) => { console.error(e); const m = $('lbMsg'); if (m) m.textContent = String((e && e.message) || e); if (online) resync(); };
+  const onlineMyTurn = () => !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.turn === online.seat;
+
+  function evApply(s, ev) {
+    if (ev.kind === 'roll') return R.roll(s, ev.data.w, ev.data.b);
+    if (ev.kind === 'skip') return ev.data && ev.data.pass ? R.passTurn(s) : R.skipTurn(s);
+    return R.apply(s, ev.data);
+  }
+  function emit(kind, data) {
+    if (!online || online.seat === null) return;
+    const n = ++online.n;
+    O.submit(online.id, n, kind, data, state.turn, state.winner).catch(netErr);
+  }
+  // חלון הניצחון/שאר מצבי הסיום שלא עוברים דרך מהלך (כניעה, זמן)
+  function markFinished(g) {
+    online.game = g;
+    if (g.status === 'finished' && state.winner === null && g.ended_by !== 'win' && g.winner !== null) state = Object.assign({}, state, { winner: g.winner });
+  }
+  function onRemoteMove(row) {
+    if (!online || online.replay) return;
+    if (online.loading) { online.queue.push(row); return; }
+    if (row.n <= online.n) return;   // הד של המהלך שלי
+    if (row.n !== online.n + 1) { resync(); return; }
+    let ns; const prev = state;
+    try { ns = evApply(state, row); } catch (e) { resync(); return; }
+    online.n = row.n; state = ns; ui = freshUi();
+    if (row.kind === 'roll') { lastRoll = { w: ns.roll.w, b: ns.roll.b, p: ns.turn }; lastMove = null; ui.rolled = true; render(); }
+    else if (row.kind === 'act') { winShowAt = ns.winner !== null ? Infinity : 0; lastMove = { p: prev.turn, a: row.data }; render(); animateMove(prev, row.data, ns); }
+    else { lastMove = null; render(); }
+  }
+  function onGameRow(g) {
+    if (!online) return;
+    const was = online.game.status;
+    markFinished(g);
+    if (g.status === 'cancelled') { openLobby(); return; }
+    if (was === 'open' && g.status === 'active') { online.n = 0; state = R.newGame(); lastMove = lastRoll = null; }
+    render();
+  }
+  async function resync() {
+    if (!online || online.replay) return;
+    const id = online.id;
+    try { await openOnline(id, { keep: true }); } catch (e) { console.error(e); }
+  }
+
+  async function openOnline(id, opts = {}) {
+    clearTimeout(aiTimer); aiTimer = null; clearTimeout(winTimer); winShowAt = 0; fxCancel();
+    tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
+    const g = await O.getGame(id);
+    const seat = g.p0 === O.uid ? 0 : g.p1 === O.uid ? 1 : null;
+    if (online) { if (online.unsub) online.unsub(); clearInterval(online.tick); }
+    else if (!localBak) localBak = { state, history, settings: Object.assign({}, settings) };
+    settings = Object.assign({}, settings, { mode: 'online', board: g.size });
+    useBoard(g.size); applyRules();
+    online = { id, game: g, seat, n: 0, replay: null, unsub: null, tick: null, loading: true, queue: [] };
+    state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
+    closeLobby(); $('newModal').hidden = true; $('overlay').hidden = true;
+    $('overlay').dataset.dismissed = (opts.replay || g.status === 'finished') ? '1' : '';
+    if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow);
+    const moves = await O.getMoves(id);
+    if (opts.replay) {
+      const S = [R.newGame()];
+      for (const ev of moves) S.push(evApply(S[S.length - 1], ev));
+      online.replay = { S, A: moves, i: 0, timer: null };
+      online.loading = false; state = S[0];
+    } else {
+      for (const ev of moves) { state = evApply(state, ev); online.n = ev.n; if (ev.kind === 'roll') lastRoll = { w: ev.data.w, b: ev.data.b, p: ev.actor }; }
+      online.loading = false;
+      const q = online.queue.sort((a, b) => a.n - b.n); online.queue = [];
+      markFinished(g);
+      for (const row of q) onRemoteMove(row);
+      online.tick = setInterval(() => { if (online && !online.replay) renderDock(); }, 30000);
+    }
+    render();
+  }
+
+  // תצוגת חזרה על משחק שהסתיים
+  function replayGo(i, animate) {
+    const rp = online && online.replay; if (!rp) return;
+    i = Math.max(0, Math.min(rp.S.length - 1, i));
+    const prev = rp.S[rp.i], fwd = i === rp.i + 1; rp.i = i; state = rp.S[i]; ui = freshUi(); lastMove = null; winShowAt = 0;
+    const ev = fwd ? rp.A[i - 1] : null;
+    if (ev && ev.kind === 'act') lastMove = { p: ev.actor, a: ev.data };
+    render();
+    if (animate && ev && ev.kind === 'act') animateMove(prev, ev.data, state);
+    if (rp.timer) { clearTimeout(rp.timer); rp.timer = null; }
+    if (rp.playing) {
+      if (i >= rp.S.length - 1) rp.playing = false;
+      else rp.timer = setTimeout(() => replayGo(rp.i + 1, true), rp.A[i] && rp.A[i].kind === 'act' ? 2700 : 1000);
+    }
+    renderDock();
+  }
+  function renderOnlineDock(msg, addBtn, row) {
+    const g = online.game, rp = online.replay;
+    if (rp) {
+      msg.textContent = `Step ${rp.i} / ${rp.S.length - 1}`;
+      const r = row();
+      addBtn(r, '‹', 'soft sm', () => { rp.playing = false; replayGo(rp.i - 1, false); });
+      addBtn(r, rp.playing ? 'Pause' : (rp.i >= rp.S.length - 1 ? 'Restart' : 'Play'), 'sm', () => {
+        if (rp.playing) { rp.playing = false; clearTimeout(rp.timer); renderDock(); return; }
+        rp.playing = true;
+        if (rp.i >= rp.S.length - 1) replayGo(0, false); else replayGo(rp.i + 1, true);
+      });
+      addBtn(r, '›', 'soft sm', () => { rp.playing = false; replayGo(rp.i + 1, true); });
+      return true;
+    }
+    if (g.status === 'open') {
+      msg.innerHTML = 'Waiting for an opponent…';
+      if (online.seat === 0) addBtn(row(), 'Cancel', 'soft', () => { O.cancelGame(online.id).then(openLobby).catch(netErr); });
+      return true;
+    }
+    if (state.winner !== null) {
+      const by = g.ended_by === 'resign' ? ' (resigned)' : g.ended_by === 'timeout' ? ' (timeout)' : '';
+      msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${esc(pname(state.winner))}</b> wins${by}`;
+      addBtn(row(), 'Lobby', 'wide', openLobby);
+      return true;
+    }
+    if (online.seat === null) { msg.innerHTML = `Watching · <b style="color:${COLORS[state.turn]}">${esc(pname(state.turn))}</b>`; return true; }
+    if (state.turn !== online.seat) {
+      msg.innerHTML = `<b style="color:${COLORS[state.turn]}">${esc(pname(state.turn))}</b> · ${state.roll ? 'Thinking…' : 'Rolling…'}`;
+      if (Date.now() - new Date(g.last_move_at).getTime() > 5 * 60e3) addBtn(row(), 'Claim win', 'soft sm', () => { O.claimTimeout(online.id).catch(netErr); });
+      return true;
+    }
+    return false;
+  }
+
+  // ---------- לובי ----------
+  let lobbyUnsub = null, lobbyTimer = null, lobbyBusy = false;
+  function closeLobby() {
+    $('lobby').hidden = true;
+    if (lobbyUnsub) { lobbyUnsub(); lobbyUnsub = null; }
+    clearInterval(lobbyTimer); lobbyTimer = null;
+  }
+  function leaveOnline() {
+    if (!online) return;
+    if (online.unsub) online.unsub();
+    clearInterval(online.tick);
+    if (online.replay && online.replay.timer) clearTimeout(online.replay.timer);
+    online = null;
+    if (localBak) { settings = localBak.settings; state = localBak.state; history = localBak.history; localBak = null; }
+    useBoard(settings.board); applyRules();
+    clearTimeout(winTimer); winShowAt = 0; fxCancel();
+    lastMove = lastRoll = null; ui = freshUi(); $('overlay').hidden = true; $('overlay').dataset.dismissed = '';
+    render();
+  }
+  function openLobby() {
+    leaveOnline();
+    $('newModal').hidden = true; $('bar').classList.remove('open');
+    if (tut.active) tutExit();
+    $('lobby').hidden = false;
+    $('nameIn').value = O.getName();
+    $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0);
+    $('lbMsg').textContent = '';
+    refreshLobby();
+    clearInterval(lobbyTimer); lobbyTimer = setInterval(refreshLobby, 15000);
+  }
+  const ago = (iso) => { const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); return s < 90 ? 'now' : s < 5400 ? Math.round(s / 60) + 'm ago' : s < 129600 ? Math.round(s / 3600) + 'h ago' : Math.round(s / 86400) + 'd ago'; };
+  const dot = (p) => `<i class="lb-dot" style="background:${COLORS[p]}"></i>`;
+  async function refreshLobby() {
+    if ($('lobby').hidden || lobbyBusy) return;
+    lobbyBusy = true;
+    try {
+      const d = await O.lobby();
+      if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { setTimeout(refreshLobby, 300); }); } catch (e) { /* ignore */ } }
+      const me = O.uid, sz = (g) => `${g.size}×${g.size}`;
+      const rowHtml = (g, mid, btn, id) => `<div class="lb-row"><div class="lb-txt">${mid}</div><button class="btn sm lb-btn" data-id="${g.id}" data-a="${id}">${btn}</button></div>`;
+      const empty = (s) => `<div class="lb-empty">${s}</div>`;
+      $('lbOpen').innerHTML = d.open.map((g) => rowHtml(g, `${dot(0)}<b>${esc(g.name0)}</b> <span>${sz(g)} · ${ago(g.created_at)}</span>`, g.p0 === me ? 'Open' : 'Join', g.p0 === me ? 'open' : 'join')).join('') || empty('No open games');
+      $('lbLive').innerHTML = d.active.map((g) => {
+        const mine = g.p0 === me || g.p1 === me;
+        return rowHtml(g, `${dot(0)}<b>${esc(g.name0)}</b> vs ${dot(1)}<b>${esc(g.name1)}</b> <span>${sz(g)} · move ${g.moves_count}</span>`, mine ? 'Play' : 'Watch', 'open');
+      }).join('') || empty('No live games');
+      $('lbDone').innerHTML = d.finished.map((g) => rowHtml(g, `${dot(0)}<b>${esc(g.name0)}</b> vs ${dot(1)}<b>${esc(g.name1)}</b> <span>${g.winner === null ? '' : esc(g.winner === 0 ? g.name0 : g.name1) + ' won · '}${sz(g)} · ${ago(g.last_move_at)}</span>`, 'Replay', 'replay')).join('') || empty('No finished games yet');
+      $('lbMsg').textContent = '';
+    } catch (e) { $('lbMsg').textContent = 'Can\'t reach the server. You can still play vs the computer.'; console.error(e); }
+    lobbyBusy = false;
+  }
+  function needName() {
+    const n = O.cleanName($('nameIn').value);
+    if (!n) { $('lbMsg').textContent = 'Enter your name first.'; $('nameIn').focus(); return null; }
+    O.setName(n); return n;
+  }
+  $('nameIn').addEventListener('input', () => O.setName(O.cleanName($('nameIn').value)));
+  $('lbBoard').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $('lbBoard').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); });
+  $('lbCreate').onclick = async () => {
+    const n = needName(); if (!n) return;
+    try { const size = +$('lbBoard').querySelector('.on').dataset.v; const id = await O.createGame(size, n); await openOnline(id); } catch (e) { netErr(e); }
+  };
+  $('lobby').addEventListener('click', async (e) => {
+    const b = e.target.closest('.lb-btn'); if (!b) return;
+    const id = b.dataset.id, a = b.dataset.a;
+    try {
+      if (a === 'join') { const n = needName(); if (!n) return; await O.joinGame(id, n); await openOnline(id); }
+      else if (a === 'open') await openOnline(id);
+      else if (a === 'replay') await openOnline(id, { replay: true });
+    } catch (er) { netErr(er); refreshLobby(); }
+  });
+  $('lbAi').onclick = openNew;
+  $('lbCont').onclick = closeLobby;
+  $('lbTut').onclick = startTutorial;
+
   // ---------- כפתורים ----------
-  $('undoBtn').onclick = () => (settings.mode === 'watch' ? togglePause() : undo());
-  $('speedBtn').onclick = cycleSpeed;
+  $('undoBtn').onclick = () => { if (!online) undo(); else if (window.confirm('Resign this game?')) O.resign(online.id).catch(netErr); };
   $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
   const menu = (open) => { $('bar').classList.toggle('open', open); $('menuBtn').setAttribute('aria-expanded', open); };
   $('menuBtn').onclick = (e) => { e.stopPropagation(); menu(!$('bar').classList.contains('open')); };
   $('bar').addEventListener('click', (e) => { if (e.target.closest('button')) menu(false); });
   document.addEventListener('click', (e) => { if (!e.target.closest('#bar')) menu(false); });
-  $('newBtn').onclick = openNew;
+  $('newBtn').onclick = openLobby;
   $('newCancel').onclick = () => { $('newModal').hidden = true; };
   $('newStart').onclick = startNew;
-  for (const [id, key] of [['grpMode', 'mode'], ['grpBoard', 'board'], ['grpSide', 'human'], ['grpLevel', 'level'], ['grpLevelR', 'levelR'], ['grpLevelB', 'levelB'], ['grpSpeed', 'speed']]) {
+  for (const [id, key] of [['grpBoard', 'board'], ['grpSide', 'human'], ['grpLevel', 'level']]) {
     $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
   }
   $('winNew').onclick = () => {
     $('overlay').hidden = true;
-    if (tut.active) { pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0 }); startNew(); } else openNew();
+    if (tut.active) { pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0 }); startNew(); } else if (online) openLobby(); else openNew();
   };
   $('tutBtn').onclick = startTutorial;
-  $('tutLink').onclick = startTutorial;
   $('coachExit').onclick = tutExit;
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  load(); useBoard(settings.board); applyRules(); render();
+  load(); afterLoad(); useBoard(settings.board); applyRules(); render(); openLobby();
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();

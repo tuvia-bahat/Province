@@ -20,7 +20,10 @@ body = re.sub(r'\s*<script src="[^"]+"></script>', '', body)
 
 out = '<title>Province</title>\n<style>\n:root{color-scheme:dark}\n' + css + '\n</style>\n' + body + '\n'
 for src in scripts:
-    out += '<script>\n' + (root / src).read_text(encoding='utf-8') + '\n</script>\n'
+    if src.startswith('http'):
+        out += '<script src="' + src + '"></script>\n'
+    else:
+        out += '<script>\n' + (root / src).read_text(encoding='utf-8') + '\n</script>\n'
 
 dest = Path(sys.argv[1])
 dest.parent.mkdir(parents=True, exist_ok=True)
