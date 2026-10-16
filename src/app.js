@@ -1125,16 +1125,24 @@
       if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { setTimeout(refreshLobby, 300); }); } catch (e) { /* ignore */ } }
       const me = O.uid, sz = (g) => `<span class="sz">${g.size}×${g.size}</span>`;
       const row = (g, d0, txt, icon, a) => `<div class="lb-row" data-id="${g.id}" data-a="${a}">${dot(d0)}<div class="lb-txt">${txt}</div><div class="lb-go">${icon || ''}</div></div>`;
-      let h = '';
-      for (const g of d.open) h += row(g, 'open', `<b>${esc(g.name0)}</b>${sz(g)}`, ICON_JOIN, 'open');
-      for (const g of d.active) {
+      let h = '', prev = false;
+      const sep = (n) => { const s = prev && n > 0 ? ' sep' : ''; prev = prev || n > 0; return s; };
+      let s0 = sep(d.open.length);
+      d.open.forEach((g, k) => { h += row(g, 'open', `<b>${esc(g.name0)}</b>${sz(g)}`, ICON_JOIN, 'open').replace('class="lb-row"', 'class="lb-row"'); });
+      s0 = sep(d.active.length);
+      d.active.forEach((g, k) => {
         const mine = g.p0 === me || g.p1 === me;
-        h += row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, mine ? ICON_JOIN : ICON_EYE, 'open');
-      }
-      for (const g of d.finished) {
+        let r = row(g, 'live', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}`, mine ? ICON_JOIN : ICON_EYE, 'open');
+        if (k === 0 && s0) r = r.replace('class="lb-row"', 'class="lb-row sep"');
+        h += r;
+      });
+      const s1 = sep(d.finished.length);
+      d.finished.forEach((g, k) => {
         const win = g.winner === null ? '' : `<span class="lb-win" style="color:${COLORS[g.winner]}">${esc(g.winner === 0 ? g.name0 : g.name1)} wins</span>`;
-        h += row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}${win}`, '', 'replay');
-      }
+        let r = row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}${win}`, '', 'replay');
+        if (k === 0 && s1) r = r.replace('class="lb-row"', 'class="lb-row sep"');
+        h += r;
+      });
       $('lbList').innerHTML = h || '<div class="lb-empty">No games yet</div>';
       $('lbMsg').textContent = '';
     } catch (e) { $('lbMsg').textContent = 'Can\'t reach the server'; console.error(e); }

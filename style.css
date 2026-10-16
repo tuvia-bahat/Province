@@ -196,34 +196,57 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .axis.a1 { fill: #3b6ef5; }
 
 /* ---------- לובי ---------- */
-.screen { position: fixed; inset: 0; z-index: 8; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; padding: max(5vw, env(safe-area-inset-top)) 5vw calc(5vw + env(safe-area-inset-bottom)); }
+.screen { position: fixed; inset: 0; z-index: 8; background: linear-gradient(#f7f8fa, #fff 38%); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; padding: max(5vw, env(safe-area-inset-top)) 5vw calc(5vw + env(safe-area-inset-bottom)); }
 .screen[hidden] { display: none; }
-.lb-online { flex: none; align-self: center; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lb-online { flex: none; align-self: center; display: flex; align-items: center; gap: 8px; padding: 7px 15px 7px 13px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #eceef2, 0 4px 14px -8px rgba(20,25,40,.2); color: var(--muted); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .lb-mid { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; width: 100%; max-width: 560px; margin: 0 auto; padding: 18px 0; }
 .lb-list { display: flex; flex-direction: column; gap: 8px; }
-.lb-row { display: flex; align-items: center; gap: 14px; padding: 0 16px; min-height: 54px; border-radius: 16px; background: #f4f5f7; cursor: pointer; transition: background .15s; }
-.lb-row:active { background: #e8eaee; }
-.lb-txt { flex: 1; min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
-.lb-txt .sz { color: var(--faint); font-size: 12px; margin-left: 6px; }
-.lb-txt .dim { color: var(--muted); font-weight: 400; }
-.lb-txt b { font-weight: 600; }
-.lb-win { font-size: 15px; font-weight: 600; margin-left: 22px; white-space: nowrap; }
-.lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #c3c7d0; }
-.lb-dot.open { background: var(--p0); animation: lbblink 1.4s ease-in-out infinite; }
+.lb-row { display: flex; align-items: center; gap: 14px; padding: 0 12px 0 18px; min-height: 64px; border-radius: 20px; background: #fff; box-shadow: 0 0 0 1px #eceef2, 0 8px 22px -14px rgba(20,25,40,.22); cursor: pointer; transition: transform .12s, box-shadow .2s; }
+.lb-row:active { transform: scale(.985); }
+.lb-row.sep { margin-top: 12px; }
+.lb-txt { flex: 1; min-width: 0; font-size: 16px; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; }
+.lb-txt b { font-weight: 600; letter-spacing: .005em; }
+.lb-txt .dim { color: var(--faint); font-weight: 400; font-size: 14px; }
+.lb-txt .sz { padding: 2px 9px; border-radius: 999px; background: #f1f2f5; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-left: 4px; }
+.lb-win { font-size: 14px; font-weight: 600; margin-left: 18px; white-space: nowrap; }
+.lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: #d3d6dd; }
+.lb-dot.open { background: var(--p0); animation: lbpulse 1.6s ease-out infinite; }
 .lb-dot.live { background: var(--p1); }
-@keyframes lbblink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
-.lb-go { flex: none; display: flex; color: var(--ink); }
+@keyframes lbpulse { 0% { box-shadow: 0 0 0 0 rgba(46,184,114,.55); opacity: 1; } 50% { opacity: .55; } 100% { box-shadow: 0 0 0 9px rgba(46,184,114,0); opacity: 1; } }
+.lb-go { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #f1f2f5; color: var(--ink); }
+.lb-go:empty { display: none; }
 .lb-empty { text-align: center; font-size: 14px; color: var(--faint); padding: 8px 0; }
 #lbMsg { text-align: center; font-size: 13px; color: #c0392b; }
 #lbMsg:empty { display: none; }
-.lb-plus { flex: none; align-self: center; width: 52px; height: 52px; border: 0; border-radius: 50%; background: var(--cell); color: #fff; padding: 0; display: flex; align-items: center; justify-content: center; }
-.lb-plus:active { transform: scale(.96); }
-#startModal .modal { padding: 18px; gap: 0; }
-.stack { display: flex; flex-direction: column; gap: 10px; }
-.stack .btn { width: 100%; }
-.stack .link { align-self: center; }
-#nameIn { width: 100%; border: 0; border-radius: 14px; background: #eef0f3; padding: 13px 16px; font: inherit; font-size: 17px; text-align: center; color: var(--ink); outline: none; }
-#nameIn:focus { box-shadow: 0 0 0 2px var(--ink); }
+.lb-plus { flex: none; align-self: center; width: 58px; height: 58px; border: 0; border-radius: 50%; background: var(--cell); color: #fff; padding: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 22px -10px rgba(50,60,80,.55); transition: transform .12s; }
+.lb-plus:active { transform: scale(.94); }
+
+/* תפריט משחק חדש ושם */
+#startModal .modal, #nameModal .modal { border-radius: 28px; padding: 14px; gap: 0; width: min(340px, 100%); box-shadow: 0 24px 60px -18px rgba(20,25,40,.28), 0 0 0 1px rgba(20,25,40,.05); }
+.stack { display: flex; flex-direction: column; gap: 8px; }
+.stack .link, #startSize .link { align-self: center; }
+.tile { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px 14px 10px 10px; border: 0; border-radius: 20px; background: #f3f4f7; color: var(--ink); font-size: 15px; font-weight: 600; letter-spacing: .01em; text-align: left; transition: background .15s, transform .12s; }
+.tile:active { transform: scale(.985); background: #e9ebf0; }
+.tile::after { content: "›"; margin-left: auto; font-size: 22px; font-weight: 400; opacity: .35; line-height: 1; }
+.tile .ti { flex: none; width: 44px; height: 44px; border-radius: 14px; background: #fff; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(20,25,40,.1); }
+.tile.pri { background: var(--ink); color: #fff; }
+.tile.pri:active { background: #2a2e36; }
+.tile.pri .ti { background: rgba(255,255,255,.14); box-shadow: none; }
+.tiles2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile.sz { flex-direction: column; justify-content: center; gap: 12px; padding: 22px 10px 18px; color: var(--muted); font-size: 16px; }
+.tile.sz::after { content: none; }
+#startBack { display: block; margin: 8px auto 2px; text-transform: none; letter-spacing: .02em; font-size: 14px; }
+#nameModal .modal { padding: 22px 18px 16px; gap: 16px; }
+#nameModal h2 { font-size: 13px; font-weight: 600; letter-spacing: .1em; color: var(--muted); }
+#nameIn { width: 100%; border: 0; border-radius: 16px; background: #f3f4f7; padding: 15px 16px; font: inherit; font-size: 18px; font-weight: 600; text-align: center; color: var(--ink); outline: none; }
+#nameIn:focus { box-shadow: 0 0 0 2px var(--ink); background: #fff; }
+#nameModal .modal-actions { margin-top: 0; }
+
+/* תפריט עליון */
+#bar { border-radius: 20px; padding: 6px; min-width: 176px; box-shadow: 0 18px 44px -14px rgba(20,25,40,.3), 0 0 0 1px rgba(20,25,40,.05); }
+#bar .link { text-transform: none; letter-spacing: .01em; font-size: 15px; font-weight: 500; padding: 12px 14px; border-radius: 12px; }
+#bar .link:active { background: #f1f2f5; }
+.modal { border-radius: 26px; }
 
 /* ---------- מחשב: לוח גדול משמאל, שחקנים וכפתורים בעמודה מימין ---------- */
 @media (min-width: 860px) and (min-height: 540px) {
