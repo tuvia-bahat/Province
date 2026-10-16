@@ -3,16 +3,16 @@
   color-scheme: light;
   --bg: #ffffff;
   --ink: #1b1e24;
-  --muted: #8a909a;
-  --faint: #c9cdd4;
-  --cell: #dcdfe5;       /* עיגולי הלוח והנהרות */
-  --river: #e2e5ea;
-  --cell-deep: #8d939f;   /* העיגול האפור שמתחת לעיגול מרחף */
+  --muted: #565c68;
+  --faint: #8d939f;
+  --cell: #8d939f;       /* עיגולי הלוח והנהרות */
+  --river: #8d939f;
+  --cell-deep: #3d424c;   /* העיגול האפור שמתחת לעיגול מרחף */
   --p0-tint: #bfe8d2;      /* רקע משבצת בפרובינציה שנשלטת */
   --p1-tint: #b9cdf8;
   --p0-deep: #7fcaa2;     /* העיגול הצבוע שמתחת לבסיס מרחף */
   --p1-deep: #86a3e6;
-  --die: #9aa1ac;
+  --die: #5a606c;
   --p0: #2eb872;
   --p1: #3b6ef5;
   --p0-soft: #d6f1e2;    /* עיגול ריק בפרובינציה שנשלטת – גוון דהוי של השחקן */
@@ -55,7 +55,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pl .sbar i { display: block; height: 100%; transition: width .3s; }
 .pl .sbar .r { background: var(--c); }
 .pl .sbar .b { background: color-mix(in srgb, var(--c) 32%, #fff); }
-.pl .sbar .d { background: #7d838e; }
+.pl .sbar .d { background: #4a505b; }
 .pl .ticks { display: flex; gap: 4px; align-items: center; }
 .pl .ticks i { width: var(--tick-w, 5px); height: var(--tick-h, 22px); border-radius: 999px; background: var(--cell); flex: none; transition: background .25s; }
 .pl .ticks i.on { background: var(--c); }
@@ -64,12 +64,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #boardWrap { flex: none; aspect-ratio: 1; margin: var(--board-gap) 0; width: min(100%, calc(100dvh - 15vw - 2 * var(--board-gap) - 2 * var(--pl-h) - var(--dock-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom))); align-self: center; }
 #board { width: 100%; height: 100%; display: block; overflow: visible; direction: ltr; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { fill: #8d939f; transition: fill .3s; }
-.cell.deep { fill: #5a606c; }
+.cell.deep { fill: #3d424c; }
 .cell.c0 { fill: var(--p0); }
 .cell.c1 { fill: var(--p1); }
 .cell.c0.deep { fill: var(--p0); }
 .cell.c1.deep { fill: var(--p1); }
-.ring-float { fill: none; stroke: #8b919a; stroke-width: 2.5; stroke-dasharray: 5 6; stroke-linecap: round; transform-box: fill-box; transform-origin: center; animation: spin 9s linear infinite; pointer-events: none; }
+.ring-float { fill: none; stroke: #5a606c; stroke-width: 2.5; stroke-dasharray: 5 6; stroke-linecap: round; transform-box: fill-box; transform-origin: center; animation: spin 9s linear infinite; pointer-events: none; }
 .base.p0 { fill: var(--p0); }
 .base.p1 { fill: var(--p1); }
 .base.float { stroke: #fff; stroke-width: 1.6; }
@@ -153,7 +153,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
 .modal-actions .btn { flex: 1; padding-inline: 14px; }
 .seg { display: flex; background: var(--cell); border-radius: 999px; padding: 3px; gap: 2px; }
-.seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 6px; font-size: 14px; font-weight: 500; color: var(--muted); transition: background .2s, color .2s; }
+.seg button { flex: 1; border: 0; background: transparent; border-radius: 999px; padding: 9px 6px; font-size: 14px; font-weight: 500; color: #2a2e36; transition: background .2s, color .2s; }
 .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(20,25,40,.14); }
 .rule-note { font-size: 12px; color: var(--muted); line-height: 1.4; margin-top: -4px; }
 #grpBoardWrap, #grpWatchWrap, #grpSideWrap, #grpLevelWrap { display: flex; flex-direction: column; }
@@ -191,4 +191,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #coach.tight .coach-top { min-height: 22px; }
 #coach.tight h3 { font-size: 15px; }
 #coach.tight #coachBody { font-size: 12px; line-height: 1.3; }
-.axis { fill: #b4b9c2; font: 600 11px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.axis { fill: #8d939f; font: 600 11px var(--font); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
