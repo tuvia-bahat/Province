@@ -227,6 +227,7 @@
       return {
         set(v) { t.textContent = v; bump(t, 1.4, 160); },
         remove() { c.remove(); t.remove(); },
+        flick() { [c, t].forEach((e) => { try { e.animate([{ opacity: 1 }, { opacity: .25 }, { opacity: 1 }, { opacity: .5 }, { opacity: 1 }], { duration: 260 * FK }); } catch (er) { /* ignore */ } }); },
         fade() { [c, t].forEach((e) => { try { e.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(.4)' }], { duration: 350 * FK, fill: 'forwards' }); } catch (er) { /* ignore */ } }); later(360, () => { c.remove(); t.remove(); }); },
       };
     };
@@ -314,15 +315,14 @@
         end = cellTween(t, p, dFrom, next.cells[t].n, tD, 110);
         panelT = tD;
       } else {
-        const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 90 : 170;
+        const def = prev.cells[t].n, k = Math.min(n, def), step = k > 6 ? 110 : 220;
         hide(f); hide(t);
         const gs = ghost(f, p, prev.cells[f].n), gd = ghost(t, q, def);
         const mx = (sx + tx) / 2, my = (sy + ty) / 2;
         let px = -(ty - sy) / dl, py = (tx - sx) / dl;
         if (px * (W / 2 - mx) + py * (W / 2 - my) < 0) { px = -px; py = -py; }   // הסימון יוצא לכיוון מרכז הלוח, לא מכסה את המספרים
-        let bt = null, sw = null, o1 = null;
+        let sw = null, o1 = null;
         const t1 = tB + 120;
-        later(tB, () => { const v = prev.cells[f].n - n; if (v > 0) gs.set(v); else gs.remove(); });
         later(t1, () => {
           o1 = mk(g, 'g', { transform: `translate(${mx + px * 32} ${my + py * 32})` });
           const big = mk(o1, 'g', { transform: 'scale(1.25)' });
@@ -335,17 +335,18 @@
             mk(sd, 'rect', { x: -1.3, y: 7.6, width: 2.6, height: 4.2, rx: 1, style: st0 });     // ידית
             mk(sd, 'circle', { cx: 0, cy: 13, r: 1.9, style: st0 });                              // ראש הידית
           }
-          bt = mk(o1, 'text', { x: 24, y: 6, fill: col, style: 'font:700 19px var(--font);' + HALO });
-          bt.textContent = '×' + n;
-          bump(sw, .3, 320); bump(bt, .3, 320);
+          bump(sw, .3, 320);
         });
         const dead0 = prev.graveyard[q];
         handled.add(q + 'dead');
         { const el0 = panelEl(q, 'dead'); if (el0) el0.textContent = dead0; }
         for (let j = 1; j <= k; j++) {
           later(t1 + 340 + (j - 1) * step, () => {
+            // המספרים של שני הבסיסים יורדים יחד, והסמלים מהבהבים
             if (def - j > 0) gd.set(def - j); else gd.remove();
-            if (bt) { bt.textContent = '×' + (n - j); bump(bt, 1.3, 150); }
+            const sv = prev.cells[f].n - j;
+            if (sv > 0) gs.set(sv); else gs.remove();
+            gd.flick(); gs.flick(); if (sw) bump(sw, 1.3, 160);
             const el = panelEl(q, 'dead'); if (el) { el.textContent = dead0 + j; bump(el, 1.45, 220); }
           });
         }
