@@ -647,15 +647,13 @@
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="0" x2="${pos}" y2="${W}"/><line class="river" style="stroke-width:${RIVER_W}" x1="0" y1="${pos}" x2="${W}" y2="${pos}"/>`;
     }
-    if (tut.active && tut.phase === 'game' && tut.i < 5) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות מסומנים בשוליים
+    if (tut.active && tut.phase === 'game' && tut.i < 5) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות בשוליים, לכל שחקן מהצד שלו (אצל היריב הספירה הפוכה)
       for (let k = 0; k < R.SIZE; k++) {
-        h += `<text class="axis" x="${cx(k)}" y="${cy(0) + CR + 16}">${k + 1}</text>`;
-        h += `<text class="axis" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
+        h += `<text class="axis a0" x="${cx(k)}" y="${cy(0) + CR + 16}">${k + 1}</text>`;
+        h += `<text class="axis a0" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
+        h += `<text class="axis a1" x="${cx(k)}" y="${cy(R.SIZE - 1) - CR - 15}">${R.SIZE - k}</text>`;
+        h += `<text class="axis a1" x="${cx(R.SIZE - 1) + CR + 10}" y="${cy(k) + 1}">${R.SIZE - k}</text>`;
       }
-    }
-    // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
-    for (const Rc of rolled) {
-      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
