@@ -16,7 +16,7 @@
 
   // תצורות לוח: 6×6 (9 פרובינציות) ו-8×8 (16 פרובינציות, בלי שינוי בכללים)
   const CONFIGS = { 6: { SOLDIERS: 36, BRIDGES: 8, WIN: 5 }, 8: { SOLDIERS: 54, BRIDGES: 14, WIN: 8 } };
-  const NAMES = ['Red', 'Blue'];
+  const NAMES = ['Green', 'Blue'];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
   // אפשרויות חוקים (לניסויים בלבד; ברירת המחדל = החוקים המקוריים ב-RULES.md)

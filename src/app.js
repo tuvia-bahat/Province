@@ -11,7 +11,7 @@
   let R = window.Rules, AIB = window.AI;   // כללי המשחק והמחשב של גודל הלוח הנוכחי (useBoard)
   const SAVE_KEY = 'province.save.v7';
   const NAME = window.Rules.NAMES;
-  const COLORS = ['#e5484d', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
+  const COLORS = ['#2eb872', '#3b6ef5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
@@ -19,6 +19,7 @@
     6: { P: 64, G: 34, M: -11, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
     8: { P: 56, G: 22, M: -7, CR: 21, LIFT: 9, RIVER_W: 9, BR: 8, FS: 17 },
   };
+  const DOT_R = 7;   // משבצת ריקה היא נקודה קטנה; רק בסיס הוא עיגול מלא
   const BRIDGE_FILL = 0.68;   // חלק מהרווח בין שני העיגולים שהגשר (כולל הקצוות העגולים) תופס: אותה פרופורציה בכל גודל לוח
   let P, G, M, CR, W, LIFT, RIVER_W, BR, FS;
   function useBoard(n) {
@@ -414,7 +415,7 @@
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
       const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
-      const tintLight = ['#fde9ea', '#e6eefd'][wp];
+      const tintLight = ['#e5f6ed', '#e6eefd'][wp];
       for (const k of group) {
         const pxk = k % R.PR, pyk = Math.floor(k / R.PR), top = R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
@@ -676,7 +677,8 @@
       const floating = lit && c.o !== null && !isDest;
       const ty = y;   // בלי ריחוף: הבסיס נשאר במקומו, והטבעת המקווקוות מסמנת מה אפשר לשחק
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
-      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
+      const cellR = c.o !== null ? CR : lit || isDest ? DOT_R + 3 : DOT_R;
+      h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${cellR}"/>`;
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;

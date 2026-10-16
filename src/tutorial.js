@@ -13,7 +13,7 @@
 
   // כרטיס פתיחה יחיד
   const pages = [
-    { title: 'Learn Province', body: 'You are <b>Red</b>. Win by controlling <b>5 connected provinces</b>, before Blue does. Roll, play the glowing circles, and learn as you go.' },
+    { title: 'Learn Province', body: 'You are <b>Green</b>. Win by controlling <b>5 connected provinces</b>, before Blue does. Roll, play the glowing circles, and learn as you go.' },
   ];
 
   const L = (x, y) => [x, y];   // קיצור לקריאות
@@ -73,7 +73,7 @@
     { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 2 } },
 
     { who: 0, kind: 'bridge', dice: [3, 2], act: { type: 'bridge', R: L(2, 1), from: L(2, 1), to: L(2, 2), count: 0 },
-      title: 'Replace a bridge', intro: 'You now stand on both ends of the bridge Blue used to strike you. Replace it with your own!', instr: 'Drag from <b>1</b> to <b>2</b> and set <b>0</b>. The bridge turns red.' },
+      title: 'Replace a bridge', intro: 'You now stand on both ends of the bridge Blue used to strike you. Replace it with your own!', instr: 'Drag from <b>1</b> to <b>2</b> and set <b>0</b>. The bridge turns green.' },
     { who: 1, dice: [5, 4], act: { type: 'bridge', R: L(4, 3), from: L(4, 4), to: L(4, 3), count: 0 } },
 
     // ───────── 7. הניצחון ─────────
@@ -125,7 +125,7 @@
       log.push(`${i + 1} ${st.who ? 'B' : 'R'} ${st.act.type} -> prov ${R.provincesHeld(s, 0)}/${R.provincesHeld(s, 1)} win ${R.winProgress(s, 0)}/${R.winProgress(s, 1)} winner ${s.winner}` + (verbose ? ' :: ' + brief(s) : ''));
       if (s.winner !== null && i !== T.steps.length - 1) return { ok: false, error: `early winner at step ${i + 1}`, log };
     }
-    return { ok: s.winner === 0, error: s.winner === 0 ? null : 'Red does not win at the end', log, final: s };
+    return { ok: s.winner === 0, error: s.winner === 0 ? null : 'Green does not win at the end', log, final: s };
   };
 
   root.TUTORIAL = T;
