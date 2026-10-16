@@ -235,3 +235,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #menuBtn { right: 20px; top: 14px; }
   #bar { right: 20px; top: 56px; }
 }
+
+/* ---------- לובי במחשב: שלוש עמודות ---------- */
+@media (min-width: 860px) {
+  .lobby-in { max-width: 1080px; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 28px; row-gap: 10px; align-items: start; padding-top: 6dvh; }
+  .lobby-in h1 { grid-column: 1 / -1; grid-row: 1; font-size: 34px; }
+  #nameIn { grid-column: 1; grid-row: 2; }
+  .lb-actions { grid-column: 2 / 4; grid-row: 2; }
+  .lb-actions .seg { width: 150px; }
+  .lb-actions .btn { flex: none; min-width: 200px; }
+  #lbMsg { grid-column: 1 / -1; grid-row: 3; }
+  .lobby-in h2 { grid-row: 4; margin-top: 22px; }
+  .lobby-in h2:nth-of-type(1), #lbOpen { grid-column: 1; }
+  .lobby-in h2:nth-of-type(2), #lbLive { grid-column: 2; }
+  .lobby-in h2:nth-of-type(3), #lbDone { grid-column: 3; }
+  .lb-list { grid-row: 5; }
+  .lb-foot { grid-column: 1 / -1; grid-row: 6; justify-content: flex-start; gap: 18px; margin-top: 26px; }
+}
