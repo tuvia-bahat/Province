@@ -660,7 +660,7 @@
       // גרירה: רק הבסיס שנבחר מרחף; בסיסים ביעדים נשארים במקום והמשבצת שלהם מתכהה. אחרת: בסיס מודגש מרחף
       const dragging = !sheet && !!opts, isDest = (dragging && i !== ui.sel && opts.has(i)) || (!!sheet && sheet.to !== undefined && i === sheet.to);
       const floating = lit && c.o !== null && !isDest;
-      const ty = floating ? y - LIFT : y;
+      const ty = y;   // בלי ריחוף: הבסיס נשאר במקומו, והטבעת המקווקוות מסמנת מה אפשר לשחק
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
       h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${CR}"/>`;
       if (i === destCell) {
@@ -672,7 +672,7 @@
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
       if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
-      if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}${floating ? ' float' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
+      if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     if (tut.active && !sheet) { const ex = canAct() ? tutExpect() : null; if (ex) h += tutGuideSvg(ex); }
     // שכבת גרירה (מתעדכנת ללא ציור מחדש של הלוח)
@@ -681,6 +681,7 @@
   }
 
   // ---------- תצוגה: שחקנים וקוביות ----------
+  const dieHtml = (n, roll) => `<span class="die${roll ? ' roll' : ''}">${n}</span>`;
   function renderPanels() {
     for (const p of [0, 1]) {
       const el = $('pl' + p);
@@ -701,7 +702,9 @@
         brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M2 13.5a6 6.5 0 0 1 12 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
         dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
       };
-      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span></div>
+      const diceHtml = state.roll && state.winner === null && state.turn === p
+        ? `<span class="dice">${dieHtml(state.roll.w, ui.rolled)}${dieHtml(state.roll.b, ui.rolled)}</span>` : '';
+      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAME[p]}</span><span class="tag">${tag}</span>${diceHtml}</div>
         <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num" data-k="sold" data-p="${p}">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
         <div class="line">${IC.prov}<span class="num" data-k="prov" data-p="${p}">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
         <div class="line">${IC.brid}<span class="num" data-k="brid" data-p="${p}">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
@@ -709,18 +712,6 @@
     }
   }
 
-  function dieHtml(n, label, cls) {
-    return `<div class="die-wrap${cls.old ? ' old' : ''}"><div class="die${cls.roll ? ' roll' : ''}">${n}</div></div>`;
-  }
-  function renderDice() {
-    const box = $('dice');
-    if (state.winner !== null) { box.innerHTML = ''; return; }   // כשהמשחק נגמר הקוביות נעלמות
-    const info = state.roll || lastRoll;
-    if (!info) { box.innerHTML = dieHtml('–', 'X', { old: true }) + dieHtml('–', 'Y', { old: true }); return; }
-    const cls = { roll: ui.rolled, old: !state.roll };
-    box.innerHTML = dieHtml(info.w, 'X', cls) + dieHtml(info.b, 'Y', cls);
-    ui.rolled = false;
-  }
 
   // ---------- תצוגה: דוק ----------
   const lbl = (c) => R.cellLabel(c, state.turn);
@@ -831,7 +822,7 @@
 
   function render() {
     fxCancel();
-    renderPanels(); renderBoard(); renderDice(); renderDock(); renderLog(); renderCoach();
+    renderPanels(); renderBoard(); ui.rolled = false; renderDock(); renderLog(); renderCoach();
     const watch = settings.mode === 'watch';
     $('undoBtn').textContent = watch ? (paused ? 'Resume' : 'Pause') : 'Undo';
     $('undoBtn').disabled = tut.active || (watch ? state.winner !== null : history.length === 0);

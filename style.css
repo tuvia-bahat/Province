@@ -30,7 +30,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: relative; max-width: 520px; margin: 0 auto; height: 100dvh;
   padding: env(safe-area-inset-top) 5vw env(safe-area-inset-bottom);
   display: flex; flex-direction: column; justify-content: space-evenly; gap: 0;
-  --pl-h: 102px; --board-gap: 16px; --dock-h: 106px;
+  --pl-h: 102px; --board-gap: 16px; --dock-h: 72px;
 }
 
 /* ---------- שחקנים ---------- */
@@ -91,20 +91,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- דוק ---------- */
 #dock { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; flex: none; height: var(--dock-h); padding: 0; }
-#dice { display: flex; gap: 14px; justify-content: center; direction: ltr; }
-.die-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-.die-wrap small { font-size: 10px; letter-spacing: .08em; color: var(--faint); font-weight: 600; }
-.die {
-  width: 44px; height: 44px; border-radius: 12px; background: var(--die); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; transition: opacity .3s;
-}
+.pl .dice { display: inline-flex; gap: 5px; margin-left: 8px; direction: ltr; }
+.die { width: 24px; height: 24px; border-radius: 7px; background: var(--die); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .die.roll { animation: tumble .5s cubic-bezier(.2, .8, .3, 1); }
-.die-wrap.old { opacity: .35; }
 @keyframes tumble { 0% { transform: rotate(-160deg) scale(.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
 .dice-empty { color: var(--faint); font-size: 13px; align-self: center; }
 
-#dock.sheeting #dice { display: none; }
 #msg { text-align: center; font-size: 15px; line-height: 1.3; color: var(--ink); }
 #msg:empty { display: none; }
 #msg .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
