@@ -16,8 +16,8 @@
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
   const GEO = {
-    6: { P: 64, G: 34, M: -11, CR: 21, LIFT: 10, RIVER_W: 12, BR: 8, FS: 18 },
-    8: { P: 56, G: 22, M: -7, CR: 21, LIFT: 9, RIVER_W: 9, BR: 8, FS: 17 },
+    6: { P: 64, G: 34, M: -11, CR: 21, LIFT: 10, RIVER_W: 8, BR: 8, FS: 18 },
+    8: { P: 56, G: 22, M: -7, CR: 21, LIFT: 9, RIVER_W: 6, BR: 8, FS: 17 },
   };
   const DOT_R = 7;   // משבצת ריקה היא נקודה קטנה; רק בסיס הוא עיגול מלא
   const BRIDGE_FILL = 0.68;   // חלק מהרווח בין שני העיגולים שהגשר (כולל הקצוות העגולים) תופס: אותה פרופורציה בכל גודל לוח
@@ -638,6 +638,8 @@
     const sheet = ui.sheet;
     const turnColor = COLORS[state.turn];
     const rolled = state.roll && state.winner === null ? state.roll.cells : [];
+    // בזמן ביצוע מהלך (בחירת בסיס / חלון כמות) נשארים רק הסימונים של המשבצות המעורבות
+    const involved = sheet ? new Set([sheet.from, sheet.cell, sheet.to]) : opts ? new Set([ui.sel, ...opts.keys()]) : null;
     let h = '';
 
     // נהרות
@@ -653,7 +655,7 @@
     }
     // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
     for (const Rc of rolled) {
-      if (R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"/>`;
+      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(59,110,245,.16)' : 'rgba(46,184,114,.2)'}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -686,7 +688,7 @@
       if (i === destCell) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
-      } else if (rolled.includes(i)) {
+      } else if (rolled.includes(i) && (!involved || involved.has(i))) {
         // משבצת שאי אפשר לשחק בה: טבעת מקווקוו באפור
         h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       }
