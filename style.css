@@ -35,10 +35,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ---------- שחקנים ---------- */
 .pl { display: flex; flex-direction: column; gap: 8px; padding: 6px 2px; flex: none; height: var(--pl-h); border: 0 solid transparent; opacity: .66; transition: opacity .25s, border-color .25s; }
-#pl1 { border-bottom-width: 2px; }
-#pl0 { border-top-width: 2px; }
-#pl1.active { border-bottom-color: var(--c); }
-#pl0.active { border-top-color: var(--c); }
 .pl.active { opacity: 1; }
 .pl .head { display: flex; align-items: center; gap: 9px; }
 .pl .swatch { width: 14px; height: 14px; border-radius: 50%; background: var(--c); flex: none; }
