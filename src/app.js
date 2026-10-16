@@ -806,6 +806,8 @@
         <div class="srow"><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
       ctl.appendChild(box);
       const rng = box.querySelector('#rng');
+      const capEl = box.querySelector('.cap');   // המילה ממורכזת מעל הסלייד בר עצמו, לא מעל כל הרוחב
+      if (capEl) { const bb = box.getBoundingClientRect(), rr = rng.getBoundingClientRect(); capEl.style.transform = `translateX(${(rr.left + rr.width / 2) - (bb.left + bb.width / 2)}px)`; }
       // מעדכנים רק את התצוגה (בלי לבנות מחדש את הרכיבים), כדי שגרירת המחוון תמשיך לעבוד
       const view = () => {
         box.querySelector('#shNum').innerHTML = `${sh.count}`;
