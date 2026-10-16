@@ -413,14 +413,16 @@
       const wg = document.createElementNS(NS, 'g');
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
+      const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
+      const tintLight = ['#fde9ea', '#e6eefd'][wp];
       for (const k of group) {
-        const a0 = first(k), b0 = R.idx((k % R.PR) * 2 + 1, Math.floor(k / R.PR) * 2 + 1), m = CR + 8;
+        const pxk = k % R.PR, pyk = Math.floor(k / R.PR), top = R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
-        r0.setAttribute('x', cellX(a0) - m); r0.setAttribute('y', Math.min(cellY(a0), cellY(b0)) - m);
-        r0.setAttribute('width', Math.abs(cellX(b0) - cellX(a0)) + 2 * m); r0.setAttribute('height', Math.abs(cellY(b0) - cellY(a0)) + 2 * m);
-        r0.setAttribute('rx', 16); r0.setAttribute('fill', COLORS[wp]); r0.setAttribute('opacity', 0);
+        r0.setAttribute('x', edges[pxk]); r0.setAttribute('y', edges[top]);
+        r0.setAttribute('width', edges[pxk + 1] - edges[pxk]); r0.setAttribute('height', edges[top + 1] - edges[top]);
+        r0.setAttribute('fill', tintLight); r0.setAttribute('opacity', 0);
         wg.appendChild(r0);
-        try { r0.animate([{ opacity: 0 }, { opacity: .42, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
+        try { r0.animate([{ opacity: 0 }, { opacity: 1, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
       }
       releaseWin(startMs + 3 * PULSE + 350);
     }
@@ -641,6 +643,12 @@
     for (let k = 1; k <= R.SIZE / 2 - 1; k++) {
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="0" x2="${pos}" y2="${W}"/><line class="river" style="stroke-width:${RIVER_W}" x1="0" y1="${pos}" x2="${W}" y2="${pos}"/>`;
+    }
+    if (tut.active && tut.phase === 'game' && tut.i < 5) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות מסומנים בשוליים
+      for (let k = 0; k < R.SIZE; k++) {
+        h += `<text class="axis" x="${cx(k)}" y="${cy(0) + CR + 16}">${k + 1}</text>`;
+        h += `<text class="axis" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
+      }
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
