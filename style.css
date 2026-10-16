@@ -30,7 +30,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: relative; max-width: 520px; margin: 0 auto; height: 100dvh;
   padding: env(safe-area-inset-top) 5vw env(safe-area-inset-bottom);
   display: flex; flex-direction: column; justify-content: space-evenly; gap: 0;
-  --pl-h: 102px; --board-gap: 16px; --dock-h: 72px;
+  --pl-h: 102px; --board-gap: 16px; --dock-h: 58px;
 }
 
 /* ---------- שחקנים ---------- */
@@ -114,7 +114,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .link[disabled] { opacity: .35; }
 
 /* חלון בחירת כמות */
-.sheet { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.sheet { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .sheet .cap { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .sheet .title { font-weight: 600; }
 .sheet .note { font-size: 12px; color: var(--muted); min-height: 16px; text-align: center; }
