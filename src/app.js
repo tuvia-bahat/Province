@@ -326,7 +326,7 @@
         let sw = null, o1 = null;
         const t1 = tB + 120;
         later(t1, () => {
-          o1 = mk(g, 'g', { transform: `translate(${mx + px * 32} ${my + py * 32})` });
+          o1 = mk(g, 'g', { transform: `translate(${mx} ${my})` });
           const big = mk(o1, 'g', { transform: 'scale(1.25)' });
           sw = mk(big, 'g', {});
           const st0 = `fill:${col};stroke:#fff;stroke-width:2.4px;paint-order:stroke;stroke-linejoin:round;`;
