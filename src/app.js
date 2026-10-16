@@ -991,6 +991,7 @@
   function onGameRow(g) {
     if (!online) return;
     const old = online.game, hadWinner = state.winner !== null;
+    g.live = old.live;
     markFinished(g);
     if (g.status === 'cancelled') { openLobby(); return; }
     if (old.status === 'open' && g.status === 'active') { online.n = 0; state = R.newGame(); lastMove = lastRoll = null; }
@@ -1017,7 +1018,7 @@
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     closeLobby(); $('overlay').hidden = true;
     $('overlay').dataset.dismissed = (opts.replay || g.status === 'finished') ? '1' : '';
-    if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow);
+    if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow, (row) => { if (online) online.game.live = row; });
     const moves = await O.getMoves(id);
     if (opts.replay) {
       const S = [R.newGame()];
@@ -1079,7 +1080,7 @@
     if (online.seat === null) { msg.innerHTML = `Watching · <b style="color:${COLORS[state.turn]}">${esc(pname(state.turn))}</b>`; return true; }
     if (state.turn !== online.seat) {
       msg.innerHTML = `<b style="color:${COLORS[state.turn]}">${esc(pname(state.turn))}</b> · ${state.roll ? 'Thinking…' : 'Rolling…'}`;
-      if (Date.now() - new Date(g.last_move_at).getTime() > 5 * 60e3) addBtn(row(), 'Claim win', 'soft sm', () => { O.claimTimeout(online.id).catch(netErr); });
+      if (Date.now() - new Date((g.live || g).last_move_at).getTime() > 5 * 60e3) addBtn(row(), 'Claim win', 'soft sm', () => { O.claimTimeout(online.id).catch(netErr); });
       return true;
     }
     return false;
@@ -1088,7 +1089,8 @@
   // ---------- לובי ----------
   const ICON_JOIN = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5"/></svg>';
   const ICON_EYE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
-  let lobbyUnsub = null, lobbyTimer = null, lobbyBusy = false, presenceOn = false;
+  let lobbyUnsub = null, lobbyTimer = null, lobbyDeb = null, lobbyBusy = false, presenceOn = false, lastCount = null;
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLobby(); });
   function closeLobby() {
     $('lobby').hidden = true; $('startModal').hidden = true; $('nameModal').hidden = true;
     if (lobbyUnsub) { lobbyUnsub(); lobbyUnsub = null; }
@@ -1113,8 +1115,7 @@
     $('lobby').hidden = false;
     $('lbMsg').textContent = '';
     refreshLobby();
-    clearInterval(lobbyTimer); lobbyTimer = setInterval(refreshLobby, 15000);
-    if (!presenceOn) { presenceOn = true; O.presence((n) => { $('lbCount').textContent = n; }).catch(() => { presenceOn = false; }); }
+    if (!presenceOn) { presenceOn = true; O.presence((n) => { $('lbCount').textContent = n; if (lastCount !== null && n > lastCount) { const el = document.querySelector('.lb-online'); el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); } lastCount = n; }).catch(() => { presenceOn = false; }); }
   }
   const dot = (cls) => `<i class="lb-dot ${cls}"></i>`;
   async function refreshLobby() {
@@ -1122,7 +1123,7 @@
     lobbyBusy = true;
     try {
       const d = await O.lobby();
-      if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { setTimeout(refreshLobby, 300); }); } catch (e) { /* ignore */ } }
+      if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { clearTimeout(lobbyDeb); lobbyDeb = setTimeout(refreshLobby, 500); }); } catch (e) { /* ignore */ } }
       const me = O.uid, sz = (g) => `<span class="sz">${g.size}×${g.size}</span>`;
       const row = (g, d0, txt, icon, a) => `<div class="lb-row" data-id="${g.id}" data-a="${a}">${dot(d0)}<div class="lb-txt">${txt}</div><div class="lb-go">${icon || ''}</div></div>`;
       let h = '', prev = false;
@@ -1189,6 +1190,25 @@
   $('lbAi').onclick = openNew;
   $('lbCont').onclick = closeLobby;
   $('lbTut').onclick = startTutorial;
+
+  // ---------- התקנה כאפליקציה ----------
+  let installEv = null;
+  const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isPhone = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  const installDismissed = () => { try { return Date.now() - (+localStorage.getItem('province.installDismiss') || 0) < 7 * 864e5; } catch (e) { return false; } };
+  function renderInstall() {
+    const show = isPhone && !standalone() && !installDismissed() && (!!installEv || isIos);
+    $('lbInstall').hidden = !show;
+    $('lbInstallBtn').hidden = !installEv;
+    $('lbInstallTxt').textContent = installEv ? 'Add Province to your home screen' : 'Tap Share, then Add to Home Screen';
+  }
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; renderInstall(); });
+  window.addEventListener('appinstalled', () => { installEv = null; renderInstall(); });
+  $('lbInstallBtn').onclick = async () => { if (!installEv) return; installEv.prompt(); try { await installEv.userChoice; } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
+  $('lbInstallX').onclick = () => { try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
+  renderInstall();
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
   // ---------- כפתורים ----------
   $('undoBtn').onclick = () => { if (!online) undo(); else if (window.confirm('Resign this game?')) O.resign(online.id).catch(netErr); };
