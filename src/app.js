@@ -597,7 +597,7 @@
     settings = Object.assign({}, settings, { mode: 'tutorial', human: 0, board: 6 });
     useBoard(6); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
-    $('newModal').hidden = true; $('overlay').dataset.dismissed = ''; $('overlay').hidden = true; closeLobby();
+    $('overlay').dataset.dismissed = ''; $('overlay').hidden = true; closeLobby();
     render();
   }
   function tutExit() {
@@ -613,18 +613,16 @@
 
   // ---------- משחק חדש ----------
   let pending = null;
-  function openNew() { pending = Object.assign({}, settings, { mode: 'ai' }); renderNewModal(); $('newModal').hidden = false; }
-  function renderNewModal() {
-    const groups = { grpBoard: 'board', grpSide: 'human', grpLevel: 'level' };
-    for (const id in groups) $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(pending[groups[id]]) === b.dataset.v));
-  }
+  // נגד המחשב: תמיד משחקים ירוק (ראשונים) ומול רמה אחת; בוחרים רק גודל לוח
+  let startMode = 'online';
+  function openNew() { startMode = 'ai'; $('startMain').hidden = true; $('startSize').hidden = false; $('startModal').hidden = false; }
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
     settings = Object.assign({}, pending, { mode: 'ai' }); closeLobby(); settings.human = +settings.human; settings.board = +settings.board;
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
-    $('newModal').hidden = true; $('overlay').dataset.dismissed = '';
+    $('overlay').dataset.dismissed = '';
     save(); render();
   }
 
@@ -1017,7 +1015,7 @@
     useBoard(g.size); applyRules();
     online = { id, game: g, seat, n: 0, replay: null, unsub: null, tick: null, loading: true, queue: [] };
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
-    closeLobby(); $('newModal').hidden = true; $('overlay').hidden = true;
+    closeLobby(); $('overlay').hidden = true;
     $('overlay').dataset.dismissed = (opts.replay || g.status === 'finished') ? '1' : '';
     if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow);
     const moves = await O.getMoves(id);
@@ -1110,7 +1108,7 @@
   }
   function openLobby() {
     leaveOnline();
-    $('newModal').hidden = true; $('startModal').hidden = true; $('nameModal').hidden = true; $('bar').classList.remove('open');
+    $('startModal').hidden = true; $('nameModal').hidden = true; $('bar').classList.remove('open');
     if (tut.active) tutExit();
     $('lobby').hidden = false;
     $('lbMsg').textContent = '';
@@ -1154,17 +1152,19 @@
     });
   }
   $('lbPlus').onclick = () => {
+    startMode = 'online';
     $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0);
     $('startMain').hidden = false; $('startSize').hidden = true;
     $('startModal').hidden = false;
   };
   $('startModal').addEventListener('click', (e) => { if (e.target === $('startModal')) $('startModal').hidden = true; });
-  $('lbOnline').onclick = () => { $('startMain').hidden = true; $('startSize').hidden = false; };
+  $('lbOnline').onclick = () => { startMode = 'online'; $('startMain').hidden = true; $('startSize').hidden = false; };
   $('startBack').onclick = () => { $('startMain').hidden = false; $('startSize').hidden = true; };
   $('startSize').addEventListener('click', async (e) => {
     const b = e.target.closest('[data-size]'); if (!b) return;
     const size = +b.dataset.size;
     $('startModal').hidden = true;
+    if (startMode === 'ai') { pending = { mode: 'ai', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
     const n = await askName(); if (!n) return;
     try { const id = await O.createGame(size, n); await openOnline(id); } catch (er) { netErr(er); }
   });
@@ -1178,7 +1178,7 @@
       else await openOnline(id);
     } catch (er) { netErr(er); refreshLobby(); }
   });
-  $('lbAi').onclick = () => { $('startModal').hidden = true; openNew(); };
+  $('lbAi').onclick = openNew;
   $('lbCont').onclick = closeLobby;
   $('lbTut').onclick = startTutorial;
 
@@ -1190,11 +1190,6 @@
   $('bar').addEventListener('click', (e) => { if (e.target.closest('button')) menu(false); });
   document.addEventListener('click', (e) => { if (!e.target.closest('#bar')) menu(false); });
   $('newBtn').onclick = openLobby;
-  $('newCancel').onclick = () => { $('newModal').hidden = true; };
-  $('newStart').onclick = startNew;
-  for (const [id, key] of [['grpBoard', 'board'], ['grpSide', 'human'], ['grpLevel', 'level']]) {
-    $(id).addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; pending[key] = b.dataset.v; renderNewModal(); });
-  }
   $('winNew').onclick = () => {
     $('overlay').hidden = true;
     if (tut.active) { pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0 }); startNew(); } else if (online) openLobby(); else openNew();
