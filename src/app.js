@@ -1022,6 +1022,24 @@
     else if (old.name1 === g.name1 && (hadWinner || state.winner === null)) return;
     render();
   }
+  // בודק מול השרת אם פספסנו משהו (הצטרפות, מהלך, סיום) ורק אז טוען מחדש: כך לא קוטעים אנימציות סתם
+  async function softResync() {
+    if (!online || online.replay || online.loading || online.syncing) return;
+    online.syncing = true;
+    const id = online.id;
+    try {
+      const g = await O.getGame(id);
+      if (!online || online.id !== id) return;
+      const moves = g.live ? g.live.moves_count : online.n;
+      if (g.status !== online.game.status || g.name1 !== online.game.name1 || moves > online.n) await openOnline(id, { keep: true });
+    } catch (e) { /* ignore */ }
+    if (online && online.id === id) online.syncing = false;
+  }
+  const onResume = () => { if (online && !online.replay) softResync(); else if (!$('lobby').hidden) refreshLobby(); };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) onResume(); });
+  window.addEventListener('online', onResume);
+  window.addEventListener('focus', onResume);
+  window.addEventListener('pageshow', (e) => { if (e.persisted) onResume(); });
   async function resync() {
     if (!online || online.replay) return;
     const id = online.id;
@@ -1054,7 +1072,14 @@
       const q = online.queue.sort((a, b) => a.n - b.n); online.queue = [];
       markFinished(g);
       for (const row of q) onRemoteMove(row);
-      online.tick = setInterval(() => { if (online && !online.replay) renderDock(); }, 30000);
+      // רשת ביטחון למקרה שעדכון בזמן אמת הוחמץ (למשל הטלפון היה ברקע): בדיקה מהירה מול השרת בזמן המתנה לשחקן או ליריב
+      online.tick = setInterval(() => {
+        if (!online || online.replay || online.loading) return;
+        online.t = (online.t || 0) + 1;
+        const g = online.game;
+        if (g.status === 'open' || (g.status === 'active' && state.winner === null && state.turn !== online.seat && online.t % 3 === 0)) softResync();
+        if (online.t % 6 === 0) renderDock();
+      }, 5000);
     }
     render();
   }
