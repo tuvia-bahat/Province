@@ -723,7 +723,7 @@
         h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
-      if (selBase ? c.o !== null : (floating && !rolled.includes(i) && i !== destCell)) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
+      if (selBase ? (c.o !== null && !rolled.includes(i)) : (floating && !rolled.includes(i) && i !== destCell)) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     if (tut.active && !sheet) { const ex = canAct() ? tutExpect() : null; if (ex) h += tutGuideSvg(ex); }
