@@ -559,9 +559,15 @@
     const mb = $('menuBtn').getBoundingClientRect(), top = Math.max(innerWidth * 0.05, pl.top - 8);
     const wide = getComputedStyle($('app')).display === 'grid';   // פריסת מחשב: הכרטיס על פני העמודה הימנית, עד הכפתורים
     el.style.left = pl.left + 'px'; el.style.width = Math.max(160, Math.min(pl.width, mb.left - 8 - pl.left)) + 'px';
-    el.style.top = top + 'px';
-    el.style.minHeight = (pl.height + 14) + 'px';
-    el.style.maxHeight = Math.max(pl.height + 14, (wide ? $('dock').getBoundingClientRect().top - 10 : bw.top - 2) - top) + 'px';
+    if (wide) {   // מחשב: הכרטיס יושב מתחת לפאנל היריב (לא מכסה אותו), עד הכפתורים
+      const below = pl.bottom + 14;
+      el.style.top = below + 'px'; el.style.minHeight = '';
+      el.style.maxHeight = Math.max(120, $('dock').getBoundingClientRect().top - 14 - below) + 'px';
+    } else {
+      el.style.top = top + 'px';
+      el.style.minHeight = (pl.height + 14) + 'px';
+      el.style.maxHeight = Math.max(pl.height + 14, bw.top - 2 - top) + 'px';
+    }
     el.classList.remove('tight');
     if (el.scrollHeight > el.clientHeight + 1) el.classList.add('tight');   // מסך נמוך: טקסט קצת קטן יותר במקום גלילה
   }
