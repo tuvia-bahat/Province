@@ -250,6 +250,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #bar .link:active { background: #f1f2f5; }
 .modal { border-radius: 26px; }
 
+/* לוח מסובב לשחקן הכחול: הפאנלים מתחלפים */
+#app.flip #pl0 { order: 1; }
+#app.flip #boardWrap { order: 2; }
+#app.flip #pl1 { order: 3; }
+#app.flip #dock { order: 4; }
+
 /* ---------- מחשב: לוח גדול משמאל, שחקנים וכפתורים בעמודה מימין ---------- */
 @media (min-width: 860px) and (min-height: 540px) {
   #app { max-width: none; display: grid; grid-template-columns: auto 360px; grid-template-rows: auto 1fr auto; column-gap: 56px; justify-content: center; align-content: stretch; padding: 4dvh 5vw; --pl-h: 108px; }

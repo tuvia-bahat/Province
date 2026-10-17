@@ -19,6 +19,8 @@
       let { data: { session } } = await sb.auth.getSession();
       if (!session) session = must(await sb.auth.signInAnonymously()).session;
       uid = session.user.id;
+      // אם טאב אחר באותו דפדפן החליף את ההתחברות, מזהה השחקן שלנו מתעדכן (אחרת המשחק שלנו נראה כמו משחק של זר)
+      sb.auth.onAuthStateChange((ev, s) => { if (s && s.user) uid = s.user.id; });
     })().catch((e) => { ready = null; throw e; });
     return ready;
   }
@@ -38,6 +40,7 @@
   }
   async function getGame(id) {
     await init();
+    { const { data: { session } } = await sb.auth.getSession(); if (session && session.user) uid = session.user.id; }
     const g = must(await sb.from('games').select('*, game_live(*)').eq('id', id).single());
     g.live = (Array.isArray(g.game_live) ? g.game_live[0] : g.game_live) || { last_move_at: g.last_move_at };
     return g;
