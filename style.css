@@ -277,3 +277,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-community svg { color: #25a85a; }
 
 #startSize #lbCont { margin-bottom: 8px; }
+
+#winCommunity { align-self: center; margin: 2px 0 0; }
+#winCommunity[hidden] { display: none; }

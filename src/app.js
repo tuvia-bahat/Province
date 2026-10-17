@@ -886,6 +886,7 @@
       $('winText').hidden = !tut.active;
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
+      $('winCommunity').hidden = communityDone();
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -1220,7 +1221,11 @@
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; O.track('install_available'); renderInstall(); });
   window.addEventListener('appinstalled', () => { O.track('app_installed'); installEv = null; renderInstall(); });
   $('lbInstallBtn').onclick = async () => { if (!installEv) return; O.track('install_click'); installEv.prompt(); try { const c = await installEv.userChoice; if (c && c.outcome === 'accepted') O.track('install_accepted'); } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
-  $('lbCommunity').addEventListener('click', () => O.track('community_click'));
+  // הזמנה לקבוצת הוואטסאפ: במסך הניצחון רק למי שעוד לא לחץ עליה אף פעם
+  const communityDone = () => { try { return localStorage.getItem('province.community') === '1'; } catch (e) { return false; } };
+  const markCommunity = (where) => { O.track('community_click', { from: where }); try { localStorage.setItem('province.community', '1'); } catch (e) { /* ignore */ } $('winCommunity').hidden = true; };
+  $('lbCommunity').addEventListener('click', () => markCommunity('lobby'));
+  $('winCommunity').addEventListener('click', () => markCommunity('win'));
   $('lbInstallX').onclick = () => { O.track('install_dismiss'); try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
   renderInstall();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
