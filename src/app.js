@@ -57,7 +57,7 @@
       return localStorage.getItem('province.beta') === '1';
     } catch (e) { return false; }
   })();
-  const TUT = BETA_FLAG && window.TUTORIAL_NEW ? window.TUTORIAL_NEW : window.TUTORIAL;
+  const TUT = window.TUTORIAL_NEW || window.TUTORIAL;   // הטוטוריאל החדש שוחרר לכולם
   const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null };
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
