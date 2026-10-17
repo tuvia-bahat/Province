@@ -94,6 +94,7 @@
   const VID = visitorId();
   function track(name, props) {
     try {
+      if (localStorage.getItem('province.notrack') === '1') return;
       fetch(URL + '/rest/v1/rpc/track_event', {
         method: 'POST', keepalive: true,
         headers: { 'Content-Type': 'application/json', apikey: KEY },

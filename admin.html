@@ -78,6 +78,7 @@
       <div class="bar">
         <div class="seg" id="range"><button data-d="7">7 days</button><button data-d="30" class="on">30 days</button><button data-d="90">90 days</button></div>
         <button class="ghost" id="refresh">Refresh</button>
+        <button class="ghost" id="excl" title="Stop counting visits and games from this browser">Exclude this browser</button>
         <button class="ghost" id="signout">Sign out</button>
       </div>
     </header>
@@ -133,6 +134,15 @@
   };
   $('signout').onclick = async () => { await sb.auth.signOut(); show(false); };
   $('refresh').onclick = () => load();
+  $('excl').onclick = async () => {
+    let vid = null; try { vid = localStorage.getItem('province.vid'); } catch (e) { /* ignore */ }
+    if (!vid) { $('msg').textContent = 'This browser has no visitor id yet. Open the game once in it, then try again.'; return; }
+    if (!confirm('Stop counting this browser and delete its past events?')) return;
+    try { localStorage.setItem('province.notrack', '1'); } catch (e) { /* ignore */ }
+    const { error } = await sb.rpc('admin_exclude', { p_vid: vid });
+    if (error) { $('msg').textContent = error.message; return; }
+    $('msg').textContent = 'This browser is now excluded.'; load();
+  };
   $('range').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
     days = +b.dataset.d; $('range').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); load();
@@ -156,7 +166,7 @@
     const visitors = n(d.visitors), visits = n(d.visits);
     const tile = (k, v, sub) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
     $('tiles').innerHTML =
-      tile('Visitors', visitors, `${visits} visits`) +
+      tile('Unique visitors', visitors, `${visits} total visits`) +
       tile('Returning', pct(n(d.returning), visitors), `${n(d.returning)} visitors`) +
       tile('Mobile', pct(n(d.mobile), visitors), `${n(d.mobile)} · desktop ${n(d.desktop)}`) +
       tile('Opened as app', n(d.standalone), 'visitors from the home screen');
@@ -191,7 +201,7 @@
     // online
     const on = [['Games created', 'online_create'], ['Games joined', 'online_join'], ['Games watched', 'online_watch'], ['Replays opened', 'online_replay'], ['Games finished', 'online_end']];
     const base = Math.max(1, ...on.map(([, k]) => n(s[k])));
-    $('online').innerHTML = on.map(([k, e]) => row(k, n(s[e]), base, n(c[e]) + ' total')).join('');
+    $('online').innerHTML = on.map(([k, e]) => row(k, n(s[e]), base, '')).join('');
 
     // install
     const inst = [['Install offered', 'install_available'], ['Clicked Install', 'install_click'], ['Accepted', 'install_accepted'], ['Dismissed the banner', 'install_dismiss'], ['App installed', 'app_installed']];
