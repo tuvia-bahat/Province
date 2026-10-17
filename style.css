@@ -302,4 +302,3 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tp-go { flex: none; border: 0; border-radius: 999px; background: var(--ink); color: #fff; padding: 9px 15px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
 .tp-x { position: absolute; top: -9px; right: -9px; width: 26px; height: 26px; border: 0; border-radius: 50%; background: #fff; color: var(--muted); font-size: 17px; line-height: 1; padding: 0 0 2px; box-shadow: 0 0 0 1px #eceef2, 0 4px 10px -4px rgba(20,25,40,.3); }
 
-#betaBadge { position: fixed; left: 10px; bottom: 8px; z-index: 30; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: #8a6d00; background: #fff3bf; padding: 3px 8px; border-radius: 999px; pointer-events: none; }

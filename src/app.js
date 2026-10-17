@@ -60,14 +60,8 @@
       (settings.mode === 'tutorial' && tut.phase === 'game' && state.turn === 1));
   const aiLevel = () => settings.level;
   const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
-  // תכונות ניסוי: כתובת עם ?beta=1 מדליקה אותן בדפדפן הזה בלבד (?beta=0 מכבה). משתמשים רגילים לא רואים אותן.
-  const BETA = (() => {
-    try {
-      const q = new URLSearchParams(location.search);
-      if (q.has('beta')) { if (q.get('beta') === '0') localStorage.removeItem('province.beta'); else localStorage.setItem('province.beta', '1'); }
-      return localStorage.getItem('province.beta') === '1';
-    } catch (e) { return false; }
-  })();
+  // בחירת בסיס מתמשכת (נבדקה כתכונת ניסוי ופתוחה כעת לכולם); בטוטוריאל הבחירה הישנה נשארת כדי שההדרכה תישאר ממוקדת
+  const BETA = true;
   const betaOn = () => BETA && !tut.active;
   // מצב בחירת בסיס: הבסיס נשאר נבחר אחרי לחיצה, יעדי התנועה מודגשים, ואפשר ללחוץ על יעד כדי לבחור כמה חיילים להזיז
   const selMode = () => betaOn() && ui.sel !== null && !isAiTurn() && phase() === 'play' && (!online || onlineMyTurn()) && (ui.sheet === null || ui.sheet.kind === 'adjust');
@@ -1396,7 +1390,6 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  if (BETA) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Experimental controls on. Open ?beta=0 to turn off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
   setTimeout(maybeTutPrompt, 3000);
