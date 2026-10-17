@@ -116,7 +116,10 @@
       const timer = setTimeout(() => resolve({}), 2000);
       fetch(GEO_URL, { cache: 'no-store' }).then((r) => r.json()).then((g) => {
         clearTimeout(timer);
-        resolve(g && g.lat != null && g.lng != null ? { city: g.city || null, lat: +(+g.lat).toFixed(2), lng: +(+g.lng).toFixed(2) } : {});
+        const out = {};
+        if (g && g.country) out.country = String(g.country).slice(0, 2).toUpperCase();
+        if (g && g.lat != null && g.lng != null) { out.city = g.city || null; out.lat = +(+g.lat).toFixed(2); out.lng = +(+g.lng).toFixed(2); }
+        resolve(out);
       }).catch(() => { clearTimeout(timer); resolve({}); });
     });
     return geoP;

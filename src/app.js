@@ -895,7 +895,7 @@
       $('winText').hidden = !tut.active;
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
-      $('winCommunity').hidden = communityDone();
+      $('winCommunity').hidden = communityDone() || !isIL();
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -1313,9 +1313,21 @@
   window.addEventListener('appinstalled', () => { O.track('app_installed'); installEv = null; renderInstall(); });
   $('lbInstallBtn').onclick = async () => { if (!installEv) return; O.track('install_click'); installEv.prompt(); try { const c = await installEv.userChoice; if (c && c.outcome === 'accepted') O.track('install_accepted'); } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
   // הזמנה לקבוצת הוואטסאפ: במסך הניצחון רק למי שעוד לא לחץ עליה אף פעם
+  // ההזמנה לקבוצת הוואטסאפ (בעברית) מוצגת רק למי שנכנס מישראל
+  let userCountry = null;
+  try { userCountry = localStorage.getItem('province.cc') || null; } catch (e) { /* ignore */ }
+  const isIL = () => (userCountry ? userCountry === 'IL' : /^he/i.test(navigator.language || ''));
+  function applyCommunity() { $('lbCommunity').hidden = !isIL(); }
+  function setCountry(cc) {
+    if (!cc) return;
+    userCountry = cc;
+    try { localStorage.setItem('province.cc', cc); } catch (e) { /* ignore */ }
+    applyCommunity();
+  }
   const communityDone = () => { try { return localStorage.getItem('province.community') === '1'; } catch (e) { return false; } };
   const markCommunity = (where) => { O.track('community_click', { from: where }); try { localStorage.setItem('province.community', '1'); } catch (e) { /* ignore */ } $('winCommunity').hidden = true; };
   $('lbCommunity').addEventListener('click', () => markCommunity('lobby'));
+  applyCommunity();
   $('winCommunity').addEventListener('click', () => markCommunity('win'));
   $('lbInstallX').onclick = () => { O.track('install_dismiss'); try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
   renderInstall();
@@ -1341,6 +1353,6 @@
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
   setTimeout(maybeTutPrompt, 3000);
-  O.geo().then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));
-  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
+  O.geo().then((g) => { setCountry(g.country); return g; }).then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));
+  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, setCountry, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
