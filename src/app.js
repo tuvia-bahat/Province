@@ -12,8 +12,7 @@
   const SAVE_KEY = 'province.save.v7';
   const NAME = window.Rules.NAMES;
   const O = window.Online;
-  const TXT = ['#4f9400', '#008696'];   // גוונים כהים יותר לטקסט על רקע לבן
-  const COLORS = ['#80e600', '#00cfdc'];     // תואם ל---p0 / --p1 ב-style.css
+  const COLORS = ['#34c98a', '#3a9cf5'];     // תואם ל---p0 / --p1 ב-style.css
 
   // ---------- גיאומטריה ----------
   // P מרחק בין משבצות, G רווח בין פרובינציות (נהר), M שוליים, CR רדיוס עיגול, LIFT גובה ריחוף, RIVER_W עובי נהר, BR עובי גשר, FS גודל מספרים
@@ -427,7 +426,7 @@
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
       const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
-      const tintLight = ['#f0fce0', '#e0f9fb'][wp];
+      const tintLight = ['#e7f9f1', '#e7f3fe'][wp];
       for (const k of group) {
         const pxk = FLIP ? R.PR - 1 - (k % R.PR) : k % R.PR, pyk = Math.floor(k / R.PR), top = FLIP ? pyk : R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
@@ -663,7 +662,7 @@
     }
     // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
     for (const Rc of rolled) {
-      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(0,207,220,.16)' : 'rgba(128,230,0,.2)'}"/>`;
+      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
@@ -768,7 +767,7 @@
   function renderDock() {
     const msg = $('msg'), ctl = $('controls');
     const p = state.turn;
-    const name = `<b style="color:${TXT[p]}">${esc(pname(p))}</b>`;
+    const name = `<b style="color:${COLORS[p]}">${esc(pname(p))}</b>`;
     ctl.textContent = '';
     $('dock').classList.toggle('sheeting', !!ui.sheet);
     const addBtn = (parent, text, cls, fn) => {
@@ -778,7 +777,7 @@
 
     if (online && renderOnlineDock(msg, addBtn, row)) return;
     if (state.winner !== null) {
-      msg.innerHTML = `<b style="color:${TXT[state.winner]}">${NAME[state.winner]}</b> wins`;
+      msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${NAME[state.winner]}</b> wins`;
       addBtn(row(), 'New game', 'wide', openNew);
       return;
     }
@@ -878,12 +877,12 @@
       const w = state.winner;
       const by = online && online.game.ended_by;
       $('winTitle').innerHTML = tut.active
-        ? `<span style="color:${TXT[0]}">You win!</span>`
+        ? `<span style="color:${COLORS[0]}">You win!</span>`
         : online
-          ? `<span style="color:${TXT[w]}">${esc(pname(w))}</span> wins${by === 'resign' ? ' (resigned)' : by === 'timeout' ? ' (timeout)' : ''}`
+          ? `<span style="color:${COLORS[w]}">${esc(pname(w))}</span> wins${by === 'resign' ? ' (resigned)' : by === 'timeout' ? ' (timeout)' : ''}`
           : settings.mode === 'ai'
-          ? `<span style="color:${TXT[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
-          : `<span style="color:${TXT[w]}">${NAME[w]}</span> wins`;
+          ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
+          : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
       $('winText').hidden = !tut.active;
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
@@ -1089,13 +1088,13 @@
     }
     if (state.winner !== null) {
       const by = g.ended_by === 'resign' ? ' (resigned)' : g.ended_by === 'timeout' ? ' (timeout)' : '';
-      msg.innerHTML = `<b style="color:${TXT[state.winner]}">${esc(pname(state.winner))}</b> wins${by}`;
+      msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${esc(pname(state.winner))}</b> wins${by}`;
       addBtn(row(), 'Lobby', 'wide', openLobby);
       return true;
     }
-    if (online.seat === null) { msg.innerHTML = `Watching · <b style="color:${TXT[state.turn]}">${esc(pname(state.turn))}</b>`; return true; }
+    if (online.seat === null) { msg.innerHTML = `Watching · <b style="color:${COLORS[state.turn]}">${esc(pname(state.turn))}</b>`; return true; }
     if (state.turn !== online.seat) {
-      msg.innerHTML = `<b style="color:${TXT[state.turn]}">${esc(pname(state.turn))}</b> · ${state.roll ? 'Thinking…' : 'Rolling…'}`;
+      msg.innerHTML = `<b style="color:${COLORS[state.turn]}">${esc(pname(state.turn))}</b> · ${state.roll ? 'Thinking…' : 'Rolling…'}`;
       if (Date.now() - new Date((g.live || g).last_move_at).getTime() > 5 * 60e3) addBtn(row(), 'Claim win', 'soft sm', () => { O.claimTimeout(online.id).catch(netErr); });
       return true;
     }
