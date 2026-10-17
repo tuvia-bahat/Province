@@ -69,4 +69,4 @@ end $$;
 grant execute on function public.admin_stats(int) to authenticated;
 
 -- who may open the dashboard (edit the email, then run)
-insert into public.admins (email) values ('YOUR_EMAIL@example.com') on conflict do nothing;
+insert into public.admins (email) values ('tuvia000@gmail.com') on conflict do nothing;
