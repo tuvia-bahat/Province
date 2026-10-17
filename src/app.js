@@ -776,6 +776,7 @@
     const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
 
     if (online && renderOnlineDock(msg, addBtn, row)) return;
+    if (state.winner !== null && tut.active) { msg.innerHTML = ''; return; }   // בטוטוריאל: בלי כפתור New game מתחת ללוח; ממשיכים דרך חלון הניצחון
     if (state.winner !== null) {
       msg.innerHTML = `<b style="color:${COLORS[state.winner]}">${NAME[state.winner]}</b> wins`;
       addBtn(row(), 'New game', 'wide', openNew);
