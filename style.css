@@ -224,7 +224,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-tag { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .lb-tag.open { color: var(--p0); }
 .lb-tag.live { color: var(--p1); }
-.lb-empty { text-align: center; font-size: 14px; color: var(--faint); padding: 8px 0; }
+.lb-empty { text-align: center; font-size: 15px; color: var(--muted); padding: 8px 0; line-height: 1.6; }
+.lb-empty span { font-size: 13px; color: var(--faint); }
 #lbMsg { text-align: center; font-size: 13px; color: #c0392b; }
 #lbMsg:empty { display: none; }
 .lb-plus { flex: none; align-self: center; width: 56px; height: 56px; border: 0; border-radius: 50%; background: var(--ink); color: #fff; padding: 0; display: flex; align-items: center; justify-content: center; transition: transform .12s; }

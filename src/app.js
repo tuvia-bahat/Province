@@ -1091,7 +1091,11 @@
     }
     if (g.status === 'open') {
       msg.innerHTML = 'Waiting for an opponent…';
-      if (online.seat === 0) addBtn(row(), 'Cancel', 'soft', () => { O.cancelGame(online.id).then(openLobby).catch(netErr); });
+      if (online.seat === 0) {
+        const r = row();
+        addBtn(r, 'Invite a friend', '', () => inviteFriend(online.id));
+        addBtn(r, 'Cancel', 'soft', () => { O.cancelGame(online.id).then(openLobby).catch(netErr); });
+      }
       return true;
     }
     if (state.winner !== null) {
@@ -1107,6 +1111,35 @@
       return true;
     }
     return false;
+  }
+
+  // הזמנת חבר: קישור ישיר למשחק הפתוח (province-game.com/?join=ID), בשיתוף של הטלפון או בהעתקה
+  async function inviteFriend(id) {
+    const url = location.origin + location.pathname.replace(/[^/]*$/, '') + '?join=' + id;
+    O.track('invite_click');
+    const text = 'Join my game of Province';
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Province', text, url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); $('msg').textContent = 'Link copied. Send it to a friend.'; }
+    catch (e) { window.prompt('Copy this link and send it to a friend:', url); }
+  }
+  // כניסה דרך קישור הזמנה: מצטרפים למשחק הפתוח (או חוזרים/צופים אם הוא כבר רץ)
+  async function handleJoinLink() {
+    let id = null;
+    try { id = new URLSearchParams(location.search).get('join'); } catch (e) { /* ignore */ }
+    if (!id || !/^[0-9a-f-]{36}$/i.test(id)) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
+    try {
+      await O.init();
+      const g = await O.getGame(id);
+      if (g.status === 'open' && g.p0 !== O.uid) {
+        const n = await askName(); if (!n) return;
+        await O.joinGame(id, n); O.track('online_join', { board: g.size, via: 'link' });
+      }
+      if (g.status === 'cancelled') { $('lbMsg').textContent = 'That game was cancelled.'; return; }
+      await openOnline(id);
+    } catch (e) { $('lbMsg').textContent = 'That game is no longer available.'; console.error(e); }
   }
 
   // ---------- לובי ----------
@@ -1169,7 +1202,7 @@
         h += r;
       });
       if (d.moreFinished) h += '<button class="lb-more" id="lbMore" type="button">Show more</button>';
-      $('lbList').innerHTML = h || '<div class="lb-empty">No games yet</div>';
+      $('lbList').innerHTML = h || '<div class="lb-empty">No games yet<br><span>Tap + to create one and invite a friend</span></div>';
       $('lbMsg').textContent = '';
     } catch (e) { $('lbMsg').textContent = 'Can\'t reach the server'; console.error(e); }
     lobbyBusy = false;
@@ -1258,6 +1291,7 @@
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
+  handleJoinLink();
   O.track('visit', { mobile: isPhone, standalone: standalone(), returning: O.returning });
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
