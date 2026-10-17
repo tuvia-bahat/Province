@@ -1221,6 +1221,7 @@
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; O.track('install_available'); renderInstall(); });
   window.addEventListener('appinstalled', () => { O.track('app_installed'); installEv = null; renderInstall(); });
   $('lbInstallBtn').onclick = async () => { if (!installEv) return; O.track('install_click'); installEv.prompt(); try { const c = await installEv.userChoice; if (c && c.outcome === 'accepted') O.track('install_accepted'); } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
+  $('lbCommunity').addEventListener('click', () => O.track('community_click'));
   $('lbInstallX').onclick = () => { O.track('install_dismiss'); try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
   renderInstall();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
