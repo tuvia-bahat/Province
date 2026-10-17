@@ -201,7 +201,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-online { flex: none; align-self: center; display: flex; align-items: center; gap: 8px; padding: 7px 15px 7px 13px; border-radius: 999px; background: #fff; box-shadow: 0 0 0 1px #eceef2, 0 4px 14px -8px rgba(20,25,40,.2); color: var(--p0); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .lb-online.hit { animation: lbhit .9s ease-out; }
 @keyframes lbhit { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(52,201,138,.6), 0 0 0 1px #eceef2; } 30% { transform: scale(1.18); } 100% { transform: scale(1); box-shadow: 0 0 0 14px rgba(52,201,138,0), 0 0 0 1px #eceef2; } }
-.lb-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; align-self: center; width: min(588px, calc(100% + 28px)); padding: 22px 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -ms-overflow-style: none; -webkit-mask-image: linear-gradient(transparent, #000 22px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(transparent, #000 22px, #000 calc(100% - 22px), transparent); }
+.lb-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; align-self: center; width: min(588px, calc(100% + 28px)); padding: 22px 14px 46px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; -ms-overflow-style: none; -webkit-mask-image: linear-gradient(transparent, #000 22px, #000 calc(100% - 46px), transparent); mask-image: linear-gradient(transparent, #000 22px, #000 calc(100% - 46px), transparent); }
 .lb-mid::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .lb-mid > .lb-list { margin: auto 0; }   /* מרכוז אנכי כשהרשימה קצרה, גלילה כשהיא ארוכה */
 .lb-more { align-self: center; margin-top: 6px; border: 0; background: none; color: var(--muted); font-size: 13px; font-weight: 500; padding: 10px 18px; }
@@ -281,7 +281,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-x { flex: none; width: 30px; height: 30px; border: 0; background: none; color: var(--faint); font-size: 22px; line-height: 1; padding: 0; }
 
 /* קהילת וואטסאפ */
-.lb-community { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 9px 16px; border-radius: 999px; background: #f1f2f5; color: var(--muted); font-size: 13px; font-weight: 500; text-decoration: none; transition: background .15s; }
+.lb-community { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 18px; padding: 9px 16px; border-radius: 999px; background: #f1f2f5; color: var(--muted); font-size: 13px; font-weight: 500; text-decoration: none; transition: background .15s; }
 .lb-community:active { background: #e6e8ed; }
 .lb-community svg { color: #25a85a; }
 
