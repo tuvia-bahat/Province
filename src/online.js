@@ -107,7 +107,7 @@
   }
 
   // מיקום גס (עיר) מ-Worker של Cloudflare, אם הוגדר כתובת; נכשל בשקט ובלי לעכב את האתר יותר מ-2 שניות
-  const GEO_URL = 'https://province-geo.REPLACE_ME.workers.dev';
+  const GEO_URL = 'https://province-geo.tuvia000.workers.dev';
   let geoP = null;
   function geo() {
     if (geoP) return geoP;
