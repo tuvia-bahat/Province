@@ -275,3 +275,5 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-community { flex: none; align-self: center; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 18px; padding: 9px 16px; border-radius: 999px; background: #f1f2f5; color: var(--muted); font-size: 13px; font-weight: 500; text-decoration: none; transition: background .15s; }
 .lb-community:active { background: #e6e8ed; }
 .lb-community svg { color: #25a85a; }
+
+#startSize #lbCont { margin-bottom: 8px; }

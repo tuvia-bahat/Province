@@ -618,7 +618,7 @@
   let pending = null;
   // נגד המחשב: תמיד משחקים ירוק (ראשונים) ומול רמה אחת; בוחרים רק גודל לוח
   let startMode = 'online';
-  function openNew() { startMode = 'ai'; $('startMain').hidden = true; $('startSize').hidden = false; $('startModal').hidden = false; }
+  function openNew() { startMode = 'ai'; $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0); $('startMain').hidden = true; $('startSize').hidden = false; $('startModal').hidden = false; }
   let gameSeq = 0, aiEndSeq = 0;   // כל משחק מול המחשב נספר פעם אחת בהתחלה ופעם בסיומו
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
@@ -1177,7 +1177,6 @@
   }
   $('lbPlus').onclick = () => {
     startMode = 'online';
-    $('lbCont').hidden = !(settings.mode === 'ai' && state.winner === null && history.length > 0);
     $('startMain').hidden = false; $('startSize').hidden = true;
     $('startModal').hidden = false;
   };
