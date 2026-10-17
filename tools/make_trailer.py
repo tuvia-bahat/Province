@@ -345,8 +345,8 @@ def frame(t):
             w, h = 760 * e3, 150 * e3
             cv.rect(W / 2 - w / 2, 1220 - h / 2, W / 2 + w / 2, 1220 + h / 2, INK, r=int(h / 2))
             if e3 > .7:
-                cv.text(W / 2, 1190, 'PLAY FREE', 54, WHITE, spacing=6)
-                cv.text(W / 2, 1255, 'tuvia-bahat.github.io/Province', 34, (200, 204, 212), bold=False)
+                cv.text(W / 2, 1182, 'PLAY FREE', 54, WHITE, spacing=6)
+                cv.text(W / 2, 1246, 'province-game.com', 44, (225, 228, 235), bold=False)
         e4 = eo3(prog(t, 19.0, 0.5))
         cv.text(W / 2, 1430, 'Plays in your browser · No download', 36, mix(MUTED, e4), bold=False)
     return cv.out()
