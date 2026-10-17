@@ -87,13 +87,11 @@
   </div>
 </div>
 
-<div id="tutPrompt" class="overlay" hidden>
-  <div class="modal tut-prompt">
-    <h2>New here?</h2>
-    <p>Learn Province in a few minutes with a short guided game.</p>
-    <button id="tpStart" class="btn">Start the tutorial</button>
-    <button id="tpSkip" class="link" type="button">Maybe later</button>
-  </div>
+<div id="tutPrompt" class="tp-card" role="dialog" aria-label="Tutorial offer" hidden>
+  <div class="tp-ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9L12 4.5 21.5 9 12 13.5z"/><path d="M6 11.2V16c0 1.4 2.7 2.8 6 2.8s6-1.4 6-2.8v-4.8"/></svg></div>
+  <div class="tp-txt"><b>New here?</b><span>Learn the game in a few minutes.</span></div>
+  <button id="tpStart" class="tp-go" type="button">Tutorial</button>
+  <button id="tpSkip" class="tp-x" type="button" aria-label="Dismiss">×</button>
 </div>
 
 <div id="nameModal" class="overlay" hidden>
