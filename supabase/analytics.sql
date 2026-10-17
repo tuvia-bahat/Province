@@ -22,15 +22,11 @@ alter table public.events enable row level security;   -- no policies: no direct
 create table if not exists public.admins (email text primary key);
 alter table public.admins enable row level security;
 
-create table if not exists public.analytics_exclude (vid text primary key);
-alter table public.analytics_exclude enable row level security;
-
 create or replace function public.track_event(p_vid text, p_sid text, p_name text, p_props jsonb default '{}'::jsonb)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if p_name is null or p_name !~ '^[a-z_0-9]{1,40}$' then return; end if;
   if p_vid is null or length(p_vid) < 8 or length(p_vid) > 64 then return; end if;
-  if exists (select 1 from analytics_exclude where vid = p_vid) then return; end if;
   -- light spam guard: at most 120 events per visitor per minute
   if (select count(*) from events where vid = p_vid and at > now() - interval '1 minute') > 120 then return; end if;
   insert into events (vid, sid, name, props)
@@ -44,15 +40,6 @@ returns boolean language sql stable security definer set search_path = public as
      and exists (select 1 from admins where lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
 $$;
 grant execute on function public.is_admin() to authenticated;
-
-create or replace function public.admin_exclude(p_vid text)
-returns void language plpgsql security definer set search_path = public as $$
-begin
-  if not is_admin() then raise exception 'forbidden'; end if;
-  insert into analytics_exclude (vid) values (left(p_vid, 64)) on conflict do nothing;
-  delete from events where vid = left(p_vid, 64);
-end $$;
-grant execute on function public.admin_exclude(text) to authenticated;
 
 create or replace function public.admin_stats(p_days int default 30)
 returns jsonb language plpgsql security definer set search_path = public as $$

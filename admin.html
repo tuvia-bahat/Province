@@ -78,7 +78,6 @@
       <div class="bar">
         <div class="seg" id="range"><button data-d="7">7 days</button><button data-d="30" class="on">30 days</button><button data-d="90">90 days</button></div>
         <button class="ghost" id="refresh">Refresh</button>
-        <button class="ghost" id="excl" title="Stop counting visits and games from this browser">Exclude this browser</button>
         <button class="ghost" id="signout">Sign out</button>
       </div>
     </header>
@@ -134,15 +133,6 @@
   };
   $('signout').onclick = async () => { await sb.auth.signOut(); show(false); };
   $('refresh').onclick = () => load();
-  $('excl').onclick = async () => {
-    let vid = null; try { vid = localStorage.getItem('province.vid'); } catch (e) { /* ignore */ }
-    if (!vid) { $('msg').textContent = 'This browser has no visitor id yet. Open the game once in it, then try again.'; return; }
-    if (!confirm('Stop counting this browser and delete its past events?')) return;
-    try { localStorage.setItem('province.notrack', '1'); } catch (e) { /* ignore */ }
-    const { error } = await sb.rpc('admin_exclude', { p_vid: vid });
-    if (error) { $('msg').textContent = error.message; return; }
-    $('msg').textContent = 'This browser is now excluded.'; load();
-  };
   $('range').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
     days = +b.dataset.d; $('range').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); load();
