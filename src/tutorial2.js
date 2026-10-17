@@ -45,8 +45,8 @@
     { who: 1, dice: [5, 2], act: { type: 'land', R: L(4, 1), to: L(4, 1), count: 4 } },
 
     // 7. התקפה והחזרת השליטה
-    { who: 0, kind: 'attack', dice: [1, 4], act: { type: 'move', R: L(0, 3), from: L(1, 3), to: L(0, 3), count: 3 },
-      title: 'Attack', intro: 'Attackers kill defenders; the survivors take the square. Clear Blue out and the province is yours again.', instr: 'Drag from the glowing base to Blue\'s base on the <b>left</b> and attack with <b>3</b>.' },
+    { who: 0, kind: 'attack', dice: [3, 1], act: { type: 'move', R: L(2, 0), from: L(1, 3), to: L(0, 3), count: 3 },
+      title: 'Attack', intro: 'When you attack, your soldiers who kill <b>go back to camp</b>, and the defenders <b>die for good</b>. The survivors take the square.', instr: 'The lit square is in your territory, so any base may play. Drag from the glowing base to Blue\'s base on the <b>left</b> and attack with <b>3</b>.' },
     { who: 1, dice: [4, 5], act: { type: 'bridge', R: L(3, 4), from: L(4, 4), to: L(3, 4), count: 0 } },
 
     // 8. הנחתה רק במשבצת שהוטלה
@@ -62,31 +62,31 @@
     // 10. אי אפשר לחצות בגשר של היריב: זזים למשבצת פנויה
     { who: 0, kind: 'move', dice: [1, 1], act: { type: 'move', R: L(0, 0), from: L(1, 2), to: L(1, 3), count: 5 },
       title: 'Enemy bridges', intro: 'A bridge belongs to its builder: you cannot cross Blue\'s bridge. Move to a free square, then build your own bridge there.', instr: 'Drag from your base <b>up</b> to the free square beside the river and move <b>5</b>. Next turn you cross there.' },
-    { who: 1, dice: [5, 5], act: { type: 'land', R: L(4, 4), to: L(4, 4), count: 2 } },
+    { who: 1, dice: [5, 2], act: { type: 'move', R: L(4, 1), from: L(4, 1), to: L(4, 2), count: 3 } },
 
     // 11. פלישה לטריטוריה הנוספת של המחשב
     { who: 0, kind: 'move', dice: [2, 2], act: { type: 'move', R: L(1, 1), from: L(1, 3), to: L(1, 4), count: 4 },
       title: 'Invade', intro: 'Crossing a river where there is no bridge builds yours.', instr: 'Drag <b>up</b> across the river into Blue\'s province and move <b>4</b>.' },
-    { who: 1, dice: [4, 5], act: { type: 'land', R: L(3, 4), to: L(3, 4), count: 2 } },
+    { who: 1, dice: [5, 5], act: { type: 'move', R: L(4, 4), from: L(4, 4), to: L(4, 3), count: 3 } },
 
     // 12. מגיעים למשבצת שממול הגשר של היריב
     { who: 0, kind: 'attack', dice: [1, 5], act: { type: 'move', R: L(0, 4), from: L(1, 4), to: L(0, 4), count: 3 },
-      title: 'Take the far end', intro: 'To replace Blue\'s bridge you must hold <b>both of its ends</b>. You hold one.', instr: 'The lit square is Blue\'s base, next to yours. Drag <b>left</b> and attack with <b>3</b>.' },
-    { who: 1, dice: [5, 2], act: { type: 'land', R: L(4, 1), to: L(4, 1), count: 2 } },
+      title: 'Take the far end', intro: 'To replace Blue\'s bridge you must hold <b>both of its ends</b>. You hold one. Attackers who kill go back to camp; defenders die for good.', instr: 'The lit square is Blue\'s base, next to yours. Drag <b>left</b> and attack with <b>3</b>.' },
+    { who: 1, dice: [5, 3], act: { type: 'land', R: L(4, 2), to: L(4, 2), count: 2 } },
 
     // 13. החלפת הגשר של היריב
     { who: 0, kind: 'bridge', dice: [1, 1], act: { type: 'bridge', R: L(0, 0), from: L(0, 3), to: L(0, 4), count: 0 },
       title: 'Replace a bridge', intro: 'You now hold both ends of Blue\'s bridge. Replace it with yours!', instr: 'Drag from the base to the one above and set <b>0</b>. The bridge turns green.' },
-    { who: 1, dice: [5, 5], act: { type: 'land', R: L(4, 4), to: L(4, 4), count: 2 } },
+    { who: 1, dice: [4, 5], act: { type: 'land', R: L(3, 4), to: L(3, 4), count: 2 } },
 
     // 14. שינוע בקו ישר בתוך הטריטוריה
-    { who: 0, kind: 'transport', dice: [2, 2], act: { type: 'transport', R: L(1, 1), from: L(1, 1), to: L(1, 3), count: 2 },
-      title: 'Transport', intro: 'Inside your territory you can transport soldiers along a straight line, even over your bridges.', instr: 'Drag from the glowing base <b>up</b> to the base two squares above and send <b>2</b> to the front.' },
-    { who: 1, dice: [5, 5], act: { type: 'land', R: L(4, 4), to: L(4, 4), count: 2 } },
+    { who: 0, kind: 'transport', dice: [1, 1], act: { type: 'transport', R: L(0, 0), from: L(1, 1), to: L(1, 3), count: 2 },
+      title: 'Transport', intro: 'Inside your territory you can transport soldiers along a straight line, even over your bridges, from <i>any</i> base.', instr: 'The lit square is elsewhere in your territory, so any base can send. Drag from the glowing base <b>up</b> to the base two squares above and send <b>2</b>.' },
+    { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 2 } },
 
     // 15. הפלישה האחרונה והניצחון
     { who: 0, kind: 'move', dice: [2, 2], act: { type: 'move', R: L(1, 1), from: L(1, 3), to: L(2, 3), count: 1 },
-      title: 'The final move', intro: 'You control <b>4 connected provinces</b>. One more wins!', instr: 'Drag across the river into the empty province on the <b>right</b> and move <b>1</b>. Five connected provinces win!' },
+      title: 'The final move', intro: 'You control <b>4 connected provinces</b>, and so does Blue! Whoever takes the fifth wins.', instr: 'Drag across the river into the empty province on the <b>right</b> and move <b>1</b>. Five connected provinces win!' },
   ];
 
   const recap = [

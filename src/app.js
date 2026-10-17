@@ -673,7 +673,7 @@
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="0" x2="${pos}" y2="${W}"/><line class="river" style="stroke-width:${RIVER_W}" x1="0" y1="${pos}" x2="${W}" y2="${pos}"/>`;
     }
-    if (tut.active && tut.phase === 'game' && tut.i < 5) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות בשוליים, לכל שחקן מהצד שלו (אצל היריב הספירה הפוכה)
+    if (tut.active && tut.phase === 'game' && tut.i < (TUT === window.TUTORIAL_NEW ? 1 : 5)) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות בשוליים, לכל שחקן מהצד שלו (אצל היריב הספירה הפוכה)
       for (let k = 0; k < R.SIZE; k++) {
         h += `<text class="axis a0" x="${cx(k)}" y="${cy(0) + CR + 16}">${k + 1}</text>`;
         h += `<text class="axis a0" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
