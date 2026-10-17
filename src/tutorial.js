@@ -24,7 +24,7 @@
     { who: 1, dice: [5, 5], act: { type: 'land', R: L(4, 4), to: L(4, 4), count: 4 } },
 
     { who: 0, kind: 'land', dice: [3, 2], act: { type: 'land', R: L(2, 1), to: L(2, 1), count: 4 },
-      title: 'Choose a square', intro: 'Rivers split the board into <b>provinces</b>. Hold a base in one, with no enemy base inside, and you <b>control</b> it (it tints). Every roll lights two squares.', instr: 'Both are empty, so both work. Land <b>4</b> on the glowing one to control a second province.' },
+      title: 'Choose a square', intro: 'Rivers split the board into <b>provinces</b>. Hold a base in one, with no enemy base inside, and you <b>control</b> it. Every square in it becomes your <b>territory</b> (tinted).', instr: 'Both are empty, so both work. Land <b>4</b> on the glowing one to control a second province.' },
     { who: 1, dice: [4, 4], act: { type: 'land', R: L(3, 3), to: L(3, 3), count: 3 } },
 
     { who: 0, kind: 'skip', dice: [3, 4], act: { type: 'skip' },
