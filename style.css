@@ -290,3 +290,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 #winCommunity { align-self: center; margin: 2px 0 0; }
 #winCommunity[hidden] { display: none; }
+
+/* כרטיס הצעה לטוטוריאל (פעם ראשונה) */
+.tut-prompt { background: #fff3bf; box-shadow: 0 0 0 1px #f3d77a, 0 24px 60px -18px rgba(120,90,0,.35); border-radius: 26px; padding: 26px 22px 18px; gap: 12px; width: min(330px, 100%); }
+.tut-prompt h2 { font-size: 22px; letter-spacing: .04em; color: var(--ink); }
+.tut-prompt p { margin: 0 0 6px; font-size: 15px; line-height: 1.45; color: #5b4d12; }
+.tut-prompt .btn { width: 100%; }
+.tut-prompt .link { color: #7a6a24; text-transform: none; letter-spacing: .02em; font-size: 14px; }

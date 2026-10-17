@@ -164,6 +164,7 @@
     const win6 = n((d.ai_win_by_board || {})['6']), win8 = n((d.ai_win_by_board || {})['8']);
     const funnel = [
       ['Visited the site', visitors],
+      ['Saw the tutorial offer', n(s.tutorial_prompt_shown)],
       ['Started the tutorial', n(s.tutorial_start)],
       ['Finished the tutorial', n(s.tutorial_complete)],
       ['Played vs computer', n(s.ai_start)],

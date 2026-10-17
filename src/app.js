@@ -599,6 +599,8 @@
   const trackLesson = () => O.track('tutorial_lesson_done', { n: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
   function startTutorial() {
     O.track('tutorial_start'); tut.doneTracked = false;
+    try { localStorage.setItem('province.tutprompt', '1'); } catch (e) { /* ignore */ }
+    $('tutPrompt').hidden = true;
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0; fxCancel();
     if (!tut.active) tut.backup = { state, history, settings: Object.assign({}, settings) };
     tut.active = true; tut.i = 0; tut.page = 0; tut.phase = 'pages'; tut.cardAt = 0;
@@ -1274,6 +1276,19 @@
   $('lbCont').onclick = closeLobby;
   $('lbTut').onclick = startTutorial;
 
+  // ---------- הצעה לטוטוריאל למי שנכנס בפעם הראשונה ----------
+  const tpSeen = () => { try { return localStorage.getItem('province.tutprompt') === '1'; } catch (e) { return false; } };
+  const tpMark = () => { try { localStorage.setItem('province.tutprompt', '1'); } catch (e) { /* ignore */ } };
+  function maybeTutPrompt() {
+    if (tpSeen() || $('lobby').hidden || !$('nameModal').hidden || tut.active || online) return;
+    let joining = false; try { joining = new URLSearchParams(location.search).has('join'); } catch (e) { /* ignore */ }
+    if (joining) return;
+    tpMark(); O.track('tutorial_prompt_shown');
+    $('tutPrompt').hidden = false;
+  }
+  $('tpStart').onclick = () => { $('tutPrompt').hidden = true; O.track('tutorial_prompt_accept'); startTutorial(); };
+  $('tpSkip').onclick = () => { $('tutPrompt').hidden = true; O.track('tutorial_prompt_skip'); };
+
   // ---------- התקנה כאפליקציה ----------
   let installEv = null;
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -1317,6 +1332,7 @@
 
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
+  setTimeout(maybeTutPrompt, 1200);
   O.track('visit', { mobile: isPhone, standalone: standalone(), returning: O.returning });
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
