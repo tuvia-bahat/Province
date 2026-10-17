@@ -681,10 +681,10 @@
     }
     // משבצת שהוטלה וניתן לשחק בה: מילוי בהיר בצבע השחקן, בשכבה שמתחת לכל הנקודות; נשאר גם בזמן גרירה ובחירת כמות. אחרת העיגול נשאר חלול
     for (const Rc of rolled) {
-      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
+      if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0 && !(betaOn() && opts && Rc !== ui.sel && opts.has(Rc))) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
-    if (opts && betaOn()) {   // בחירת בסיס: כל יעד תנועה מקבל מילוי בהיר וטבעת רציפה, כדי שיהיה ברור לאן אפשר ללחוץ
-      for (const k of opts.keys()) if (k !== ui.sel) h += `<circle class="roll-fill" cx="${cellX(k)}" cy="${cellY(k)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.2)' : 'rgba(52,201,138,.26)'}"/>`;
+    if (betaOn() && sheet && sheet.kind === 'move' && sheet.to !== undefined) {   // יעד שנבחר: המעגל מתמלא
+      h += `<circle class="roll-fill" cx="${cellX(sheet.to)}" cy="${cellY(sheet.to)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.3)' : 'rgba(52,201,138,.38)'}"/>`;
     }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
