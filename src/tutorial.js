@@ -55,12 +55,12 @@
     { who: 1, dice: [4, 3], act: { type: 'land', R: L(3, 2), to: L(3, 2), count: 3 } },
 
     // ───────── 5. הובלה והתקפה מעל הגשר שלך ─────────
-    { who: 0, kind: 'transport', dice: [1, 1], act: { type: 'transport', R: L(0, 0), from: L(1, 1), to: L(3, 1), count: 4 },
-      title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. Transport soldiers along a straight line through your territory.', instr: 'Drag from the glowing base to the <b>right</b>, over the bridge, to the far square and send <b>4</b> to the front.' },
+    { who: 0, kind: 'transport', dice: [2, 4], act: { type: 'transport', R: L(1, 3), from: L(1, 1), to: L(3, 1), count: 4 },
+      title: 'Transport', intro: 'Blue landed beside your front base, but it can\'t cross your bridge. Transport soldiers along a straight line through your territory.', instr: 'The lit square is in a province your bridge connects to, so you can act from <i>any</i> base. Drag from the glowing base to the <b>right</b>, over the bridge, and send <b>4</b> to the front.' },
     { who: 1, dice: [5, 4], act: { type: 'land', R: L(4, 3), to: L(4, 3), count: 2 } },
 
     { who: 0, kind: 'attack', dice: [4, 3], act: { type: 'move', R: L(3, 2), from: L(3, 1), to: L(3, 2), count: 4 },
-      title: 'Your bridge', intro: 'Your bridge is a one-way door: you can attack across it, Blue can\'t.', instr: 'Drag from the glowing base <b>up</b> onto the enemy base and send <b>4</b> against 3.' },
+      title: 'Your bridge', intro: 'Your bridge is a one-way door: you can attack across it, Blue can\'t.', instr: 'The lit square is outside your territory, but it touches your base, so you may play from that base into it. Send <b>4</b> against 3.' },
     { who: 1, dice: [2, 5], act: { type: 'land', R: L(1, 4), to: L(1, 4), count: 3 } },
 
     // ───────── 6. נסיגה, חוק ההנחתה, החלפת גשר ─────────
