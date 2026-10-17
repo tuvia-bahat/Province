@@ -1112,7 +1112,7 @@
   // ---------- לובי ----------
   const TAG_PENDING = '<span class="lb-tag open">Pending</span>';
   const TAG_LIVE = '<span class="lb-tag live">Live</span>';
-  let lobbyUnsub = null, lobbyTimer = null, lobbyDeb = null, lobbyBusy = false, presenceOn = false, lastCount = null;
+  let lobbyUnsub = null, lobbyTimer = null, lobbyDeb = null, lobbyBusy = false, presenceOn = false, lastCount = null, histLimit = 20;
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshLobby(); });
   function closeLobby() {
     $('lobby').hidden = true; $('startModal').hidden = true; $('nameModal').hidden = true;
@@ -1128,7 +1128,7 @@
     if (localBak) { settings = localBak.settings; state = localBak.state; history = localBak.history; localBak = null; }
     useBoard(settings.board); applyRules();
     clearTimeout(winTimer); winShowAt = 0; fxCancel();
-    lastMove = lastRoll = null; ui = freshUi(); $('overlay').hidden = true; $('overlay').dataset.dismissed = '';
+    lastMove = lastRoll = null; ui = freshUi(); $('overlay').hidden = true; $('overlay').dataset.dismissed = state.winner !== null ? '1' : '';
     render();
   }
   function openLobby() {
@@ -1137,6 +1137,7 @@
     if (tut.active) tutExit();
     $('lobby').hidden = false;
     $('lbMsg').textContent = '';
+    histLimit = 20;
     refreshLobby();
     if (!presenceOn) { presenceOn = true; O.presence((n) => { $('lbCount').textContent = n; if (lastCount !== null && n > lastCount) { const el = document.querySelector('.lb-online'); el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); } lastCount = n; }).catch(() => { presenceOn = false; }); }
   }
@@ -1145,7 +1146,7 @@
     if ($('lobby').hidden || lobbyBusy) return;
     lobbyBusy = true;
     try {
-      const d = await O.lobby();
+      const d = await O.lobby(histLimit);
       if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { clearTimeout(lobbyDeb); lobbyDeb = setTimeout(refreshLobby, 500); }); } catch (e) { /* ignore */ } }
       const me = O.uid, sz = (g) => `<span class="sz">${g.size}×${g.size}</span>`;
       const row = (g, d0, txt, icon, a) => `<div class="lb-row" data-id="${g.id}" data-a="${a}">${dot(d0)}<div class="lb-txt">${txt}</div><div class="lb-go">${icon || ''}</div></div>`;
@@ -1167,6 +1168,7 @@
         if (k === 0 && s1) r = r.replace('class="lb-row"', 'class="lb-row sep"');
         h += r;
       });
+      if (d.moreFinished) h += '<button class="lb-more" id="lbMore" type="button">Show more</button>';
       $('lbList').innerHTML = h || '<div class="lb-empty">No games yet</div>';
       $('lbMsg').textContent = '';
     } catch (e) { $('lbMsg').textContent = 'Can\'t reach the server'; console.error(e); }
@@ -1200,6 +1202,7 @@
     try { const id = await O.createGame(size, n); O.track('online_create', { board: size }); await openOnline(id); } catch (er) { netErr(er); }
   });
   $('lbList').addEventListener('click', async (e) => {
+    if (e.target.closest('#lbMore')) { histLimit += 20; refreshLobby(); return; }
     const r = e.target.closest('.lb-row'); if (!r) return;
     const id = r.dataset.id, a = r.dataset.a;
     try {
@@ -1254,7 +1257,7 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; render(); openLobby();
+  load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   O.track('visit', { mobile: isPhone, standalone: standalone(), returning: O.returning });
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();

@@ -29,14 +29,15 @@
   const setName = (n) => { try { localStorage.setItem(NAME_KEY, n); } catch (e) { /* ignore */ } };
   const cleanName = (n) => String(n || '').trim().slice(0, 20);
 
-  async function lobby() {
+  async function lobby(histLimit = 20) {
     await init();
     const [open, active, finished] = await Promise.all([
       sb.from('games').select('*').eq('status', 'open').gt('created_at', ago(60 * 60e3)).order('created_at', { ascending: false }).limit(30),
       sb.from('games').select('*, game_live!inner(last_move_at)').eq('status', 'active').gt('game_live.last_move_at', ago(20 * 60e3)).order('created_at', { ascending: false }).limit(30),
-      sb.from('games').select('*').eq('status', 'finished').gt('moves_count', 0).order('last_move_at', { ascending: false }).limit(30),
+      sb.from('games').select('*').eq('status', 'finished').gt('moves_count', 0).order('last_move_at', { ascending: false }).limit(histLimit + 1),
     ]);
-    return { open: must(open), active: must(active), finished: must(finished) };
+    const fin = must(finished);
+    return { open: must(open), active: must(active), finished: fin.slice(0, histLimit), moreFinished: fin.length > histLimit };
   }
   async function getGame(id) {
     await init();
