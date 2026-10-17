@@ -79,7 +79,31 @@
       .subscribe(async (status) => { if (status === 'SUBSCRIBED') await pres.track({ at: Date.now() }); });
   }
 
+  // אנליטיקה אנונימית: מזהה מבקר אקראי בדפדפן (בלי פרטים אישיים) ואירועים לשרת. נכשל בשקט.
+  const VID_KEY = 'province.vid';
+  const SID = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  let returning = false;
+  function visitorId() {
+    try {
+      let v = localStorage.getItem(VID_KEY);
+      if (v) returning = true;
+      else { v = (root.crypto && root.crypto.randomUUID) ? root.crypto.randomUUID() : 'v' + SID + Math.random().toString(36).slice(2); localStorage.setItem(VID_KEY, v); }
+      return v;
+    } catch (e) { return 'x' + SID; }
+  }
+  const VID = visitorId();
+  function track(name, props) {
+    try {
+      fetch(URL + '/rest/v1/rpc/track_event', {
+        method: 'POST', keepalive: true,
+        headers: { 'Content-Type': 'application/json', apikey: KEY },
+        body: JSON.stringify({ p_vid: VID, p_sid: SID, p_name: name, p_props: props || {} }),
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
+
   root.Online = {
+    track, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };

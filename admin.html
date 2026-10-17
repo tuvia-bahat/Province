@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Province · Analytics</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f7f9; --card: #fff; --ink: #1b1e24; --muted: #6a707c; --faint: #a8aeb9; --line: #e7e9ee;
+    --bar: #1b1e24; --bar-soft: #e3e6ec; --accent: #34c98a; --blue: #3a9cf5; --bad: #c0392b;
+    --font: "Heebo", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { color-scheme: dark; --bg: #121419; --card: #1b1e26; --ink: #eef0f4; --muted: #9aa1ae; --faint: #5d6471; --line: #2a2e38; --bar: #e8ebf1; --bar-soft: #2b303b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); -webkit-text-size-adjust: 100%; }
+  button, input { font: inherit; color: inherit; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 22px 16px 60px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+  h2 { margin: 0 0 14px; font-size: 12px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .bar { display: flex; gap: 8px; align-items: center; }
+  .seg { display: flex; background: var(--bar-soft); border-radius: 999px; padding: 3px; }
+  .seg button { border: 0; background: none; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; }
+  .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .ghost { border: 0; background: none; color: var(--muted); font-size: 13px; cursor: pointer; padding: 7px 10px; }
+  .grid { display: grid; gap: 14px; }
+  .tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 14px; }
+  .card { background: var(--card); border-radius: 18px; padding: 18px; box-shadow: 0 0 0 1px var(--line); }
+  .tile .k { font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tile .v { font-size: 30px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .tile .s { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .two { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); margin-top: 14px; }
+  .frow { display: grid; grid-template-columns: minmax(96px, 150px) minmax(40px, 1fr) auto; align-items: center; gap: 12px; padding: 7px 0; }
+  .frow .name { font-size: 13px; color: var(--ink); }
+  .frow .track { height: 14px; background: var(--bar-soft); border-radius: 7px; overflow: hidden; }
+  .frow .fill { height: 100%; background: var(--bar); border-radius: 7px; min-width: 2px; transition: width .5s; }
+  .frow .num { min-width: 84px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+  .frow .num span { color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .sub { font-size: 12px; color: var(--muted); margin: -6px 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-weight: 500; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 9px 0; border-bottom: 1px solid var(--line); }
+  th:not(:first-child), td:not(:first-child) { text-align: right; }
+  tr:last-child td { border-bottom: 0; }
+  #chart { position: relative; }
+  #chart svg { display: block; width: 100%; height: 190px; overflow: visible; }
+  .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -110%); opacity: 0; transition: opacity .1s; }
+  .axis text { fill: var(--muted); font-size: 10.5px; }
+  .login { max-width: 340px; margin: 14vh auto 0; text-align: center; }
+  .login input { width: 100%; border: 0; border-radius: 14px; background: var(--bar-soft); padding: 14px 16px; font-size: 16px; margin-top: 10px; outline: none; color: var(--ink); }
+  .login .go { width: 100%; margin-top: 14px; border: 0; border-radius: 999px; background: var(--ink); color: var(--bg); padding: 14px; font-weight: 600; cursor: pointer; }
+  .err { color: var(--bad); font-size: 13px; min-height: 18px; margin-top: 12px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 560px) { .frow { grid-template-columns: minmax(84px, 110px) minmax(30px, 1fr) auto; gap: 8px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="login" class="login" hidden>
+    <h1>Province analytics</h1>
+    <form id="loginForm">
+      <input id="em" type="email" placeholder="Email" autocomplete="username" required>
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password" required>
+      <button class="go" type="submit">Sign in</button>
+    </form>
+    <div id="loginErr" class="err"></div>
+  </div>
+
+  <div id="dash" hidden>
+    <header>
+      <h1>Province analytics</h1>
+      <div class="bar">
+        <div class="seg" id="range"><button data-d="7">7 days</button><button data-d="30" class="on">30 days</button><button data-d="90">90 days</button></div>
+        <button class="ghost" id="refresh">Refresh</button>
+        <button class="ghost" id="signout">Sign out</button>
+      </div>
+    </header>
+    <div id="msg" class="err"></div>
+
+    <div class="grid tiles" id="tiles"></div>
+
+    <div class="card">
+      <h2>Funnel</h2>
+      <div class="sub">Unique visitors who reached each step</div>
+      <div id="funnel"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Visitors per day</h2>
+      <div id="chart"><div class="tip" id="tip"></div></div>
+    </div>
+
+    <div class="grid two">
+      <div class="card"><h2>Tutorial</h2><div class="sub">Visitors who completed each lesson</div><div id="lessons"></div></div>
+      <div class="card"><h2>Vs computer</h2><table id="aiTable"></table></div>
+      <div class="card"><h2>Online</h2><div id="online"></div></div>
+      <div class="card"><h2>Install as app</h2><div id="install"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(() => {
+  'use strict';
+  const URL = 'https://hckplrwzsfuwmscwhlhr.supabase.co', KEY = 'sb_publishable_5ur391jcRIaWSoBT2CmN-w_yKlhKq-A';
+  const sb = supabase.createClient(URL, KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+  const $ = (id) => document.getElementById(id);
+  let days = 30;
+  const n = (x) => +x || 0;
+  const pct = (a, b) => (b ? Math.round(100 * a / b) + '%' : '–');
+
+  async function boot() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && !session.user.is_anonymous) show(true); else show(false);
+  }
+  function show(inDash) {
+    $('login').hidden = inDash; $('dash').hidden = !inDash;
+    if (inDash) load();
+  }
+
+  $('loginForm').onsubmit = async (e) => {
+    e.preventDefault(); $('loginErr').textContent = '';
+    const { error } = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
+    if (error) { $('loginErr').textContent = error.message; return; }
+    show(true);
+  };
+  $('signout').onclick = async () => { await sb.auth.signOut(); show(false); };
+  $('refresh').onclick = () => load();
+  $('range').onclick = (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    days = +b.dataset.d; $('range').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); load();
+  };
+
+  async function load() {
+    $('msg').textContent = 'Loading…';
+    const { data, error } = await sb.rpc('admin_stats', { p_days: days });
+    if (error) {
+      $('msg').textContent = /forbidden/i.test(error.message) ? 'This account is not an admin. Add its email to the admins table.' : error.message;
+      return;
+    }
+    $('msg').textContent = '';
+    render(data);
+  }
+
+  const row = (name, v, total, note) => `<div class="frow"><div class="name">${name}</div><div class="track"><div class="fill" style="width:${total ? Math.max(1, 100 * v / total) : 0}%"></div></div><div class="num">${v}<span>${note !== undefined ? note : pct(v, total)}</span></div></div>`;
+
+  function render(d) {
+    const s = d.steps || {}, c = d.counts || {};
+    const visitors = n(d.visitors), visits = n(d.visits);
+    const tile = (k, v, sub) => `<div class="card tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${sub || ''}</div></div>`;
+    $('tiles').innerHTML =
+      tile('Visitors', visitors, `${visits} visits`) +
+      tile('Returning', pct(n(d.returning), visitors), `${n(d.returning)} visitors`) +
+      tile('Mobile', pct(n(d.mobile), visitors), `${n(d.mobile)} · desktop ${n(d.desktop)}`) +
+      tile('Opened as app', n(d.standalone), 'visitors from the home screen');
+
+    const win6 = n((d.ai_win_by_board || {})['6']), win8 = n((d.ai_win_by_board || {})['8']);
+    const funnel = [
+      ['Visited the site', visitors],
+      ['Started the tutorial', n(s.tutorial_start)],
+      ['Finished the tutorial', n(s.tutorial_complete)],
+      ['Played vs computer', n(s.ai_start)],
+      ['Finished a game vs computer', n(s.ai_end)],
+      ['Beat the computer · 6×6', win6],
+      ['Beat the computer · 8×8', win8],
+      ['Created an online game', n(s.online_create)],
+      ['Joined an online game', n(s.online_join)],
+      ['Installed as an app', n(s.app_installed)],
+    ];
+    $('funnel').innerHTML = funnel.map(([k, v]) => row(k, v, visitors)).join('');
+
+    // tutorial lessons
+    const ls = d.lessons || {}, keys = Object.keys(ls).map(Number).sort((a, b) => a - b);
+    const first = n(s.tutorial_start);
+    $('lessons').innerHTML = (first ? row('Started', first, first) : '') +
+      (keys.length ? keys.map((k) => row('Lesson ' + k, n(ls[k]), first || n(ls[keys[0]]))).join('') : '<div class="sub">No tutorial data yet</div>');
+
+    // vs computer table
+    const st = d.ai_start_by_board || {}, en = d.ai_end_by_board || {}, wn = d.ai_win_by_board || {};
+    $('aiTable').innerHTML = '<tr><th>Board</th><th>Started</th><th>Finished</th><th>Won</th><th>Win rate</th></tr>' +
+      ['6', '8'].map((b) => `<tr><td>${b}×${b}</td><td>${n(st[b])}</td><td>${n(en[b])}</td><td>${n(wn[b])}</td><td>${pct(n(wn[b]), n(en[b]))}</td></tr>`).join('');
+
+    // online
+    const on = [['Games created', 'online_create'], ['Games joined', 'online_join'], ['Games watched', 'online_watch'], ['Replays opened', 'online_replay'], ['Games finished', 'online_end']];
+    const base = Math.max(1, ...on.map(([, k]) => n(s[k])));
+    $('online').innerHTML = on.map(([k, e]) => row(k, n(s[e]), base, n(c[e]) + ' total')).join('');
+
+    // install
+    const inst = [['Install offered', 'install_available'], ['Clicked Install', 'install_click'], ['Accepted', 'install_accepted'], ['Dismissed the banner', 'install_dismiss'], ['App installed', 'app_installed']];
+    const ib = Math.max(1, n(s.install_available));
+    $('install').innerHTML = inst.map(([k, e]) => row(k, n(s[e]), ib)).join('');
+
+    drawDaily(d.daily || []);
+  }
+
+  function drawDaily(rows) {
+    const W = 900, H = 190, pl = 28, pb = 22, pt = 8;
+    const el = $('chart'); el.querySelectorAll('svg').forEach((x) => x.remove());
+    if (!rows.length) { el.insertAdjacentHTML('afterbegin', '<div class="sub">No data yet</div>'); return; }
+    const max = Math.max(1, ...rows.map((r) => n(r.visitors)));
+    const nice = max <= 5 ? 5 : Math.ceil(max / 5) * 5;
+    const bw = (W - pl) / rows.length, gap = Math.min(4, bw * .25);
+    let g = '';
+    for (const t of [0, .5, 1]) {
+      const y = pt + (H - pb - pt) * (1 - t);
+      g += `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl - 6}" y="${y + 3.5}" text-anchor="end">${Math.round(nice * t)}</text>`;
+    }
+    const step = Math.ceil(rows.length / 8);
+    rows.forEach((r, i) => {
+      const h = (H - pb - pt) * n(r.visitors) / nice, x = pl + i * bw + gap / 2, y = H - pb - h, w = Math.max(2, bw - gap);
+      g += `<rect class="b" data-i="${i}" x="${x}" y="${y}" width="${w}" height="${Math.max(h, 0)}" rx="${Math.min(4, w / 2)}" fill="var(--bar)"/>`;
+      g += `<rect class="hit" data-i="${i}" x="${pl + i * bw}" y="${pt}" width="${bw}" height="${H - pb - pt}" fill="transparent"/>`;
+      if (i % step === 0) g += `<text x="${x + w / 2}" y="${H - 5}" text-anchor="middle">${String(r.day).slice(5)}</text>`;
+    });
+    el.insertAdjacentHTML('afterbegin', `<svg class="axis" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${g}</svg>`);
+    const tip = $('tip'), svg = el.querySelector('svg');
+    svg.addEventListener('pointermove', (e) => {
+      const h = e.target.closest('.hit'); if (!h) { tip.style.opacity = 0; return; }
+      const r = rows[+h.dataset.i], bb = h.getBoundingClientRect(), eb = el.getBoundingClientRect();
+      tip.innerHTML = `${r.day}<br><b>${n(r.visitors)}</b> visitors · ${n(r.games)} games`;
+      tip.style.left = (bb.left + bb.width / 2 - eb.left) + 'px'; tip.style.top = (e.clientY - eb.top) + 'px'; tip.style.opacity = 1;
+    });
+    svg.addEventListener('pointerleave', () => { tip.style.opacity = 0; });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

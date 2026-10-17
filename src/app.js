@@ -154,7 +154,7 @@
     if (tut.active && !tutMatches(a)) { tutNudge('Follow the highlighted move'); return false; }
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     const prev = state;
-    if (tut.active) { tut.i++; tut.cardAt = Infinity; }
+    if (tut.active) { tut.i++; tut.cardAt = Infinity; trackLesson(); }
     winShowAt = ns.winner !== null ? Infinity : 0;
     history.push(state); lastMove = { p: state.turn, a }; state = ns;
     ui = freshUi();
@@ -174,7 +174,7 @@
     const isPass = fn === R.passTurn;
     history.push(state); lastMove = null; state = fn(state); ui = freshUi();
     if (online) emit('skip', isPass ? { pass: true } : {});
-    if (tut.active) { tut.i++; tut.cardAt = Infinity; }
+    if (tut.active) { tut.i++; tut.cardAt = Infinity; trackLesson(); }
     save(); render();
   }
   const doSkip = () => passOrSkip(R.skipTurn);
@@ -590,7 +590,9 @@
     if (act.type !== 'pass') animateMove(prevS, act, state);
     tutScheduleCard();
   }
+  const trackLesson = () => O.track('tutorial_lesson_done', { n: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
   function startTutorial() {
+    O.track('tutorial_start'); tut.doneTracked = false;
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0; fxCancel();
     if (!tut.active) tut.backup = { state, history, settings: Object.assign({}, settings) };
     tut.active = true; tut.i = 0; tut.page = 0; tut.phase = 'pages'; tut.cardAt = 0;
@@ -602,6 +604,7 @@
   }
   function tutExit() {
     if (!tut.active) return;
+    if (state.winner === null) O.track('tutorial_exit', { at: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
     clearTimeout(aiTimer); aiTimer = null; clearTimeout(winTimer); winShowAt = 0; fxCancel(); clearTimeout(tut.cardTimer);
     tut.active = false;
     const b = tut.backup; tut.backup = null;
@@ -616,6 +619,7 @@
   // נגד המחשב: תמיד משחקים ירוק (ראשונים) ומול רמה אחת; בוחרים רק גודל לוח
   let startMode = 'online';
   function openNew() { startMode = 'ai'; $('startMain').hidden = true; $('startSize').hidden = false; $('startModal').hidden = false; }
+  let gameSeq = 0, aiEndSeq = 0;   // כל משחק מול המחשב נספר פעם אחת בהתחלה ופעם בסיומו
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
@@ -623,6 +627,7 @@
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
+    gameSeq++; O.track('ai_start', { board: settings.board });
     save(); render();
   }
 
@@ -847,6 +852,15 @@
     $('logBox').innerHTML = state.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>No moves yet</div>';
   }
 
+  const onlineEndTracked = new Set();
+  function trackEnds() {
+    if (tut.active) { if (!tut.doneTracked) { tut.doneTracked = true; O.track('tutorial_complete'); } return; }
+    if (online) {
+      if (online.seat !== null && !online.replay && !onlineEndTracked.has(online.id)) { onlineEndTracked.add(online.id); O.track('online_end', { board: online.game.size, won: state.winner === online.seat }); }
+      return;
+    }
+    if (settings.mode === 'ai' && aiEndSeq !== gameSeq) { aiEndSeq = gameSeq; O.track('ai_end', { board: settings.board, won: state.winner === settings.human }); }
+  }
   function render() {
     fxCancel();
     FLIP = !tut.active && (online ? online.seat === 1 : settings.mode === 'ai' && settings.human === 1);
@@ -857,6 +871,7 @@
     $('undoBtn').hidden = !!online && !canResign;
     $('undoBtn').disabled = tut.active || (!online && history.length === 0);
     $('tutBtn').hidden = !!online;
+    if (state.winner !== null) trackEnds();
     const o = $('overlay');
     if (state.winner !== null && !o.dataset.dismissed && Date.now() >= winShowAt) {
       const w = state.winner;
@@ -1175,16 +1190,16 @@
     $('startModal').hidden = true;
     if (startMode === 'ai') { pending = { mode: 'ai', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
     const n = await askName(); if (!n) return;
-    try { const id = await O.createGame(size, n); await openOnline(id); } catch (er) { netErr(er); }
+    try { const id = await O.createGame(size, n); O.track('online_create', { board: size }); await openOnline(id); } catch (er) { netErr(er); }
   });
   $('lbList').addEventListener('click', async (e) => {
     const r = e.target.closest('.lb-row'); if (!r) return;
     const id = r.dataset.id, a = r.dataset.a;
     try {
       const g = a === 'open' ? await O.getGame(id) : null;
-      if (g && g.status === 'open' && g.p0 !== O.uid) { const n = await askName(); if (!n) return; await O.joinGame(id, n); await openOnline(id); }
-      else if (a === 'replay') await openOnline(id, { replay: true });
-      else await openOnline(id);
+      if (g && g.status === 'open' && g.p0 !== O.uid) { const n = await askName(); if (!n) return; await O.joinGame(id, n); O.track('online_join', { board: g.size }); await openOnline(id); }
+      else if (a === 'replay') { O.track('online_replay'); await openOnline(id, { replay: true }); }
+      else { if (g && g.p0 !== O.uid && g.p1 !== O.uid) O.track('online_watch'); await openOnline(id); }
     } catch (er) { netErr(er); refreshLobby(); }
   });
   $('lbAi').onclick = openNew;
@@ -1203,10 +1218,10 @@
     $('lbInstallBtn').hidden = !installEv;
     $('lbInstallTxt').textContent = installEv ? 'Add Province to your home screen' : 'Tap Share, then Add to Home Screen';
   }
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; renderInstall(); });
-  window.addEventListener('appinstalled', () => { installEv = null; renderInstall(); });
-  $('lbInstallBtn').onclick = async () => { if (!installEv) return; installEv.prompt(); try { await installEv.userChoice; } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
-  $('lbInstallX').onclick = () => { try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; O.track('install_available'); renderInstall(); });
+  window.addEventListener('appinstalled', () => { O.track('app_installed'); installEv = null; renderInstall(); });
+  $('lbInstallBtn').onclick = async () => { if (!installEv) return; O.track('install_click'); installEv.prompt(); try { const c = await installEv.userChoice; if (c && c.outcome === 'accepted') O.track('install_accepted'); } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
+  $('lbInstallX').onclick = () => { O.track('install_dismiss'); try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
   renderInstall();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
@@ -1227,6 +1242,7 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  load(); afterLoad(); useBoard(settings.board); applyRules(); render(); openLobby();
+  load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; render(); openLobby();
+  O.track('visit', { mobile: isPhone, standalone: standalone(), returning: O.returning });
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
