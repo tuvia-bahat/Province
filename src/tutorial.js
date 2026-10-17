@@ -47,7 +47,7 @@
 
     // ───────── 4. טריטוריה ומנדט ─────────
     { who: 0, kind: 'move', dice: [1, 1], act: { type: 'move', R: L(0, 0), from: L(1, 1), to: L(1, 2), count: 3 },
-      title: 'Territory', intro: 'Blue hit back and wiped out your base, and its own. Your linked bases plus the provinces you control are your <b>territory</b> (tinted).', instr: 'A square in your territory lets you act from <i>any</i> base. Drag from the glowing base <b>up</b> across the river and move <b>3</b> to claim a new province.' },
+      title: 'Territory', intro: 'Blue hit back and wiped out your base, and its own. Your bases and the provinces you control are your <b>territory</b> (tinted). A lit square inside it lets you play from <i>any</i> of your bases.', instr: 'This lit square is empty, but it is in your territory, so any base can move. Drag from the glowing base <b>up</b> across the river and move <b>3</b> to claim a new province.' },
     { who: 1, dice: [4, 5], act: { type: 'land', R: L(3, 4), to: L(3, 4), count: 3 } },
 
     { who: 0, kind: 'bridge', dice: [3, 2], act: { type: 'bridge', R: L(2, 1), from: L(1, 1), to: L(2, 1), count: 0 },
@@ -84,7 +84,7 @@
   const recap = [
     'Win by connecting 5 provinces in your control.',
     'Attackers return to camp, defenders die for good: strike first.',
-    'In your territory you can act from any base, but new soldiers land only on the lit square.',
+    'A lit square in your territory lets you move from any of your bases. New soldiers land only on the lit square.',
   ];
 
   const T = { pages, steps, recap };
