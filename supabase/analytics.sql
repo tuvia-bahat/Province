@@ -40,6 +40,11 @@ begin
   if cc !~ '^[A-Z]{2}$' or cc in ('XX', 'T1') then cc := null; end if;
   ct := nullif(left(coalesce(h ->> 'cf-ipcity', ''), 60), '');
   begin la := nullif(h ->> 'cf-iplatitude', '')::double precision; ln := nullif(h ->> 'cf-iplongitude', '')::double precision; exception when others then la := null; ln := null; end;
+  if ct is null and p_props ? 'city' then ct := nullif(left(p_props ->> 'city', 60), ''); end if;
+  if la is null and p_props ? 'lat' then
+    begin la := (p_props ->> 'lat')::double precision; ln := (p_props ->> 'lng')::double precision; exception when others then la := null; ln := null; end;
+  end if;
+  if la is not null and (la < -90 or la > 90 or ln < -180 or ln > 180) then la := null; ln := null; end if;
   insert into events (vid, sid, name, props, country, city, lat, lng)
   values (p_vid, left(p_sid, 64), p_name, case when length(coalesce(p_props, '{}'::jsonb)::text) > 500 then '{}'::jsonb else coalesce(p_props, '{}'::jsonb) end, cc, ct, la, ln);
 end $$;

@@ -106,8 +106,24 @@
     } catch (e) { /* ignore */ }
   }
 
+  // מיקום גס (עיר) מ-Worker של Cloudflare, אם הוגדר כתובת; נכשל בשקט ובלי לעכב את האתר יותר מ-2 שניות
+  const GEO_URL = 'https://province-geo.REPLACE_ME.workers.dev';
+  let geoP = null;
+  function geo() {
+    if (geoP) return geoP;
+    geoP = new Promise((resolve) => {
+      if (/REPLACE_ME/.test(GEO_URL)) return resolve({});
+      const timer = setTimeout(() => resolve({}), 2000);
+      fetch(GEO_URL, { cache: 'no-store' }).then((r) => r.json()).then((g) => {
+        clearTimeout(timer);
+        resolve(g && g.lat != null && g.lng != null ? { city: g.city || null, lat: +(+g.lat).toFixed(2), lng: +(+g.lng).toFixed(2) } : {});
+      }).catch(() => { clearTimeout(timer); resolve({}); });
+    });
+    return geoP;
+  }
+
   root.Online = {
-    track, get returning() { return returning; },
+    track, geo, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };

@@ -1341,6 +1341,6 @@
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
   setTimeout(maybeTutPrompt, 3000);
-  O.track('visit', { mobile: isPhone, standalone: standalone(), returning: O.returning });
+  O.geo().then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
