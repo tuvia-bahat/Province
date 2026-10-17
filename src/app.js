@@ -683,6 +683,9 @@
     for (const Rc of rolled) {
       if ((!involved || involved.has(Rc)) && R.actionTypes(state, Rc).length > 0) h += `<circle class="roll-fill" cx="${cellX(Rc)}" cy="${cellY(Rc)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
+    if (opts && betaOn()) {   // בחירת בסיס: כל יעד תנועה מקבל מילוי בהיר וטבעת רציפה, כדי שיהיה ברור לאן אפשר ללחוץ
+      for (const k of opts.keys()) if (k !== ui.sel) h += `<circle class="roll-fill" cx="${cellX(k)}" cy="${cellY(k)}" r="${CR + 4}" fill="${state.turn ? 'rgba(58,156,245,.2)' : 'rgba(52,201,138,.26)'}"/>`;
+    }
     // טבעת היעד בזמן גרירה: בשכבה שמתחת לכל העיגולים (מתחת לבסיס המרחף)
     h += `<circle id="hoverRing" class="hover-ring" r="${CR + 4}" stroke="${turnColor}" visibility="hidden"/>`;
     if (sheet && sheet.to !== undefined) {   // חלון הכמות פתוח: קו מהבסיס ליעד, מתחת לעיגולים
@@ -711,7 +714,7 @@
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
       const cellR = DOT_R;   // גם מתחת לבסיס רק נקודה: כשהבסיס מוסתר באנימציה לא נחשף עיגול ריק
       h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${cellR}"/>`;
-      if (i === destCell) {
+      if (i === destCell || (betaOn() && opts && i !== ui.sel && opts.has(i))) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       } else if (rolled.includes(i) && (!involved || involved.has(i))) {
@@ -824,7 +827,7 @@
     if (sh) {
       sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
       msg.innerHTML = '';
-      const box = document.createElement('div'); box.className = 'sheet' + (sh.min === sh.max ? ' fixed' : '');
+      const box = document.createElement('div'); box.className = 'sheet' + (sh.min === sh.max && !betaOn() ? ' fixed' : '');
       const addLabel = sh.kind === 'adjust' && state.cells[sh.cell].o === p ? 'Reinforce' : 'Land';
       const toggle = sh.modes && sh.modes.length > 1
         ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${m === 'add' ? addLabel : 'Withdraw'}</button>`).join('')}</div>` : '';
@@ -865,6 +868,12 @@
 
     msg.innerHTML = '';
     if (tut.active) return;
+    if (betaOn() && ui.sel !== null) {
+      const n = optionsFrom(ui.sel).size;
+      msg.innerHTML = n ? 'Tap a lit square to move soldiers' : 'This base can\'t move with this roll';
+      addBtn(row(), 'Cancel', 'soft sm', () => { ui.sel = null; render(); });
+      return;
+    }
     addBtn(row(), 'Pass', 'soft', doPass);
   }
 
@@ -958,7 +967,7 @@
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     if (ui.sel !== null && betaOn()) return;   // כבר יש בסיס נבחר: ההחלטה מתקבלת בשחרור (יעד / החלפה / ביטול)
     const pl = playableMap().get(c);
-    if (pl && pl.source) { ui.sel = c; render(); }
+    if ((pl && pl.source) || (betaOn() && state.cells[c].o === state.turn)) { ui.sel = c; render(); }
   });
 
   svg.addEventListener('pointermove', (e) => {
@@ -1391,5 +1400,5 @@
   handleJoinLink();
   setTimeout(maybeTutPrompt, 3000);
   O.geo().then((g) => { setCountry(g.country); return g; }).then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));
-  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, setCountry, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
+  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, setCountry, setState(s) { state = s; history = []; ui = freshUi(); lastMove = lastRoll = null; render(); }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
