@@ -49,7 +49,15 @@
   let settings = { mode: 'ai', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
   let lastMove = null, lastRoll = null, aiTimer = null, paused = false;
   let winShowAt = 0, winTimer = null;   // חלון הניצחון מוצג רק אחרי אנימציית המהלך והבהוב הפרובינציות
-  const TUT = window.TUTORIAL;
+  // גרסת בטא של הטוטוריאל: רק מי שפתח את האתר עם ?beta=1 (נשמר בדפדפן; ?beta=0 מכבה) מקבל את הטוטוריאל החדש. כל השאר ממשיכים לקבל את הקיים.
+  const BETA_FLAG = (() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.has('beta')) { if (q.get('beta') === '0') localStorage.removeItem('province.beta'); else localStorage.setItem('province.beta', '1'); }
+      return localStorage.getItem('province.beta') === '1';
+    } catch (e) { return false; }
+  })();
+  const TUT = BETA_FLAG && window.TUTORIAL_NEW ? window.TUTORIAL_NEW : window.TUTORIAL;
   const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null };
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
@@ -603,7 +611,7 @@
   }
   const trackLesson = () => O.track('tutorial_lesson_done', { n: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
   function startTutorial() {
-    O.track('tutorial_start'); tut.doneTracked = false;
+    O.track('tutorial_start', { beta: BETA_FLAG }); tut.doneTracked = false;
     try { localStorage.setItem('province.tutprompt', '1'); } catch (e) { /* ignore */ }
     hideTutPrompt();
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0; fxCancel();
@@ -1390,6 +1398,7 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
+  if (BETA_FLAG) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Beta features are on. Open ?beta=0 to turn them off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
   setTimeout(maybeTutPrompt, 3000);
