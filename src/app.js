@@ -60,6 +60,17 @@
       (settings.mode === 'tutorial' && tut.phase === 'game' && state.turn === 1));
   const aiLevel = () => settings.level;
   const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
+  // תכונות ניסוי: כתובת עם ?beta=1 מדליקה אותן בדפדפן הזה בלבד (?beta=0 מכבה). משתמשים רגילים לא רואים אותן.
+  const BETA = (() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      if (q.has('beta')) { if (q.get('beta') === '0') localStorage.removeItem('province.beta'); else localStorage.setItem('province.beta', '1'); }
+      return localStorage.getItem('province.beta') === '1';
+    } catch (e) { return false; }
+  })();
+  const betaOn = () => BETA && !tut.active;
+  // מצב בחירת בסיס: הבסיס נשאר נבחר אחרי לחיצה, יעדי התנועה מודגשים, ואפשר ללחוץ על יעד כדי לבחור כמה חיילים להזיז
+  const selMode = () => betaOn() && ui.sel !== null && !isAiTurn() && phase() === 'play' && (!online || onlineMyTurn()) && (ui.sheet === null || ui.sheet.kind === 'adjust');
   const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game') && (!online || onlineMyTurn());
 
   function load() {
@@ -647,12 +658,12 @@
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
     const control = R.provinceControl(state);
     const play = canAct() ? playableMap() : new Map();
-    const opts = canAct() && ui.sel !== null ? optionsFrom(ui.sel) : null;
+    const opts = (canAct() || selMode()) && ui.sel !== null ? optionsFrom(ui.sel) : null;
     const sheet = ui.sheet;
     const turnColor = COLORS[state.turn];
     const rolled = state.roll && state.winner === null ? state.roll.cells : [];
     // בזמן ביצוע מהלך (בחירת בסיס / חלון כמות) נשארים רק הסימונים של המשבצות המעורבות
-    const involved = sheet ? new Set([sheet.from, sheet.cell, sheet.to]) : opts ? new Set([ui.sel, ...opts.keys()]) : null;
+    const involved = opts ? new Set([ui.sel, ...opts.keys()]) : sheet ? new Set([sheet.from, sheet.cell, sheet.to]) : null;
     let h = '';
 
     // נהרות
@@ -690,11 +701,11 @@
     for (let i = 0; i < R.CELLS; i++) {
       const c = state.cells[i], x = cellX(i), y = cellY(i);
       let lit = false;
-      if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
-      else if (opts) lit = i === ui.sel || opts.has(i);
+      if (opts) lit = i === ui.sel || opts.has(i);
+      else if (sheet) lit = i === sheet.from || i === sheet.cell || i === sheet.to;
       else lit = play.has(i);
       // גרירה: רק הבסיס שנבחר מרחף; בסיסים ביעדים נשארים במקום והמשבצת שלהם מתכהה. אחרת: בסיס מודגש מרחף
-      const dragging = !sheet && !!opts, isDest = (dragging && i !== ui.sel && opts.has(i)) || (!!sheet && sheet.to !== undefined && i === sheet.to);
+      const dragging = !!opts, isDest = (dragging && i !== ui.sel && opts.has(i)) || (!opts && !!sheet && sheet.to !== undefined && i === sheet.to);
       const floating = lit && c.o !== null && !isDest;
       const ty = y;   // בלי ריחוף: הבסיס נשאר במקומו, והטבעת המקווקוות מסמנת מה אפשר לשחק
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
@@ -847,7 +858,7 @@
       const seg = box.querySelector('#modeSeg');
       if (seg) seg.onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset.m === sh.mode) return; setMode(sh, b.dataset.m); renderDock(); };
       view();
-      box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
+      box.querySelector('#cancel').onclick = () => { ui.sheet = null; ui.sel = null; render(); };
       box.querySelector('#ok').onclick = () => { if (tut.active && !tutSheetOk(sh)) { tutNudge(sh.tut ? (sh.kind === 'adjust' && sh.mode !== (sh.tut.type === 'withdraw' ? 'withdraw' : 'add') ? 'Pick the highlighted option' : `Set the amount to ${sh.tut.count}`) : 'Follow the highlighted move'); return; } commit(sh.build(sh.count)); };
       return;
     }
@@ -940,11 +951,12 @@
   // לחיצה על בסיס מודגש "מרימה" אותו ומדליקה את יעדי הגרירה. הזזה/התקפה/גשר/שינוע נעשים רק בגרירה.
   // לחיצה קצרה (בלי גרירה) פותחת הוספה או משיכה של חיילים.
   svg.addEventListener('pointerdown', (e) => {
-    if (!canAct() || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if ((!canAct() && !selMode()) || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const pos = toSvg(e), c = cellAt(pos, CR + 12);
-    drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null };
+    drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null, prevSel: ui.sel };
     if (c === null) return;
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (ui.sel !== null && betaOn()) return;   // כבר יש בסיס נבחר: ההחלטה מתקבלת בשחרור (יעד / החלפה / ביטול)
     const pl = playableMap().get(c);
     if (pl && pl.source) { ui.sel = c; render(); }
   });
@@ -953,7 +965,7 @@
     if (!drag || e.pointerId !== drag.id) return;
     const pos = toSvg(e);
     if (!drag.moved && Math.hypot(pos.x - drag.x0, pos.y - drag.y0) > 9) drag.moved = true;
-    if (!drag.moved || ui.sel === null || drag.start !== ui.sel || ui.sheet) return;
+    if (!drag.moved || ui.sel === null || drag.start !== ui.sel || (ui.sheet && !(betaOn() && ui.sheet.kind === 'adjust'))) return;
     const opts = optionsFrom(ui.sel);
     let hover = cellAt(pos, CR + 14);
     if (hover === ui.sel || (hover !== null && !opts.has(hover))) hover = null;
@@ -966,6 +978,30 @@
     const d = drag; drag = null;
     overlay(null);
     const sel = ui.sel;
+    if (betaOn() && !cancelled && (canAct() || selMode())) {
+      // בחירה מתמשכת: לחיצה קצרה על בסיס בוחרת אותו (ופותחת תגבור/משיכה); לחיצה על יעד מודגש פותחת את בחירת הכמות להזזה
+      if (d.moved) {
+        ui.sel = null;
+        if (sel !== null && d.start === sel && d.hover !== null) { if (ui.sheet) ui.sheet = null; startMove(sel, d.hover); }
+        else { if (ui.sheet && ui.sheet.kind === 'adjust') ui.sheet = null; render(); }
+        return;
+      }
+      const c = d.start;
+      if (d.prevSel === null) {   // אין בחירה קודמת: לחיצה על בסיס נבחר אותו (בחירה נשארת)
+        if (sel !== null && c === sel) { if (!startAdjust(c)) render(); return; }
+        ui.sel = null;
+        if (c !== null && playableMap().has(c) && startAdjust(c)) return;
+        if (sel !== null) render();
+        return;
+      }
+      const opts = optionsFrom(d.prevSel);
+      if (c !== null && c !== d.prevSel && opts.has(c)) { ui.sel = null; ui.sheet = null; startMove(d.prevSel, c); return; }
+      ui.sheet = null; ui.sel = null;
+      const pl = c !== null && c !== d.prevSel ? playableMap().get(c) : null;
+      if (pl && pl.source) { ui.sel = c; if (!startAdjust(c)) render(); return; }
+      render();
+      return;
+    }
     ui.sel = null;
     if (cancelled || !canAct()) { if (sel !== null) render(); return; }
     if (d.moved) {                                              // גרירה
@@ -1350,6 +1386,7 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
+  if (BETA) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Experimental controls on. Open ?beta=0 to turn off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
   setTimeout(maybeTutPrompt, 3000);
