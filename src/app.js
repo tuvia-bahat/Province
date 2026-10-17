@@ -714,7 +714,8 @@
       const ctl = control[R.provinceOf(i)];   // פרובינציה בשליטה: העיגולים עצמם נצבעים בגוון של השחקן
       const cellR = DOT_R;   // גם מתחת לבסיס רק נקודה: כשהבסיס מוסתר באנימציה לא נחשף עיגול ריק
       h += `<circle class="cell${ctl !== null ? ' c' + ctl : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${cellR}"/>`;
-      if (i === destCell || (betaOn() && opts && i !== ui.sel && opts.has(i))) {
+      const selBase = betaOn() && i === ui.sel;   // הבסיס שנבחר שומר על הטבעת האפורה המקווקוות כל הזמן
+      if (!selBase && (i === destCell || (betaOn() && opts && i !== ui.sel && opts.has(i)))) {
         // טבעת היעד הרציפה מחליפה את המקווקוו (אותו קוטר בדיוק)
         h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       } else if (rolled.includes(i) && (!involved || involved.has(i))) {
@@ -722,7 +723,7 @@
         h += `<circle id="rr${i}" class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${turnColor}"/>`;
       }
       // בסיס מרחף: טבעת מקווקוות אפורה מסתובבת סביב המשבצת (במקומה הקבוע) ובשכבה שמתחת לבסיס; במשבצת שהוטלה כבר יש טבעת משלה
-      if (floating && !rolled.includes(i) && i !== destCell) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
+      if (selBase ? c.o !== null : (floating && !rolled.includes(i) && i !== destCell)) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${ty}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${ty + 1}">${c.n}</text>`;
     }
     if (tut.active && !sheet) { const ex = canAct() ? tutExpect() : null; if (ex) h += tutGuideSvg(ex); }
