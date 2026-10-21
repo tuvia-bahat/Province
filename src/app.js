@@ -57,8 +57,9 @@
       return localStorage.getItem('province.beta') === '1';
     } catch (e) { return false; }
   })();
-  const TUT = window.TUTORIAL_NEW || window.TUTORIAL;   // הטוטוריאל החדש שוחרר לכולם
-  const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null };
+  const TUT = BETA_FLAG && window.TUTORIAL_V3 ? window.TUTORIAL_V3 : (window.TUTORIAL_NEW || window.TUTORIAL);   // V3 = בטא: לחיצות בלבד, חץ מצביע, כרטיסים צפים על הלוח
+  const TV3 = TUT === window.TUTORIAL_V3;
+  const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null, sub: 0, subFor: -1 };
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
@@ -70,7 +71,7 @@
   const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
   // בחירת בסיס מתמשכת (נבדקה כתכונת ניסוי ופתוחה כעת לכולם); בטוטוריאל הבחירה הישנה נשארת כדי שההדרכה תישאר ממוקדת
   const BETA = true;
-  const betaOn = () => BETA && !tut.active;
+  const betaOn = () => BETA && (!tut.active || TV3);
   // מצב בחירת בסיס: הבסיס נשאר נבחר אחרי לחיצה, יעדי התנועה מודגשים, ואפשר ללחוץ על יעד כדי לבחור כמה חיילים להזיז
   const selMode = () => betaOn() && ui.sel !== null && !isAiTurn() && phase() === 'play' && (!online || onlineMyTurn()) && (ui.sheet === null || ui.sheet.kind === 'adjust');
   const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game') && (!online || onlineMyTurn());
@@ -135,7 +136,7 @@
         }
       }
     }
-    if (tut.active) {
+    if (tut.active && !TV3) {
       const ex = tutExpect(), f = new Map();
       if (ex && !ex.tap && from === ex.from && opts.has(ex.to)) f.set(ex.to, opts.get(ex.to));
       memo.opts.set(from, f);
@@ -522,7 +523,17 @@
     if (sh.kind === 'adjust') return sh.mode === (ex.type === 'withdraw' ? 'withdraw' : 'add') && sh.count === ex.count;
     return sh.count === ex.count;
   }
+  function tutArrowSvg(ex) {   // חץ קופץ שמצביע על המשבצת שצריך ללחוץ עליה עכשיו
+    if (ex.type === 'skip') return '';
+    const target = ex.tap ? ex.cell : (ui.sel === ex.from ? ex.to : ex.from);
+    if (target === undefined || target === null) return '';
+    const x = cellX(target), y = cellY(target), up = y > CR * 4;   // בשורה העליונה החץ מצביע מלמטה
+    const sgn = up ? -1 : 1;
+    const halo = `<circle class="guide-halo" cx="${x}" cy="${y}" r="${CR + 8}"/>`;
+    return halo + `<g transform="translate(${x} ${y})"><g transform="scale(1 ${-sgn})"><g class="tut-arrow"><path d="M0 ${-(CR + 7)} l-12 -17 h7.5 v-13 h9 v13 h7.5 z" /></g></g></g>`;
+  }
   function tutGuideSvg(ex) {
+    if (TV3) return tutArrowSvg(ex);
     const halo = (i, cls, n) => {
       const x = cellX(i), y = cellY(i);
       return `<circle class="${cls}" cx="${x}" cy="${y}" r="${CR + 8}"/>` + (n ? `<text class="guide-n" x="${x}" y="${y - CR - 14}">${n}</text>` : '');
@@ -533,6 +544,19 @@
     const line = d > 2 * pad + 6 ? `<line class="guide-line" x1="${sx + ux * pad}" y1="${sy + uy * pad}" x2="${tx - ux * pad}" y2="${ty - uy * pad}"/>` : '';
     return line + halo(ex.from, 'guide-halo', '') + halo(ex.to, 'guide-ring', '');
   }
+  function tutTap(e, cancelled) {   // בטוטוריאל V3: רק לחיצות. בסיס, ואז יעד, בדיוק כמו במשחק
+    if (cancelled || !canAct()) return;
+    const ex = tutExpect();
+    if (!ex) return;
+    const c = cellAt(toSvg(e), CR + 12);
+    if (c === null) return;
+    const wrong = () => tutNudge(ex.type === 'skip' ? 'Tap Pass' : 'Tap where the arrow points');
+    if (ex.tap) { if (c === ex.cell) startAdjust(c); else wrong(); return; }
+    if (ui.sel === null) { if (c === ex.from) { ui.sel = c; render(); } else wrong(); return; }
+    if (c === ex.to) { ui.sel = null; startMove(ex.from, ex.to); return; }
+    if (c === ui.sel) { ui.sel = null; render(); return; }
+    wrong();
+  }
   function tutNudge(msg) {
     const el = $('coachNudge');
     el.textContent = msg;
@@ -541,7 +565,65 @@
     clearTimeout(tut.nudgeTimer);
     tut.nudgeTimer = setTimeout(() => { el.textContent = ''; }, 2800);
   }
+  const tutIntroList = (st) => (st ? [].concat(st.intro) : []);
+  const tutIntroPending = () => {
+    if (!TV3 || !tut.active || tut.phase !== 'game') return false;
+    const st = tutStepNow();
+    if (!st || st.who !== 0 || state.roll) return false;
+    if (tut.subFor !== tut.i) { tut.subFor = tut.i; tut.sub = 0; }
+    return tut.sub < tutIntroList(st).length - 1;
+  };
+  function tutHighlightsMeter() {
+    if (!TV3 || !tut.active || state.winner !== null) return false;
+    if (tut.phase === 'pages') return !!(TUT.pages[tut.page] && TUT.pages[tut.page].hl);
+    const st = tutStepNow();
+    return !!(st && st.who === 0 && st.hl && state.turn === 0 && Date.now() >= tut.cardAt);
+  }
+  function renderCoachV3() {
+    const el = $('coach');
+    if (!tut.active || state.winner !== null) { el.hidden = true; return; }
+    let title, body, next = '', cells = [];
+    if (tut.phase === 'pages') {
+      const pg = TUT.pages[tut.page];
+      title = pg.title; body = pg.body;
+      next = tut.page < TUT.pages.length - 1 ? 'Next' : "Let's play";
+    } else {
+      const st = tutStepNow();
+      if (!st || st.who !== 0 || state.turn !== 0 || Date.now() < tut.cardAt) { el.hidden = true; return; }
+      if (tut.subFor !== tut.i) { tut.subFor = tut.i; tut.sub = 0; }
+      title = st.title;
+      if (state.roll) body = st.instr;
+      else { const ip = tutIntroList(st); body = ip[Math.min(tut.sub, ip.length - 1)]; if (tut.sub < ip.length - 1) next = 'Next'; }
+      const add = (c, w) => { if (c) cells.push({ i: tIdx(c), w }); };
+      add(st.act.from, 10); add(st.act.to, 10); add(st.act.R, 4);
+      cells.push({ i: R.idx(st.dice[0] - 1, st.dice[1] - 1), w: 4 }, { i: R.idx(R.SIZE - st.dice[0], R.SIZE - st.dice[1]), w: 4 });
+    }
+    el.classList.add('v3');
+    $('coachStep').textContent = '';
+    $('coachTitle').textContent = title;
+    $('coachBody').innerHTML = body + (next ? `<div class="coach-next"><button class="btn" id="coachNext" type="button">${next}</button></div>` : '');
+    $('coachFoot').innerHTML = '';
+    const nb = $('coachNext');
+    if (nb) nb.onclick = () => {
+      if (tut.phase === 'pages') { if (tut.page < TUT.pages.length - 1) tut.page++; else { tut.phase = 'game'; tut.i = 0; tut.cardAt = 0; } }
+      else tut.sub++;
+      render();
+    };
+    el.hidden = false;
+    // הכרטיס צף על הלוח: למעלה או למטה, איפה שפחות מכסה את המשבצות שמעורבות במהלך
+    const bb = $('board').getBoundingClientRect(), sc = bb.width / W;
+    const cw = Math.min(bb.width - 12, 460);
+    el.style.left = (bb.left + (bb.width - cw) / 2) + 'px'; el.style.width = cw + 'px';
+    el.style.top = '0px'; el.style.minHeight = ''; el.style.maxHeight = '';
+    const h = el.offsetHeight, pad = 8;
+    // מנסים כמה מקומות לאורך הלוח ובוחרים את זה שמכסה הכי פחות מהמשבצות (יעדי המהלך חשובים יותר מהמשבצות שהוטלו)
+    const score = (t) => cells.reduce((acc, c) => { const y = bb.top + cellY(c.i) * sc, up = cellY(c.i) > CR * 4, lo = y - (up ? CR + 36 : CR + 4) * sc, hi = y + (up ? CR + 4 : CR + 36) * sc; return acc + (hi > t && lo < t + h ? c.w : 0); }, 0);
+    let best = bb.top + pad, bs = Infinity;
+    for (let t = bb.top + pad; t <= bb.bottom - pad - h + 0.5; t += 6) { const v = score(t); if (v < bs - 0.01) { bs = v; best = t; } }
+    el.style.top = best + 'px';
+  }
   function renderCoach() {
+    if (TV3) { renderCoachV3(); return; }
     const el = $('coach');
     if (!tut.active || state.winner !== null) { el.hidden = true; return; }
     let step, title, body, foot = '';
@@ -673,7 +755,7 @@
       const pos = M + 2 * k * P + (k - 1) * G + G / 2;
       h += `<line class="river" style="stroke-width:${RIVER_W}" x1="${pos}" y1="0" x2="${pos}" y2="${W}"/><line class="river" style="stroke-width:${RIVER_W}" x1="0" y1="${pos}" x2="${W}" y2="${pos}"/>`;
     }
-    if (tut.active && tut.phase === 'game' && tut.i < (TUT === window.TUTORIAL_NEW ? 1 : 5)) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות בשוליים, לכל שחקן מהצד שלו (אצל היריב הספירה הפוכה)
+    if (tut.active && tut.phase === 'game' && tut.i < (TUT !== window.TUTORIAL ? 1 : 5)) {   // הקוביות הן קואורדינטות: מספרי העמודות והשורות בשוליים, לכל שחקן מהצד שלו (אצל היריב הספירה הפוכה)
       for (let k = 0; k < R.SIZE; k++) {
         h += `<text class="axis a0" x="${cx(k)}" y="${cy(0) + CR + 16}">${k + 1}</text>`;
         h += `<text class="axis a0" x="${cx(0) - CR - 10}" y="${cy(k) + 1}">${k + 1}</text>`;
@@ -740,7 +822,7 @@
     for (const p of [0, 1]) {
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
-      el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '');
+      el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '') + (p === 0 && tutHighlightsMeter() ? ' hlprov' : '');
       const tag = settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let prov = '';
@@ -760,7 +842,7 @@
         ? `<span class="dice">${dieHtml(state.roll.w, ui.rolled)}${dieHtml(state.roll.b, ui.rolled)}</span>` : '';
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${esc(pname(p))}</span><span class="tag">${tag}</span>${diceHtml}</div>
         <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num" data-k="sold" data-p="${p}">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
-        <div class="line">${IC.prov}<span class="num" data-k="prov" data-p="${p}">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
+        <div class="line provline">${IC.prov}<span class="num" data-k="prov" data-p="${p}">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
         <div class="line">${IC.brid}<span class="num" data-k="brid" data-p="${p}">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
         <div class="line">${IC.dead}<span class="num" data-k="dead" data-p="${p}">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
     }
@@ -815,7 +897,7 @@
     const ph = phase();
     if (ph === 'roll') {
       msg.innerHTML = '';
-      if (tut.active && (tut.phase !== 'game' || Date.now() < tut.cardAt)) return;
+      if (tut.active && (tut.phase !== 'game' || Date.now() < tut.cardAt || tutIntroPending())) return;
       addBtn(row(), 'Roll dice', 'wide' + (tut.active ? ' guide' : ''), doRoll);
       return;
     }
@@ -968,13 +1050,14 @@
     drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null, prevSel: ui.sel };
     if (c === null) return;
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (tut.active && TV3) return;   // טוטוריאל V3: הכול נקבע בשחרור (לחיצה)
     if (ui.sel !== null && betaOn()) return;   // כבר יש בסיס נבחר: ההחלטה מתקבלת בשחרור (יעד / החלפה / ביטול)
     const pl = playableMap().get(c);
     if ((pl && pl.source) || (betaOn() && state.cells[c].o === state.turn)) { ui.sel = c; render(); }
   });
 
   svg.addEventListener('pointermove', (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
+    if (!drag || e.pointerId !== drag.id || (tut.active && TV3)) return;
     const pos = toSvg(e);
     if (!drag.moved && Math.hypot(pos.x - drag.x0, pos.y - drag.y0) > 9) drag.moved = true;
     if (!drag.moved || ui.sel === null || drag.start !== ui.sel || (ui.sheet && !(betaOn() && ui.sheet.kind === 'adjust'))) return;
@@ -989,6 +1072,7 @@
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag; drag = null;
     overlay(null);
+    if (tut.active && TV3) { tutTap(e, cancelled); return; }
     const sel = ui.sel;
     if (betaOn() && !cancelled && (canAct() || selMode())) {
       // בחירה מתמשכת: לחיצה קצרה על בסיס בוחרת אותו (ופותחת תגבור/משיכה); לחיצה על יעד מודגש פותחת את בחירת הכמות להזזה

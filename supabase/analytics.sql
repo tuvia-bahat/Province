@@ -57,36 +57,41 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 grant execute on function public.is_admin() to authenticated;
 
-create or replace function public.admin_stats(p_days int default 30)
+-- p_day (optional): show only that day (Asia/Jerusalem); the daily chart still covers the whole range
+drop function if exists public.admin_stats(int);
+create or replace function public.admin_stats(p_days int default 30, p_day date default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare since timestamptz := now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365)));
+declare rsince timestamptz := now() - make_interval(days => greatest(1, least(coalesce(p_days, 30), 365)));
+  since timestamptz; upto timestamptz;
 begin
+  if p_day is not null then since := p_day::timestamp at time zone 'Asia/Jerusalem'; upto := (p_day + 1)::timestamp at time zone 'Asia/Jerusalem';
+  else since := rsince; upto := now() + interval '1 day'; end if;
   if not is_admin() then raise exception 'forbidden'; end if;
   return jsonb_build_object(
-    'since', since,
-    'visitors', (select count(distinct vid) from events where at >= since),
-    'visits', (select count(*) from events where name = 'visit' and at >= since),
-    'returning', (select count(distinct vid) from events where name = 'visit' and at >= since and props ->> 'returning' = 'true'),
-    'mobile', (select count(distinct vid) from events where name = 'visit' and at >= since and props ->> 'mobile' = 'true'),
-    'desktop', (select count(distinct vid) from events where name = 'visit' and at >= since and coalesce(props ->> 'mobile', 'false') <> 'true'),
-    'standalone', (select count(distinct vid) from events where name = 'visit' and at >= since and props ->> 'standalone' = 'true'),
-    'steps', (select coalesce(jsonb_object_agg(name, n), '{}'::jsonb) from (select name, count(distinct vid) n from events where at >= since group by name) s),
-    'counts', (select coalesce(jsonb_object_agg(name, n), '{}'::jsonb) from (select name, count(*) n from events where at >= since group by name) s),
-    'ai_start_by_board', (select coalesce(jsonb_object_agg(b, n), '{}'::jsonb) from (select props ->> 'board' b, count(distinct vid) n from events where name = 'ai_start' and at >= since group by 1) s),
-    'ai_end_by_board', (select coalesce(jsonb_object_agg(b, n), '{}'::jsonb) from (select props ->> 'board' b, count(distinct vid) n from events where name = 'ai_end' and at >= since group by 1) s),
-    'ai_win_by_board', (select coalesce(jsonb_object_agg(b, n), '{}'::jsonb) from (select props ->> 'board' b, count(distinct vid) n from events where name = 'ai_end' and props ->> 'won' = 'true' and at >= since group by 1) s),
-    'lessons', (select coalesce(jsonb_object_agg(n, c), '{}'::jsonb) from (select props ->> 'n' n, count(distinct vid) c from events where name = 'tutorial_lesson_done' and at >= since group by 1) s),
-    'countries', (select coalesce(jsonb_object_agg(country, n), '{}'::jsonb) from (select country, count(distinct vid) n from events where at >= since and country is not null group by country) s),
+    'since', since, 'day', p_day,
+    'visitors', (select count(distinct vid) from events where at >= since and at < upto),
+    'visits', (select count(*) from events where name = 'visit' and at >= since and at < upto),
+    'returning', (select count(distinct vid) from events where name = 'visit' and at >= since and at < upto and props ->> 'returning' = 'true'),
+    'mobile', (select count(distinct vid) from events where name = 'visit' and at >= since and at < upto and props ->> 'mobile' = 'true'),
+    'desktop', (select count(distinct vid) from events where name = 'visit' and at >= since and at < upto and coalesce(props ->> 'mobile', 'false') <> 'true'),
+    'standalone', (select count(distinct vid) from events where name = 'visit' and at >= since and at < upto and props ->> 'standalone' = 'true'),
+    'steps', (select coalesce(jsonb_object_agg(name, n), '{}'::jsonb) from (select name, count(distinct vid) n from events where at >= since and at < upto group by name) s),
+    'counts', (select coalesce(jsonb_object_agg(name, n), '{}'::jsonb) from (select name, count(*) n from events where at >= since and at < upto group by name) s),
+    'ai_start_by_board', (select coalesce(jsonb_object_agg(b, n), '{}'::jsonb) from (select props ->> 'board' b, count(distinct vid) n from events where name = 'ai_start' and at >= since and at < upto group by 1) s),
+    'ai_end_by_board', (select coalesce(jsonb_object_agg(b, n), '{}'::jsonb) from (select props ->> 'board' b, count(distinct vid) n from events where name = 'ai_end' and at >= since and at < upto group by 1) s),
+    'ai_win_by_board', (select coalesce(jsonb_object_agg(b, n), '{}'::jsonb) from (select props ->> 'board' b, count(distinct vid) n from events where name = 'ai_end' and props ->> 'won' = 'true' and at >= since and at < upto group by 1) s),
+    'lessons', (select coalesce(jsonb_object_agg(n, c), '{}'::jsonb) from (select props ->> 'n' n, count(distinct vid) c from events where name = 'tutorial_lesson_done' and at >= since and at < upto group by 1) s),
+    'countries', (select coalesce(jsonb_object_agg(country, n), '{}'::jsonb) from (select country, count(distinct vid) n from events where at >= since and at < upto and country is not null group by country) s),
     'cities', (select coalesce(jsonb_agg(jsonb_build_object('city', city, 'country', country, 'lat', lat, 'lng', lng, 'n', n) order by n desc), '[]'::jsonb)
                from (select city, country, round(lat::numeric, 2)::float8 lat, round(lng::numeric, 2)::float8 lng, count(distinct vid) n
-                     from events where at >= since and lat is not null and lng is not null group by 1, 2, 3, 4 order by 5 desc limit 300) s),
+                     from events where at >= since and at < upto and lat is not null and lng is not null group by 1, 2, 3, 4 order by 5 desc limit 300) s),
     'daily', (select coalesce(jsonb_agg(jsonb_build_object('day', d, 'visitors', v, 'games', g) order by d), '[]'::jsonb)
               from (select (at at time zone 'Asia/Jerusalem')::date d, count(distinct vid) v,
                            count(*) filter (where name in ('ai_start', 'online_create', 'online_join')) g
-                    from events where at >= since group by 1) t)
+                    from events where at >= rsince group by 1) t)
   );
 end $$;
-grant execute on function public.admin_stats(int) to authenticated;
+grant execute on function public.admin_stats(int, date) to authenticated;
 
 -- who may open the dashboard: run this ONCE with your own email (it is already done if the dashboard works for you).
 -- Do not commit your real email to the repo.

@@ -1,0 +1,7 @@
+<!doctype html><meta charset="utf-8"><title>tutorial3 check</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/tutorial3.js"></script>
+<script>
+const r = TUTORIAL_V3.verify(Rules, false);
+document.getElementById('o').textContent = JSON.stringify({ ok: r.ok, error: r.error }, null, 1);
+document.title = 'tutorial3 ' + (r.ok ? 'OK' : 'FAIL');
+</script>
