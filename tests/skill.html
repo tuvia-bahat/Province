@@ -1,0 +1,46 @@
+<!doctype html><meta charset="utf-8"><title>skill</title><pre id="o">idle</pre>
+<script src="../src/rules.js"></script><script src="../src/nn.js"></script><script src="../src/ai.js"></script>
+<script>
+// How much does skill matter? Plays levels against each other (alternating seats) and reports win rates.
+// Run: window.__skill(board, gamesPerPair) ; results in window.__sk
+const q = new URLSearchParams(location.search);
+const board = +(q.get('board') || 6);
+const R = Rules.forSize(board), A = AI.forSize(board);
+R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true;
+const pick = (s, lv) => {
+  if (lv === 'random') { const l = A.candidates(s, false); return l.length ? l[Math.floor(Math.random() * l.length)] : { type: 'pass' }; }
+  return A.chooseAction(s, lv);
+};
+function play(seat0, seat1, maxTurns) {
+  let s = R.newGame(), t = 0; const lv = [seat0, seat1];
+  while (s.winner === null && t < maxTurns) {
+    s = R.roll(s, 1 + Math.random() * R.SIZE | 0, 1 + Math.random() * R.SIZE | 0);
+    const a = pick(s, lv[s.turn]);
+    s = a.type === 'pass' ? R.passTurn(s) : R.apply(s, a); t++;
+  }
+  return { winner: s.winner, turns: t };
+}
+window.__skill = (n, pairs) => {
+  window.__sk = { done: false, rows: [], err: null };
+  (async () => {
+    try {
+      for (const [a, b] of pairs) {
+        const r = { a, b, aWins: 0, bWins: 0, draws: 0, turns: 0, firstWins: 0, n: 0 };
+        for (let g = 0; g < n; g++) {
+          const flip = g % 2 === 1;
+          const res = play(flip ? b : a, flip ? a : b, 400);
+          r.n++; r.turns += res.turns;
+          if (res.winner === null) r.draws++;
+          else { const aWon = flip ? res.winner === 1 : res.winner === 0; if (aWon) r.aWins++; else r.bWins++; if (res.winner === 0) r.firstWins++; }
+          if (g % 4 === 0) await new Promise((x) => setTimeout(x, 0));
+        }
+        r.avgTurns = Math.round(r.turns / r.n);
+        window.__sk.rows.push(r);
+      }
+    } catch (e) { window.__sk.err = String(e && e.stack || e); }
+    window.__sk.done = true;
+  })();
+  return 'started';
+};
+document.getElementById('o').textContent = 'ready';
+</script>
