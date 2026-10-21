@@ -1000,7 +1000,7 @@
       $('winText').hidden = !tut.active;
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
-      $('winCommunity').hidden = communityDone() || !isIL();
+      $('winCommunity').hidden = communityDone() || !showCommunity(); communityText();
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -1425,6 +1425,7 @@
     const el = $('tutPrompt'); el.hidden = false;
     void el.offsetWidth; setTimeout(() => el.classList.add('show'), 40);
     tpTimer = setTimeout(hideTutPrompt, 15000);
+    el.classList.toggle('big', BETA_FLAG);
   }
   $('tpStart').onclick = () => { hideTutPrompt(); O.track('tutorial_prompt_accept'); startTutorial(); };
   $('tpSkip').onclick = () => { hideTutPrompt(); O.track('tutorial_prompt_skip'); };
@@ -1449,7 +1450,16 @@
   let userCountry = null;
   try { userCountry = localStorage.getItem('province.cc') || null; } catch (e) { /* ignore */ }
   const isIL = () => (userCountry ? userCountry === 'IL' : /^he/i.test(navigator.language || ''));
-  function applyCommunity() { $('lbCommunity').hidden = !isIL(); }
+  // בטא: ההזמנה מוצגת לכולם (באנגלית למי שלא מישראל); בלי הדגל רק ישראל, בעברית
+  const showCommunity = () => BETA_FLAG || isIL();
+  function communityText() {
+    const il = isIL();
+    for (const a of [$('lbCommunity'), $('winCommunity')]) {
+      a.dir = il ? 'rtl' : 'ltr'; a.lang = il ? 'he' : 'en';
+      const t = a.lastChild; if (t && t.nodeType === 3) t.textContent = il ? 'הצטרפו לקהילת הוואטסאפ של המשחק' : 'Join the Province WhatsApp community';
+    }
+  }
+  function applyCommunity() { $('lbCommunity').hidden = !showCommunity(); communityText(); }
   function setCountry(cc) {
     if (!cc) return;
     userCountry = cc;
@@ -1485,7 +1495,7 @@
   if (BETA_FLAG) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Beta features are on. Open ?beta=0 to turn them off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   handleJoinLink();
-  setTimeout(maybeTutPrompt, 3000);
+  setTimeout(maybeTutPrompt, BETA_FLAG ? 2000 : 3000);
   O.geo().then((g) => { setCountry(g.country); return g; }).then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));
   window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, setCountry, setState(s) { state = s; history = []; ui = freshUi(); lastMove = lastRoll = null; render(); }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();
