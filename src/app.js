@@ -57,7 +57,7 @@
       return localStorage.getItem('province.beta') === '1';
     } catch (e) { return false; }
   })();
-  const TUT = BETA_FLAG && window.TUTORIAL_V3 ? window.TUTORIAL_V3 : (window.TUTORIAL_NEW || window.TUTORIAL);   // V3 = בטא: לחיצות בלבד, חץ מצביע, כרטיסים צפים על הלוח
+  const TUT = window.TUTORIAL_V3 || window.TUTORIAL_NEW || window.TUTORIAL;   // V3 (שוחרר לכולם): לחיצות בלבד, חץ מצביע, כרטיסים צפים על הלוח
   const TV3 = TUT === window.TUTORIAL_V3;
   const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null, sub: 0, subFor: -1 };
   let ui = freshUi();
