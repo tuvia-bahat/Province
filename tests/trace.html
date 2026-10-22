@@ -1,0 +1,64 @@
+<!doctype html><meta charset="utf-8"><title>trace</title><pre id="o">idle</pre>
+<script src="../src/rules.js"></script><script src="../src/nn.js"></script><script src="../src/ai.js"></script>
+<script>
+// Generates game traces from the JS rules engine for the C# parity test (tools/sim).
+// Usage: open tests/trace.html?board=6&games=150&post=http://localhost:9099/ ; the trace is POSTed as text/plain.
+const q = new URLSearchParams(location.search);
+const SIZE = +(q.get('board') || 6), GAMES = +(q.get('games') || 150), POST = q.get('post');
+const R = Rules.forSize(SIZE), A = AI.forSize(SIZE);
+R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true;
+const snap = (s) => ({ o: s.cells.map((c) => (c.o === null ? -1 : c.o)), n: s.cells.map((c) => c.n), br: s.bridges, bl: s.bridgesLeft, g: s.graveyard, t: s.turn, winner: s.winner });
+const rint = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const TY = ['move', 'transport', 'withdraw', 'bridge'];
+
+function info(s) {
+  return s.roll.cells.map((Rc) => {
+    const o = { R: Rc, types: R.actionTypes(s, Rc), land: R.landTargets(s, Rc).length > 0 && R.camp(s, s.turn) > 0 ? '1' : '0', src: {}, tg: {} };
+    // "land" here mirrors C# CanLand (ignores camp): recompute without camp
+    o.land = R.landTargets(s, Rc).length > 0 ? '1' : '0';
+    for (const t of TY) {
+      const src = R.sources(s, t, Rc).slice().sort((a, b) => a - b);
+      o.src[t] = src.join(',');
+      if (t === 'withdraw') continue;
+      for (const f of src) o.tg[t + ':' + f] = R.targets(s, t, Rc, f).map((x) => `${x.to}:${x.kind}:${x.cross === 'none' ? 0 : x.cross === 'place' ? 1 : 2}`).sort().join(',');
+    }
+    return o;
+  });
+}
+function randomAction(s) {
+  const p = s.turn, list = [];
+  for (const Rc of s.roll.cells) {
+    const types = R.actionTypes(s, Rc);
+    if (types.includes('land')) list.push({ type: 'land', R: Rc, to: Rc, count: rint(1, R.camp(s, p)) });
+    for (const t of TY) for (const f of R.sources(s, t, Rc)) {
+      if (t === 'withdraw') { list.push({ type: t, R: Rc, from: f, to: f, count: rint(1, s.cells[f].n) }); continue; }
+      for (const x of R.targets(s, t, Rc, f)) list.push({ type: t, R: Rc, from: f, to: x.to, count: t === 'bridge' ? 0 : rint(1, s.cells[f].n) });
+    }
+  }
+  return list.length ? list[Math.floor(Math.random() * list.length)] : null;
+}
+function gen() {
+  const games = [];
+  for (let g = 0; g < GAMES; g++) {
+    let s = R.newGame(); const steps = [], mix = Math.random();   // mix: how often the greedy AI plays instead of random
+    for (let t = 0; t < 250 && s.winner === null; t++) {
+      s = R.roll(s, rint(1, SIZE), rint(1, SIZE));
+      const st = { s: snap(Object.assign({}, s, { roll: null })), w: s.roll.w, b: s.roll.b, info: info(s), any: R.hasAnyMove(s) };
+      let a = Math.random() < mix * 0.7 ? (() => { const c = A.chooseAction(s, 'greedy'); return c.type === 'pass' ? null : c; })() : randomAction(s);
+      let ns;
+      if (!a) { a = { type: R.hasAnyMove(s) ? 'pass' : 'skip' }; ns = R.hasAnyMove(s) ? R.passTurn(s) : R.skipTurn(s); }
+      else { a = { type: a.type, R: a.R, from: a.from, to: a.to, count: a.count }; ns = R.apply(s, a); }
+      st.act = a; st.after = Object.assign(snap(ns), { held: [R.provincesHeld(ns, 0), R.provincesHeld(ns, 1)], prog: [R.winProgress(ns, 0), R.winProgress(ns, 1)] });
+      steps.push(st); s = ns;
+    }
+    games.push(steps);
+  }
+  return { size: SIZE, games };
+}
+window.__trace = () => {
+  const t = gen(); const body = JSON.stringify(t);
+  document.getElementById('o').textContent = `games ${t.games.length}, steps ${t.games.reduce((a, g) => a + g.length, 0)}, ${(body.length / 1e6).toFixed(1)} MB`;
+  if (POST) return fetch(POST, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body }).then((r) => r.text()).then((x) => { document.getElementById('o').textContent += ' posted ' + x; return x; });
+  return body.length;
+};
+</script>
