@@ -25,6 +25,7 @@ public sealed class Board
     public readonly int[,] Edge;          // river-crossing edge id for an adjacent pair, -1 otherwise
     public readonly int NEdges;
     public readonly int[] FirstCell;      // first cell of each province
+    public readonly int[] EdgeA, EdgeB;   // the two cells of each river edge (A < B)
 
     public Board(int size)
     {
@@ -45,6 +46,8 @@ public sealed class Board
         int e = 0;
         for (int a = 0; a < Cells; a++) foreach (int b in Nei[a]) if (a < b && Prov[a] != Prov[b]) { Edge[a, b] = Edge[b, a] = e++; }
         NEdges = e;
+        EdgeA = new int[e]; EdgeB = new int[e];
+        for (int a = 0; a < Cells; a++) foreach (int c in Nei[a]) if (a < c && Edge[a, c] >= 0) { EdgeA[Edge[a, c]] = a; EdgeB[Edge[a, c]] = c; }
         FirstCell = new int[NProv];
         for (int k = 0; k < NProv; k++) FirstCell[k] = (k / PR * 2) * Size + (k % PR) * 2;
     }
