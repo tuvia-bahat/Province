@@ -1,0 +1,1 @@
+vnet:tests/vnet6d.bin vs strong (board 6): 60-20 = 75% for A over 80 games, avg 42 turns, first mover won 38, 130s

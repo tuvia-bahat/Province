@@ -1,0 +1,1 @@
+vnet:tests/vnet6d.bin vs vnet:tests/vnet6b.bin (board 6): 49-31 = 61% for A over 80 games, avg 43 turns, first mover won 49, 51s

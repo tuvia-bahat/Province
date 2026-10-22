@@ -462,19 +462,53 @@
 
   // ---------- יריב מחשב ----------
   function scheduleAi() {
-    if (aiTimer || paused || !isAiTurn()) return;
+    if (aiTimer || paused || vnetPending || !isAiTurn()) return;
     aiTimer = setTimeout(aiStep, Math.max((state.roll ? 1000 : 700) * SPEED[settings.speed], fxUntil - Date.now() + 250));
+  }
+  // ---- beta: learned (neural network) computer opponent, computed in a Web Worker ----
+  let vnetWorker = null, vnetTok = 0, vnetPending = false;
+  const VNET_ON = () => BETA_FLAG && !!window.Worker && (settings.board === 6 || settings.board === 8) && !online && !tut.active;
+  function vnetAsk(snap, apply) {
+    if (!VNET_ON()) return false;
+    try {
+      if (!vnetWorker) {
+        vnetWorker = new Worker('src/vnet_worker.js');
+        vnetWorker.onerror = (e) => { console.error('vnet worker', e); vnetWorker = null; };
+      }
+      const tok = ++vnetTok, w = vnetWorker; vnetPending = true;
+      const fallback = (why) => {
+        vnetPending = false;
+        if (tok !== vnetTok || state !== snap) { if (!paused) scheduleAi(); return; }
+        console.warn('vnet fallback:', why); vnetTok++;
+        let a = { type: 'pass' }; try { a = AIB.chooseAction(snap, aiLevel()); } catch (e) { console.error(e); }
+        apply(a);
+      };
+      const timer = setTimeout(() => fallback('timeout'), 20000);
+      w.onmessage = (e) => {
+        if (e.data.id !== tok) return;
+        clearTimeout(timer); vnetPending = false;
+        if (tok !== vnetTok || state !== snap) { if (!paused) scheduleAi(); return; }   // undo / new game while thinking: drop the answer
+        if (e.data.error) { fallback(e.data.error); return; }
+        vnetTok++; window.__vnetMoves = (window.__vnetMoves || 0) + 1; apply(e.data.act);
+      };
+      w.postMessage({ id: tok, size: settings.board, state: snap });
+      return true;
+    } catch (e) { console.error(e); return false; }
   }
   function aiStep() {
     aiTimer = null;
     if (!isAiTurn()) return;
     if (tut.active) { tutAiStep(); return; }
     if (!state.roll) { doRoll(); return; }
-    const p = state.turn;
     let a = { type: 'pass' };
     if (R.hasAnyMove(state)) {
+      if (vnetAsk(state, aiApply)) return;   // beta: neural-network computer (worker); the move is applied when it answers
       try { a = AIB.chooseAction(state, aiLevel()); } catch (e) { console.error(e); }
     }
+    aiApply(a);
+  }
+  function aiApply(a) {
+    const p = state.turn;
     const prevS = state;
     history.push(state);
     if (!R.hasAnyMove(state)) state = R.skipTurn(state);
