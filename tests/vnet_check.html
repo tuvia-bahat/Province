@@ -1,0 +1,27 @@
+<!doctype html><meta charset="utf-8"><title>vnet check</title><pre id="o">running</pre>
+<script src="../src/rules.js"></script><script src="../src/vnet.js"></script>
+<script>
+// Parity of the JS network code with C# (features) and PyTorch (logits). Needs tools/sim/{trace6.json,feat6.bin,feat6.bin.ids,ref6.json} (see tools/train/export.py).
+const get = (u, bin) => new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open('GET', u); if (bin) x.responseType = 'arraybuffer'; x.onload = () => res(bin ? x.response : x.responseText); x.onerror = rej; x.send(); });
+(async () => {
+  const out = { ok: false };
+  try {
+    const R = Rules.forSize(6); R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true;
+    const V = VNet.forSize(6); V.setNet(await get('../src/vnet6.bin?v=' + Date.now(), true));
+    const trace = JSON.parse(await get('../tools/sim/trace6.json?v=' + Date.now())), ids = (await get('../tools/sim/feat6.bin.ids?v=' + Date.now())).split('|');
+    const feats = new Uint8Array(await get('../tools/sim/feat6.bin?v=' + Date.now(), true)), ref = JSON.parse(await get('../tools/sim/ref6.json?v=' + Date.now()));
+    let badF = 0, maxD = 0, first = null; const F = V.F, buf = new Uint8Array(F);
+    ids.forEach((id, k) => {
+      const [g, s, m] = id.split(':').map(Number), a = trace.games[g][s].after;
+      const st = { size: 6, cells: a.o.map((o, i) => ({ o: o < 0 ? null : o, n: a.n[i] })), bridges: a.br, bridgesLeft: a.bl, graveyard: a.g, turn: a.t, roll: null, winner: a.winner, log: [] };
+      V.encode(st, m, buf);
+      let diff = -1; for (let i = 0; i < F; i++) if (buf[i] !== feats[k * F + i]) { diff = i; break; }
+      if (diff >= 0) { badF++; if (!first) first = { k, id, idx: diff, js: buf[diff], cs: feats[k * F + diff] }; }
+      const d = Math.abs(V.forward(feats.subarray(k * F, (k + 1) * F)) - ref[k]); if (d > maxD) maxD = d;
+    });
+    out.vectors = ids.length; out.featureMismatches = badF; out.firstMismatch = first; out.maxLogitDiff = maxD; out.ok = badF === 0 && maxD < 1e-3;
+  } catch (e) { out.err = String(e && e.stack || e); }
+  document.getElementById('o').textContent = JSON.stringify(out, null, 1);
+  document.title = 'vnet ' + (out.ok ? 'OK' : 'FAIL');
+})();
+</script>

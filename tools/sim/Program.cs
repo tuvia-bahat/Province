@@ -7,6 +7,7 @@ static class Program
     static int Main(string[] args)
     {
         if (args.Length >= 1 && args[0] == "serve") return Server.Run(int.Parse(args[1]), int.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]));
+        if (args.Length >= 4 && args[0] == "dumpfeat") return Parity.DumpFeat(args[1], args[2], int.Parse(args[3]));
         if (args.Length >= 2 && args[0] == "parity") return Parity.Run(args[1]);
         if (args.Length >= 1 && args[0] == "bench") return Bench.Run(args.Length > 1 ? int.Parse(args[1]) : 6, args.Length > 2 ? int.Parse(args[2]) : 2000);
         Console.WriteLine("usage: parity <trace.json> | bench [size] [games]");
@@ -44,6 +45,31 @@ static class Parity
         return null;
     }
     static string[] Str(JsonElement arr) => arr.EnumerateArray().Select(x => x.GetString()).OrderBy(x => x, StringComparer.Ordinal).ToArray();
+
+    // writes Features.Encode of the position after each step's action (mover = the player who acted) for the first n steps
+    public static int DumpFeat(string path, string outPath, int n)
+    {
+        using var doc = JsonDocument.Parse(File.ReadAllText(path));
+        var root = doc.RootElement; var b = new Board(root.GetProperty("size").GetInt32());
+        int F = Features.Length(b); var buf = new byte[F]; int cnt = 0; var ids = new List<string>();
+        using var fs = File.Create(outPath);
+        int gi = 0;
+        foreach (var game in root.GetProperty("games").EnumerateArray())
+        {
+            int si = 0;
+            foreach (var step in game.EnumerateArray())
+            {
+                si++;
+                var after = step.GetProperty("after");
+                if (after.GetProperty("winner").ValueKind != JsonValueKind.Null) continue;
+                var ns = Load(b, after); int m = step.GetProperty("s").GetProperty("t").GetInt32();
+                Features.Encode(ns, m, buf, 0); fs.Write(buf, 0, F); ids.Add($"{gi}:{si - 1}:{m}");
+                if (++cnt >= n) { File.WriteAllText(outPath + ".ids", string.Join("|", ids)); Console.WriteLine($"wrote {cnt} vectors of {F} bytes"); return 0; }
+            }
+            gi++;
+        }
+        File.WriteAllText(outPath + ".ids", string.Join("|", ids)); Console.WriteLine($"wrote {cnt} vectors"); return 0;
+    }
 
     public static int Run(string path)
     {

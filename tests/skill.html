@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><title>skill</title><pre id="o">idle</pre>
-<script src="../src/rules.js"></script><script src="../src/nn.js"></script><script src="../src/ai.js"></script>
+<script src="../src/rules.js"></script><script src="../src/nn.js"></script><script src="../src/ai.js"></script><script src="../src/vnet.js"></script>
 <script>
 // How much does skill matter? Plays levels against each other (alternating seats) and reports win rates.
 // Run: window.__skill(board, gamesPerPair) ; results in window.__sk
@@ -7,7 +7,11 @@ const q = new URLSearchParams(location.search);
 const board = +(q.get('board') || 6);
 const R = Rules.forSize(board), A = AI.forSize(board);
 R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true;
+const NETURL = q.get('net') || '../src/vnet' + board + '.bin';
+const V = (typeof VNet !== 'undefined') ? VNet.forSize(board) : null;
+if (V) { try { const x = new XMLHttpRequest(); x.open('GET', NETURL + '?v=' + Date.now(), false); x.overrideMimeType('text/plain; charset=x-user-defined'); x.send(); if (x.status === 200) { const t = x.responseText, b = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) b[i] = t.charCodeAt(i) & 255; V.setNet(b.buffer); } } catch (e) { console.error(e); } }
 const pick = (s, lv) => {
+  if (lv === 'vnet') return V.chooseAction(s);
   if (lv === 'random') { const l = A.candidates(s, false); return l.length ? l[Math.floor(Math.random() * l.length)] : { type: 'pass' }; }
   return A.chooseAction(s, lv);
 };
