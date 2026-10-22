@@ -136,6 +136,7 @@ def main():
     ap.add_argument('--eval-every', type=int, default=10)
     ap.add_argument('--resume', action='store_true')
     ap.add_argument('--nsims', type=int, default=1, help='number of simulator processes used round-robin (overlaps CPU generation with GPU scoring)')
+    ap.add_argument('--tau-std', dest='tau_std', action='store_true', help='temperature applies to z-scored scores of each decision (the raw logits differ by only ~0.1, so tau 0.3 on raw logits is almost uniform random play)')
     ap.add_argument('--packed', action='store_true', help='compact bit-packed features over the pipe (about 3.5x less data)')
     ap.add_argument('--init', default=None, help='start a NEW run from the weights of this checkpoint')
     ap.add_argument('--lr-final', dest='lr_final', type=float, default=None, help='cosine-decay the learning rate to this value')
@@ -204,13 +205,14 @@ def main():
             for g in range(S):
                 lo, hi = offs[g], offs[g + 1]
                 s = lg[lo:hi]
+                su = (s - s.mean()) / (s.std() + 1e-6) if a.tau_std else s
                 tm = f['term'][lo:hi]; term = (tm & 1) == 1; trn = (tm >> 1) == 2   # 2 = transport
                 if term.any(): k = int(np.argmax(term))
                 elif trn.any() and np.random.rand() < a.p_transport:
-                    z = np.where(trn, s / tau + np.random.gumbel(size=hi - lo), -1e9); k = int(np.argmax(z))
+                    z = np.where(trn, su / tau + np.random.gumbel(size=hi - lo), -1e9); k = int(np.argmax(z))
                 elif np.random.rand() < a.eps: k = np.random.randint(hi - lo)
                 else:
-                    z = s / tau + np.random.gumbel(size=hi - lo); k = int(np.argmax(z))
+                    z = su / tau + np.random.gumbel(size=hi - lo); k = int(np.argmax(z))
                 idx[g] = k
                 traj[g].append((f['feats'][lo + k].copy(), int(f['mover'][g]), float(1 / (1 + np.exp(-s[k])))))
             sim.choose(idx)
