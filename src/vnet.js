@@ -170,6 +170,6 @@
   }
 
   const cache = {};
-  const V = { forSize: (n) => cache[n] || (cache[n] = build(root.Rules.forSize(n))) };
+  const V = { forSize: (n) => cache[n] || (cache[n] = build(root.Rules.forSize(n))), make: (n) => build(root.Rules.forSize(n)) };
   if (typeof module !== 'undefined' && module.exports) module.exports = V; else root.VNet = V;
 })(typeof window !== 'undefined' ? window : globalThis);
