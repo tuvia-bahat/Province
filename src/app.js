@@ -65,7 +65,8 @@
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
   const SPEED_LABEL = { slow: 'Slow', normal: 'Normal', fast: 'Fast' };
   const isAiTurn = () => state.winner === null &&
-    ((settings.mode === 'ai' && state.turn !== settings.human) ||
+    (settings.mode === 'watch' ||   // beta: computer vs computer
+      (settings.mode === 'ai' && state.turn !== settings.human) ||
       (settings.mode === 'tutorial' && tut.phase === 'game' && state.turn === 1));
   const aiLevel = () => settings.level;
   const phase = () => (state.winner !== null ? 'over' : !state.roll ? 'roll' : R.hasAnyMove(state) ? 'play' : 'skip');
@@ -461,15 +462,25 @@
   }
 
   // ---------- יריב מחשב ----------
+  function togglePause() {   // beta watch mode
+    paused = !paused;
+    if (paused) { clearTimeout(aiTimer); aiTimer = null; render(); } else { render(); scheduleAi(); }
+  }
+  function cycleSpeed() {
+    const order = ['slow', 'normal', 'fast'];
+    settings.speed = order[(order.indexOf(settings.speed) + 1) % order.length];
+    render();
+  }
   function scheduleAi() {
     if (aiTimer || paused || vnetPending || !isAiTurn()) return;
     aiTimer = setTimeout(aiStep, Math.max((state.roll ? 1000 : 700) * SPEED[settings.speed], fxUntil - Date.now() + 250));
   }
   // ---- beta: learned (neural network) computer opponent, computed in a Web Worker ----
   let vnetWorker = null, vnetTok = 0, vnetPending = false;
-  const VNET_ON = () => BETA_FLAG && !!window.Worker && (settings.board === 6 || settings.board === 8) && !online && !tut.active;
+  // watch mode: 'nn' = new AI on both sides, 'nnold' = new AI (Green) against the old AI (Blue)
+  const VNET_ON = (p) => BETA_FLAG && !!window.Worker && (settings.board === 6 || settings.board === 8) && !online && !tut.active && (settings.mode !== 'watch' || settings.watch !== 'nnold' || p === 0);
   function vnetAsk(snap, apply) {
-    if (!VNET_ON()) return false;
+    if (!VNET_ON(snap.turn)) return false;
     try {
       if (!vnetWorker) {
         vnetWorker = new Worker('src/vnet_worker.js');
@@ -760,11 +771,11 @@
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
-    settings = Object.assign({}, pending, { mode: 'ai' }); closeLobby(); settings.human = +settings.human; settings.board = +settings.board;
+    settings = Object.assign({}, pending, { mode: pending.mode === 'watch' ? 'watch' : 'ai' }); closeLobby(); settings.human = +settings.human; settings.board = +settings.board;
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
-    gameSeq++; O.track('ai_start', { board: settings.board });
+    gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board });
     save(); render();
   }
 
@@ -857,7 +868,7 @@
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '') + (p === 0 && tutHighlightsMeter() ? ' hlprov' : '');
-      const tag = settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
+      const tag = settings.mode === 'watch' ? (settings.watch === 'nnold' ? (p === 0 ? 'NEW AI' : 'OLD AI') : 'AI') : settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let prov = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
@@ -1015,9 +1026,12 @@
     $('app').classList.toggle('flip', FLIP);
     renderPanels(); renderBoard(); ui.rolled = false; renderDock(); renderLog(); renderCoach();
     const canResign = !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.winner === null;
-    $('undoBtn').textContent = online ? 'Resign' : 'Undo';
+    const watching = settings.mode === 'watch' && !online && !tut.active;
+    $('undoBtn').textContent = online ? 'Resign' : watching ? (paused ? 'Resume' : 'Pause') : 'Undo';
     $('undoBtn').hidden = !!online && !canResign;
-    $('undoBtn').disabled = tut.active || (!online && history.length === 0);
+    $('undoBtn').disabled = tut.active || (watching ? state.winner !== null : (!online && history.length === 0));
+    $('speedBtn').hidden = !watching;
+    $('speedBtn').textContent = 'Speed: ' + SPEED_LABEL[settings.speed];
     $('tutBtn').hidden = !!online;
     if (state.winner !== null) trackEnds();
     const o = $('overlay');
@@ -1424,6 +1438,7 @@
     const size = +b.dataset.size;
     $('startModal').hidden = true;
     if (startMode === 'ai') { pending = { mode: 'ai', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
+    if (startMode === 'watch' || startMode === 'watchold') { pending = { mode: 'watch', watch: startMode === 'watch' ? 'nn' : 'nnold', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
     const n = await askName(); if (!n) return;
     try { const id = await O.createGame(size, n); O.track('online_create', { board: size }); await openOnline(id); } catch (er) { netErr(er); }
   });
@@ -1439,6 +1454,11 @@
     } catch (er) { netErr(er); refreshLobby(); }
   });
   $('lbAi').onclick = openNew;
+  // beta: watch the computer play itself
+  if (BETA_FLAG) { $('lbWatch').hidden = false; $('lbWatchOld').hidden = false; }
+  const openWatch = (m) => { startMode = m; $('lbCont').hidden = true; $('startMain').hidden = true; $('startSize').hidden = false; };
+  $('lbWatch').onclick = () => openWatch('watch');
+  $('lbWatchOld').onclick = () => openWatch('watchold');
   $('lbCont').onclick = closeLobby;
   $('lbTut').onclick = startTutorial;
 
@@ -1510,7 +1530,8 @@
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
   // ---------- כפתורים ----------
-  $('undoBtn').onclick = () => { if (!online) undo(); else if (window.confirm('Resign this game?')) O.resign(online.id).catch(netErr); };
+  $('speedBtn').onclick = cycleSpeed;
+  $('undoBtn').onclick = () => { if (settings.mode === 'watch' && !online) togglePause(); else if (!online) undo(); else if (window.confirm('Resign this game?')) O.resign(online.id).catch(netErr); };
   $('logBtn').onclick = () => { const b = $('logBox'); b.hidden = !b.hidden; };
   const menu = (open) => { $('bar').classList.toggle('open', open); $('menuBtn').setAttribute('aria-expanded', open); };
   $('menuBtn').onclick = (e) => { e.stopPropagation(); menu(!$('bar').classList.contains('open')); };
