@@ -20,6 +20,11 @@ function load() {
 
 function makePlayer(R, spec) {
   const A = AI.forSize(board);
+  if (spec.startsWith('vnetm:')) {   // vnetm:<path>:<maxEvals> = thinned candidate list (slow-device mode)
+    const [, file, M] = spec.split(':'); const V = VNet.make(board); const buf = fs.readFileSync(path.resolve(root, file));
+    V.setNet(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+    return (s) => V.chooseAction(s, { maxEvals: +M });
+  }
   if (spec.startsWith('vnets:')) {   // vnets:<path>:<K>:<rolls> = the net with a 2-ply search
     const [, file, K, NR] = spec.split(':'); const V = VNet.make(board); const buf = fs.readFileSync(path.resolve(root, file));
     V.setNet(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));

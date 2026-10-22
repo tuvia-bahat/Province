@@ -1,0 +1,1 @@
+vnets:src/vnet6.bin:4:4 vs vnet:src/vnet6.bin (board 6): 46-31, 3 unfinished = 60% for A over 80 games, avg 54 turns, first mover won 48, 353s

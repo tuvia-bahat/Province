@@ -1,0 +1,1 @@
+vnets:src/vnet6.bin:6:8 vs vnet:src/vnet6.bin (board 6): 53-27 = 66% for A over 80 games, avg 45 turns, first mover won 47, 765s
