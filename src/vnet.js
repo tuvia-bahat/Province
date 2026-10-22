@@ -146,10 +146,25 @@
       return out;
     }
 
+    // מדלל כמויות חיילים כשיש יותר מדי מהלכים להערכה (למכשירים איטיים): בכל קבוצה (סוג, מקור, יעד) נשארים 1, המקסימום וכל כמות שמתחלקת ב-stride
+    function thin(list, maxEvals) {
+      if (!maxEvals || list.length <= maxEvals) return list;
+      const stride = Math.ceil(list.length / maxEvals), out = [];
+      let i = 0;
+      while (i < list.length) {
+        let j = i; const a = list[i];
+        while (j + 1 < list.length && list[j + 1].type === a.type && list[j + 1].from === a.from && list[j + 1].to === a.to && list[j + 1].type !== 'pass') j++;
+        for (let k = i; k <= j; k++) { const c = list[k].count; if (k === i || k === j || c % stride === 0) out.push(list[k]); }
+        i = j + 1;
+      }
+      return out;
+    }
+
     // בוחר פעולה (פורמט Rules.apply) או { type: 'pass' }. opts.temp>0: בחירה אקראית משוקללת (לגיוון); opts.scores: מחזיר גם את הדירוג
     function chooseAction(s, opts) {
       opts = opts || {};
-      const p = s.turn, list = candidates(s), feat = new Uint8Array(F);
+      const p = s.turn, list = thin(candidates(s), opts.maxEvals), feat = new Uint8Array(F);
+      lastEvals = list.length;
       let best = null, bs = -Infinity; const scored = [];
       for (const a of list) {
         const ns = a.type === 'pass' ? R.passFast(s) : R.apply(s, a, true);
@@ -202,7 +217,8 @@
       }
       return best;
     }
-    return { F, encode, forward, candidates, chooseAction, chooseSearch, setNet, get loaded() { return !!NET; } };
+    let lastEvals = 0;
+    return { F, encode, forward, candidates, chooseAction, chooseSearch, setNet, get lastEvals() { return lastEvals; }, get loaded() { return !!NET; } };
   }
 
   const cache = {};

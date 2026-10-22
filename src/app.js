@@ -475,10 +475,10 @@
     if (aiTimer || paused || vnetPending || !isAiTurn()) return;
     aiTimer = setTimeout(aiStep, Math.max((state.roll ? 1000 : 700) * SPEED[settings.speed], fxUntil - Date.now() + 250));
   }
-  // ---- beta: learned (neural network) computer opponent, computed in a Web Worker ----
+  // ---- learned (neural network) computer opponent, computed in a Web Worker (falls back to the old AI if anything fails) ----
   let vnetWorker = null, vnetTok = 0, vnetPending = false;
   // watch mode: 'nn' = new AI on both sides, 'nnold' = new AI (Green) against the old AI (Blue)
-  const VNET_ON = (p) => BETA_FLAG && !!window.Worker && (settings.board === 6 || settings.board === 8) && !online && !tut.active && (settings.mode !== 'watch' || settings.watch !== 'nnold' || p === 0);
+  const VNET_ON = (p) => !!window.Worker && (settings.board === 6 || settings.board === 8) && !online && !tut.active && (settings.mode !== 'watch' || settings.watch !== 'nnold' || p === 0);
   function vnetAsk(snap, apply) {
     if (!VNET_ON(snap.turn)) return false;
     try {
@@ -494,7 +494,7 @@
         let a = { type: 'pass' }; try { a = AIB.chooseAction(snap, aiLevel()); } catch (e) { console.error(e); }
         apply(a);
       };
-      const timer = setTimeout(() => fallback('timeout'), 20000);
+      const timer = setTimeout(() => fallback('timeout'), 40000);
       w.onmessage = (e) => {
         if (e.data.id !== tok) return;
         clearTimeout(timer); vnetPending = false;
@@ -775,7 +775,7 @@
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
-    gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board });
+    gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board, nn: !!window.Worker });
     save(); render();
   }
 
