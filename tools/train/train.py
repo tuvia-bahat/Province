@@ -137,6 +137,8 @@ def main():
     ap.add_argument('--resume', action='store_true')
     ap.add_argument('--nsims', type=int, default=1, help='number of simulator processes used round-robin (overlaps CPU generation with GPU scoring)')
     ap.add_argument('--tau-std', dest='tau_std', action='store_true', help='temperature applies to z-scored scores of each decision (the raw logits differ by only ~0.1, so tau 0.3 on raw logits is almost uniform random play)')
+    ap.add_argument('--teacher', default=None, help='checkpoint that plays the first --teacher-iters iterations of self-play (bootstraps a bigger student)')
+    ap.add_argument('--teacher-iters', dest='teacher_iters', type=int, default=0)
     ap.add_argument('--packed', action='store_true', help='compact bit-packed features over the pipe (about 3.5x less data)')
     ap.add_argument('--init', default=None, help='start a NEW run from the weights of this checkpoint')
     ap.add_argument('--lr-final', dest='lr_final', type=float, default=None, help='cosine-decay the learning rate to this value')
@@ -158,6 +160,10 @@ def main():
     if a.champion:
         cka = torch.load(a.champion, map_location=dev, weights_only=False)
         champ = Net(a.size, cka['args']['ch'], cka['args']['blocks']).to(dev); champ.load_state_dict(cka['net']); champ.eval()
+    teacher = None
+    if a.teacher:
+        tka = torch.load(a.teacher, map_location=dev, weights_only=False)
+        teacher = Net(a.size, tka['args']['ch'], tka['args']['blocks']).to(dev); teacher.load_state_dict(tka['net']); teacher.eval()
     log = open(run / 'log.txt', 'a')
     def P(*s):
         m = ' '.join(str(x) for x in s); print(m, flush=True); log.write(m + '\n'); log.flush()
@@ -200,7 +206,7 @@ def main():
                     traj[g] = []
                 elif fin != -2:
                     traj[g] = []
-            lg = score(net, f['feats'], dev)
+            lg = score(teacher if (teacher is not None and it < a.teacher_iters) else net, f['feats'], dev)
             idx = np.zeros(S, dtype=np.int32)
             for g in range(S):
                 lo, hi = offs[g], offs[g + 1]

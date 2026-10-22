@@ -1,0 +1,1 @@
+vnet:tests/vnet8d.bin vs vnet:src/vnet8.bin (board 8): 36-23, 1 unfinished = 61% for A over 60 games, avg 97 turns, first mover won 27, 143s
