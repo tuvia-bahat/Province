@@ -135,6 +135,7 @@ def main():
     ap.add_argument('--blocks', type=int, default=3)
     ap.add_argument('--eval-every', type=int, default=10)
     ap.add_argument('--resume', action='store_true')
+    ap.add_argument('--nsims', type=int, default=1, help='number of simulator processes used round-robin (overlaps CPU generation with GPU scoring)')
     ap.add_argument('--packed', action='store_true', help='compact bit-packed features over the pipe (about 3.5x less data)')
     ap.add_argument('--init', default=None, help='start a NEW run from the weights of this checkpoint')
     ap.add_argument('--lr-final', dest='lr_final', type=float, default=None, help='cosine-decay the learning rate to this value')
@@ -164,8 +165,9 @@ def main():
     from simio import packed_len
     F = packed_len(a.size) if a.packed else PLANES * a.size * a.size + SCALARS
     bufX = np.zeros((a.buffer, F), dtype=np.uint8); bufY = np.zeros(a.buffer, dtype=np.float32); bn = 0; bp = 0
-    sim = Sim(a.size, a.slots, seed=int(time.time()) % 100000, packed=a.packed)
-    traj = [[] for _ in range(a.slots)]   # per slot: list of (feat, mover, value)
+    NS = a.nsims; S = a.slots // NS
+    sims = [Sim(a.size, S, seed=int(time.time()) % 100000 + 17 * i, packed=a.packed) for i in range(NS)]
+    trajs = [[[] for _ in range(S)] for _ in range(NS)]   # per sim, per slot: list of (feat, mover, value)
     prev = None; best_snapshot = None
     t0 = time.time()
     for it in range(it0, a.iters):
@@ -177,8 +179,10 @@ def main():
         games = 0; wins = [0, 0, 0]; nlen = 0
         tg = time.time()
         while games < a.games_per_iter:
+          for si in range(NS):
+            sim = sims[si]; traj = trajs[si]
             f = sim.frame(); offs = f['offs']
-            for g in range(a.slots):
+            for g in range(S):
                 fin = int(f['finished'][g])
                 if fin != -2 and traj[g]:
                     games += 1; wins[fin if fin >= 0 else 2] += 1; nlen += len(traj[g])
@@ -196,8 +200,8 @@ def main():
                 elif fin != -2:
                     traj[g] = []
             lg = score(net, f['feats'], dev)
-            idx = np.zeros(a.slots, dtype=np.int32)
-            for g in range(a.slots):
+            idx = np.zeros(S, dtype=np.int32)
+            for g in range(S):
                 lo, hi = offs[g], offs[g + 1]
                 s = lg[lo:hi]
                 tm = f['term'][lo:hi]; term = (tm & 1) == 1; trn = (tm >> 1) == 2   # 2 = transport
@@ -216,6 +220,7 @@ def main():
         for _ in range(a.train_steps if bn >= a.batch else 0):
             ii = np.random.randint(0, bn, a.batch)
             x = torch.from_numpy(bufX[ii]).to(dev); y = torch.from_numpy(bufY[ii]).to(dev)
+            if PACKED: x = unpack(x, a.size)
             loss = Fn.binary_cross_entropy_with_logits(net(x), y)
             opt.zero_grad(); loss.backward(); opt.step(); tl += loss.item()
         net.eval()
@@ -231,7 +236,7 @@ def main():
                 p_ = arena(net, prev, a.size, dev, games=128, kind_b='net'); msg += f', vs net@{prev_it} {p_:.2f}'
             P(msg)
             prev = Net(a.size, a.ch, a.blocks).to(dev); prev.load_state_dict(net.state_dict()); prev.eval(); prev_it = it + 1
-    sim.close()
+    for sim in sims: sim.close()
 
 
 if __name__ == '__main__':
