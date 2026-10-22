@@ -166,7 +166,43 @@
       if (opts.scores) opts.scores.push(...scored);
       return best;
     }
-    return { F, encode, forward, candidates, chooseAction, setNet, get loaded() { return !!NET; } };
+    // חיפוש בעומק 2 בעזרת הרשת: לכל אחד מ-K המהלכים הטובים ביותר (לפי הרשת) ממוצע, על מדגם הטלות של היריב, של התגובה הכי טובה שלו.
+    // opts: { K, rolls }. מחזיר פעולה (פורמט Rules.apply). איטי בהרבה מ-chooseAction, אבל חזק יותר.
+    const sig = (z) => 1 / (1 + Math.exp(-z));
+    function chooseSearch(s, opts) {
+      opts = opts || {};
+      const K = opts.K || 4, NR = opts.rolls || 4, p = s.turn, q = 1 - p, list = candidates(s), feat = new Uint8Array(F);
+      const scored = [];
+      for (const a of list) {
+        const ns = a.type === 'pass' ? R.passFast(s) : R.apply(s, a, true);
+        if (ns.winner === p) return a;
+        encode(ns, p, feat);
+        scored.push({ a, ns, v: forward(feat) });
+      }
+      scored.sort((x, y) => y.v - x.v);
+      const top = scored.slice(0, K);
+      // מדגם הטלות קבוע לכל המהלכים (השוואה הוגנת)
+      const rolls = []; const used = new Set();
+      while (rolls.length < NR) { const w = 1 + Math.floor(Math.random() * S), b = 1 + Math.floor(Math.random() * S), k = w * 10 + b; if (used.has(k)) continue; used.add(k); rolls.push([w, b]); }
+      let best = null, bs = -Infinity;
+      for (const c of top) {
+        let tot = 0;
+        for (const [w, b] of rolls) {
+          const s2 = R.roll(c.ns, w, b), opp = candidates(s2);
+          let mx = -Infinity, oppWins = false;
+          for (const a2 of opp) {
+            const n2 = a2.type === 'pass' ? R.passFast(s2) : R.apply(s2, a2, true);
+            if (n2.winner === q) { oppWins = true; break; }
+            encode(n2, q, feat); const v = forward(feat); if (v > mx) mx = v;
+          }
+          tot += oppWins ? 0 : 1 - sig(mx);
+        }
+        const val = tot / rolls.length;
+        if (val > bs) { bs = val; best = c.a; }
+      }
+      return best;
+    }
+    return { F, encode, forward, candidates, chooseAction, chooseSearch, setNet, get loaded() { return !!NET; } };
   }
 
   const cache = {};

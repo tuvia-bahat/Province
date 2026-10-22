@@ -20,6 +20,11 @@ function load() {
 
 function makePlayer(R, spec) {
   const A = AI.forSize(board);
+  if (spec.startsWith('vnets:')) {   // vnets:<path>:<K>:<rolls> = the net with a 2-ply search
+    const [, file, K, NR] = spec.split(':'); const V = VNet.make(board); const buf = fs.readFileSync(path.resolve(root, file));
+    V.setNet(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
+    return (s) => V.chooseSearch(s, { K: +K || 4, rolls: +NR || 4 });
+  }
   if (spec.startsWith('vnet:')) {
     const V = VNet.make(board); const buf = fs.readFileSync(path.resolve(root, spec.slice(5)));
     V.setNet(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
