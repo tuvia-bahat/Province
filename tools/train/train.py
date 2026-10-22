@@ -123,6 +123,9 @@ def main():
     ap.add_argument('--blocks', type=int, default=3)
     ap.add_argument('--eval-every', type=int, default=10)
     ap.add_argument('--resume', action='store_true')
+    ap.add_argument('--init', default=None, help='start a NEW run from the weights of this checkpoint')
+    ap.add_argument('--lr-final', dest='lr_final', type=float, default=None, help='cosine-decay the learning rate to this value')
+    ap.add_argument('--champion', default=None, help='checkpoint to measure against at every evaluation')
     a = ap.parse_args()
 
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -132,6 +135,12 @@ def main():
     it0 = 0
     if a.resume and (run / 'ckpt.pt').exists():
         ck = torch.load(run / 'ckpt.pt', map_location=dev); net.load_state_dict(ck['net']); opt.load_state_dict(ck['opt']); it0 = ck['it']
+    if a.init:
+        net.load_state_dict(torch.load(a.init, map_location=dev, weights_only=False)['net'])
+    champ = None
+    if a.champion:
+        cka = torch.load(a.champion, map_location=dev, weights_only=False)
+        champ = Net(a.size, cka['args']['ch'], cka['args']['blocks']).to(dev); champ.load_state_dict(cka['net']); champ.eval()
     log = open(run / 'log.txt', 'a')
     def P(*s):
         m = ' '.join(str(x) for x in s); print(m, flush=True); log.write(m + '\n'); log.flush()
@@ -146,6 +155,9 @@ def main():
     for it in range(it0, a.iters):
         frac = it / max(1, a.iters - 1)
         tau = a.tau0 + (a.tau1 - a.tau0) * frac
+        if a.lr_final is not None:
+            import math
+            for gp in opt.param_groups: gp['lr'] = a.lr_final + 0.5 * (a.lr - a.lr_final) * (1 + math.cos(math.pi * frac))
         games = 0; wins = [0, 0, 0]; nlen = 0
         tg = time.time()
         while games < a.games_per_iter:
@@ -197,6 +209,8 @@ def main():
             r = arena(net, None, a.size, dev, games=128, kind_b='random')
             h = arena(net, None, a.size, dev, games=128, kind_b='heur')
             msg = f'  EVAL it {it+1}: vs random {r:.2f}, vs heuristic {h:.2f}'
+            if champ is not None:
+                c_ = arena(net, champ, a.size, dev, games=256, kind_b='net'); msg += f', vs CHAMPION {c_:.2f}'
             if prev is not None:
                 p_ = arena(net, prev, a.size, dev, games=128, kind_b='net'); msg += f', vs net@{prev_it} {p_:.2f}'
             P(msg)
