@@ -61,7 +61,7 @@ public static class Server
         {
             var ns = Rules.Apply(s, sl.Acts[i], t);
             Features.Encode(ns, m, sl.Feat, i * F);
-            sl.Term[i] = (byte)(ns.Winner == m ? 1 : 0);
+            sl.Term[i] = (byte)((ns.Winner == m ? 1 : 0) | ((int)sl.Acts[i].Type << 1));   // bit0: wins now, bits1-3: action type
         }
     }
 

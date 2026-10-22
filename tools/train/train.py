@@ -66,7 +66,7 @@ def heuristic_pick(f, offs, g, size):
     seg = f['feats'][offs[g]:offs[g + 1]]
     sc = seg[:, so:].astype(np.float32)
     v = 4 * (sc[:, 8] - sc[:, 9]) + 1.5 * (sc[:, 6] - sc[:, 7]) + 0.25 * (sc[:, 3] - sc[:, 2]) + np.random.rand(len(seg)) * 0.3
-    v[f['term'][offs[g]:offs[g + 1]] == 1] += 1e6
+    v[(f['term'][offs[g]:offs[g + 1]] & 1) == 1] += 1e6
     return int(np.argmax(v))
 
 
@@ -96,7 +96,7 @@ def arena(net_a, net_b, size, dev, games=128, slots=64, kind_b='net', seed=7):
                 s = np.random.rand(hi - lo)
             else:
                 idx[g] = heuristic_pick(f, offs, g, size); continue
-            s[f['term'][lo:hi] == 1] += 1e6
+            s[(f['term'][lo:hi] & 1) == 1] += 1e6
             idx[g] = int(np.argmax(s + np.random.rand(hi - lo) * 1e-4))
         sim.choose(idx)
     sim.close()
@@ -117,6 +117,7 @@ def main():
     ap.add_argument('--tau0', type=float, default=1.0)
     ap.add_argument('--tau1', type=float, default=0.3)
     ap.add_argument('--eps', type=float, default=0.03)
+    ap.add_argument('--p-transport', dest='p_transport', type=float, default=0.0, help='chance to force exploring a transport move when one exists')
     ap.add_argument('--lr', type=float, default=1e-3)
     ap.add_argument('--ch', type=int, default=64)
     ap.add_argument('--blocks', type=int, default=3)
@@ -171,8 +172,10 @@ def main():
             for g in range(a.slots):
                 lo, hi = offs[g], offs[g + 1]
                 s = lg[lo:hi]
-                term = f['term'][lo:hi] == 1
+                tm = f['term'][lo:hi]; term = (tm & 1) == 1; trn = (tm >> 1) == 2   # 2 = transport
                 if term.any(): k = int(np.argmax(term))
+                elif trn.any() and np.random.rand() < a.p_transport:
+                    z = np.where(trn, s / tau + np.random.gumbel(size=hi - lo), -1e9); k = int(np.argmax(z))
                 elif np.random.rand() < a.eps: k = np.random.randint(hi - lo)
                 else:
                     z = s / tau + np.random.gumbel(size=hi - lo); k = int(np.argmax(z))
