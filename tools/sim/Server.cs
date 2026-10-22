@@ -13,15 +13,17 @@ namespace Province;
 
 public static class Server
 {
+    static bool Packed;
+    [ThreadStatic] static byte[] tmpBuf;
     sealed class Slot
     {
         public State S; public Random Rng; public int Turns; public List<Act> Acts = new(); public byte[] Feat = new byte[0]; public byte[] Term = new byte[0];
         public int Finished = -2, P0, P1, H0, H1;
     }
 
-    public static int Run(int size, int G, int seed, int maxTurns)
+    public static int Run(int size, int G, int seed, int maxTurns, bool packed = false)
     {
-        var b = new Board(size); int F = Features.Length(b);
+        var b = new Board(size); int F = packed ? Features.PackedLength(b) : Features.Length(b); Packed = packed;
         var slots = new Slot[G];
         for (int g = 0; g < G; g++) { slots[g] = new Slot { Rng = new Random(seed * 100003 + g) }; Start(b, slots[g]); }
         var stdout = new BufferedStream(Console.OpenStandardOutput(), 1 << 20);
@@ -60,7 +62,8 @@ public static class Server
         for (int i = 0; i < n; i++)
         {
             var ns = Rules.Apply(s, sl.Acts[i], t);
-            Features.Encode(ns, m, sl.Feat, i * F);
+            if (Packed) { tmpBuf ??= new byte[Features.Length(b)]; Features.EncodePacked(ns, m, sl.Feat, i * F, tmpBuf); }
+            else Features.Encode(ns, m, sl.Feat, i * F);
             sl.Term[i] = (byte)((ns.Winner == m ? 1 : 0) | ((int)sl.Acts[i].Type << 1));   // bit0: wins now, bits1-3: action type
         }
     }

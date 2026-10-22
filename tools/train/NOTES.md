@@ -17,3 +17,5 @@ Rule: nothing here changes what users see. Wiring a model into the game needs th
 ## Log
 - 08:19 run8a at it 138/200 (resumed 07:44). 8x8 keeps improving: vs heuristic 0.66 (it100) -> 0.77 (it130); vs previous net 0.52-0.70. Iterations slowed from ~30s to ~85s (GPU only ~33% busy, CPU idle: probably laptop power throttling). Nothing to fix; monitoring.
 - 08:25 Slowdown (gen ~85s/iter, train step 4x slower) not thermal; raised python/dotnet to AboveNormal priority (Windows may be deprioritising background processes). Will compare timing at next check.
+- 09:35 Found the real bottleneck of slow iterations: the stdout pipe (GPU only ~33% busy, CPU idle). Implemented bit-packed features (soldier planes as bytes, 10 binary planes bit-packed): 442 -> 127 bytes (6x6) and 778 -> 218 bytes (8x8) per candidate; verified identical after GPU unpacking (tools/train/test_packed.py, 0 mismatches on 54k candidates). New runs use --packed (chain2.sh replaced chain.sh; run8a keeps running unpacked until it finishes).
+- run8a at it 170: vs heuristic 0.91 (it 160), vs previous net ~0.52 (plateau again).

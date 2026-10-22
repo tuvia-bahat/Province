@@ -6,15 +6,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 DLL = ROOT / 'tools' / 'sim' / 'bin' / 'Release' / 'net8.0' / 'ProvinceSim.dll'
+DLL_PACKED = ROOT / 'tools' / 'sim' / 'bin2' / 'ProvinceSim.dll'
 PLANES, SCALARS = 12, 10
 
 
+def packed_len(size):
+    C = size * size
+    return 2 * C + (10 * C + 7) // 8 + SCALARS
+
+
 class Sim:
-    def __init__(self, size=6, slots=64, seed=1, max_turns=300):
-        self.size, self.G = size, slots
+    def __init__(self, size=6, slots=64, seed=1, max_turns=300, packed=False):
+        self.size, self.G, self.packed = size, slots, packed
         self.cells = size * size
-        self.F = PLANES * self.cells + SCALARS
-        self.p = subprocess.Popen(['dotnet', str(DLL), 'serve', str(size), str(slots), str(seed), str(max_turns)],
+        self.F = packed_len(size) if packed else PLANES * self.cells + SCALARS
+        self.p = subprocess.Popen(['dotnet', str(DLL_PACKED if packed else DLL), 'serve', str(size), str(slots), str(seed), str(max_turns)] + (['packed'] if packed else []),
                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
 
     def _read(self, n):

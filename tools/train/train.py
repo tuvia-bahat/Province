@@ -46,11 +46,23 @@ class Net(nn.Module):
         return self.out(h).squeeze(1)   # logit of the mover's win probability
 
 
+def unpack(xp, size):
+    """packed uint8 [B, FP] -> the full uint8 layout the network expects (see Features.EncodePacked)"""
+    C = size * size; B = xp.shape[0]; nb = (10 * C + 7) // 8
+    shifts = torch.arange(8, device=xp.device, dtype=torch.uint8).view(1, 1, 8)
+    bits = ((xp[:, 2 * C:2 * C + nb].unsqueeze(2) >> shifts) & 1).reshape(B, nb * 8)[:, :10 * C]
+    return torch.cat([xp[:, :2 * C], bits, xp[:, 2 * C + nb:]], dim=1)
+
+
+PACKED = False
+
+
 @torch.no_grad()
 def score(net, feats, dev, chunk=16384):
     out = []
     for i in range(0, len(feats), chunk):
         x = torch.from_numpy(np.ascontiguousarray(feats[i:i + chunk])).to(dev)
+        if PACKED: x = unpack(x, net.size)
         out.append(net(x))
     return torch.cat(out).cpu().numpy()
 
@@ -62,17 +74,17 @@ def soft_label(prog_m, prog_o, held_m, held_o):   # label for games that hit the
 
 def heuristic_pick(f, offs, g, size):
     """Simple baseline: greedy on province progress / held provinces / soldiers lost (like the old 1-ply player)."""
-    C = size * size; so = PLANES * C
     seg = f['feats'][offs[g]:offs[g + 1]]
-    sc = seg[:, so:].astype(np.float32)
+    sc = seg[:, -SCALARS:].astype(np.float32)
     v = 4 * (sc[:, 8] - sc[:, 9]) + 1.5 * (sc[:, 6] - sc[:, 7]) + 0.25 * (sc[:, 3] - sc[:, 2]) + np.random.rand(len(seg)) * 0.3
     v[(f['term'][offs[g]:offs[g + 1]] & 1) == 1] += 1e6
     return int(np.argmax(v))
 
 
 def arena(net_a, net_b, size, dev, games=128, slots=64, kind_b='net', seed=7):
+    global PACKED
     """net_a (greedy) against net_b / 'random' / 'heur'. Returns A's win rate over finished games (unfinished = half)."""
-    sim = Sim(size, slots, seed=seed)
+    sim = Sim(size, slots, seed=seed, packed=PACKED)
     aSeat = [i % 2 for i in range(slots)]   # which seat A plays in each slot's current game
     done = 0; score_a = 0.0
     while done < games:
@@ -123,11 +135,14 @@ def main():
     ap.add_argument('--blocks', type=int, default=3)
     ap.add_argument('--eval-every', type=int, default=10)
     ap.add_argument('--resume', action='store_true')
+    ap.add_argument('--packed', action='store_true', help='compact bit-packed features over the pipe (about 3.5x less data)')
     ap.add_argument('--init', default=None, help='start a NEW run from the weights of this checkpoint')
     ap.add_argument('--lr-final', dest='lr_final', type=float, default=None, help='cosine-decay the learning rate to this value')
     ap.add_argument('--champion', default=None, help='checkpoint to measure against at every evaluation')
     a = ap.parse_args()
 
+    global PACKED
+    PACKED = a.packed
     dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     run = Path(__file__).resolve().parent / 'runs' / a.name; run.mkdir(parents=True, exist_ok=True)
     net = Net(a.size, a.ch, a.blocks).to(dev)
@@ -146,9 +161,10 @@ def main():
         m = ' '.join(str(x) for x in s); print(m, flush=True); log.write(m + '\n'); log.flush()
     P('device', dev, 'params', sum(p.numel() for p in net.parameters()), 'args', vars(a))
 
-    F = Sim(a.size, 1).F if False else PLANES * a.size * a.size + SCALARS
+    from simio import packed_len
+    F = packed_len(a.size) if a.packed else PLANES * a.size * a.size + SCALARS
     bufX = np.zeros((a.buffer, F), dtype=np.uint8); bufY = np.zeros(a.buffer, dtype=np.float32); bn = 0; bp = 0
-    sim = Sim(a.size, a.slots, seed=int(time.time()) % 100000)
+    sim = Sim(a.size, a.slots, seed=int(time.time()) % 100000, packed=a.packed)
     traj = [[] for _ in range(a.slots)]   # per slot: list of (feat, mover, value)
     prev = None; best_snapshot = None
     t0 = time.time()

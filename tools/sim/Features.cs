@@ -46,6 +46,18 @@ public static class Features
         outp.Add(new Act { Type = AT.Pass, From = -1, To = -1 });
     }
 
+    // Compact wire format for training: soldier planes as bytes, the 10 binary planes bit-packed (LSB first), then the 10 scalars.
+    public static int PackedLength(Board b) => 2 * b.Cells + (10 * b.Cells + 7) / 8 + Scalars;
+    public static void EncodePacked(State ns, int m, byte[] dst, int off, byte[] tmp)
+    {
+        Encode(ns, m, tmp, 0);
+        var b = ns.B; int C = b.Cells, nb = (10 * C + 7) / 8;
+        Array.Copy(tmp, 0, dst, off, 2 * C);
+        int bo = off + 2 * C; Array.Clear(dst, bo, nb);
+        for (int j = 0; j < 10 * C; j++) if (tmp[2 * C + j] != 0) dst[bo + (j >> 3)] |= (byte)(1 << (j & 7));
+        Array.Copy(tmp, Planes * C, dst, bo + nb, Scalars);
+    }
+
     // Encode the position after the mover's move, from the mover's point of view.
     // Layout: 12 planes of Size*Size bytes, then 10 scalar bytes.
     public static void Encode(State ns, int m, byte[] dst, int off)
