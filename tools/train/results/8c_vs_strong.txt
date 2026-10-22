@@ -1,0 +1,1 @@
+vnet:src/vnet8.bin vs strong (board 8): 30-9, 1 unfinished = 77% for A over 40 games, avg 93 turns, first mover won 21, 243s
