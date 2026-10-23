@@ -38,7 +38,6 @@ async function main() {
   await rpc(sbs[1], 'join_game', { p_id: id, p_name: nB });
 
   let s = R.newGame(), n = 0, turns = 0;
-  const temp = [rnd(0.015, 0.05), rnd(0.015, 0.05)];   // a little variety so games differ
   const submit = async (seat, kind, data, st) => { n++; await rpc(sbs[seat], 'submit_event', { p_id: id, p_n: n, p_kind: kind, p_data: data, p_turn_after: st.turn, p_winner: st.winner }); };
   try {
     await sleep(rnd(3000, 8000));
@@ -50,7 +49,7 @@ async function main() {
       let kind, data, ns;
       if (!R.hasAnyMove(s)) { ns = R.skipTurn(s); kind = 'skip'; data = {}; }
       else {
-        const a = V.chooseAction(s, { temp: temp[p] });
+        const a = V.chooseAction(s);
         if (a.type === 'pass') { ns = R.passTurn(s); kind = 'skip'; data = { pass: true }; }
         else { ns = R.apply(s, a); kind = 'act'; data = a; }
       }
