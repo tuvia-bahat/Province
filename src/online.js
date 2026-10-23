@@ -37,7 +37,10 @@
       sb.from('games').select('*').eq('status', 'finished').gt('moves_count', 0).order('last_move_at', { ascending: false }).limit(histLimit + 1),
     ]);
     const fin = must(finished);
-    return { open: must(open), active: must(active), finished: fin.slice(0, histLimit), moreFinished: fin.length > histLimit };
+    // משחקים נגד המחשב נכנסים להיסטוריה, ממוינים לפי זמן
+    const ai = (await publicAiGames(histLimit + 1)).map((a) => ({ id: a.id, ai: true, size: a.size, name0: a.name, name1: 'Computer', winner: a.winner, last_move_at: a.at, nn: a.nn }));
+    const all = fin.concat(ai).sort((x, y) => String(y.last_move_at).localeCompare(String(x.last_move_at)));
+    return { open: must(open), active: must(active), finished: all.slice(0, histLimit), moreFinished: all.length > histLimit };
   }
   async function getGame(id) {
     await init();
@@ -112,12 +115,15 @@
       fetch(URL + '/rest/v1/rpc/log_ai_game', {
         method: 'POST', keepalive: true,
         headers: { 'Content-Type': 'application/json', apikey: KEY },
-        body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn }),
+        body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn, p_name: g.name || null }),
       }).catch(() => {});
     } catch (e) { /* ignore */ }
   }
-  // לאדמין בלבד: משחק אחד לצפייה חוזרת (ההתחברות של הדשבורד משותפת לאתר, באותו דפדפן)
-  async function adminAiGame(id) { await init(); return must(await sb.rpc('admin_ai_game', { p_id: id })); }
+  // משחקים נגד המחשב שהסתיימו: גלויים לכולם בהיסטוריה של הלובי (בלי מזהה מבקר ובלי מדינה)
+  async function publicAiGames(limit) {
+    try { await init(); const d = await sb.rpc('public_ai_games', { p_limit: limit }); return d.error ? [] : (d.data || []); } catch (e) { return []; }
+  }
+  async function publicAiGame(id) { await init(); return must(await sb.rpc('public_ai_game', { p_id: id })); }
 
   // מיקום גס (עיר) מ-Worker של Cloudflare, אם הוגדר כתובת; נכשל בשקט ובלי לעכב את האתר יותר מ-2 שניות
   const GEO_URL = 'https://province-geo.tuvia000.workers.dev';
@@ -139,7 +145,7 @@
   }
 
   root.Online = {
-    track, geo, logAiGame, adminAiGame, get returning() { return returning; },
+    track, geo, logAiGame, publicAiGames, publicAiGame, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };

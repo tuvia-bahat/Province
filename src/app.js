@@ -43,7 +43,7 @@
   const $ = (id) => document.getElementById(id);
   let state, history;
   let online = null, localBak = null;   // online: { id, game, seat, n, replay, ... }
-  const pname = (p) => (online && online.game ? (p === 0 ? online.game.name0 : online.game.name1 || '…') : NAME[p]);
+  const pname = (p) => (online && online.game ? (p === 0 ? online.game.name0 : online.game.name1 || '…') : settings.mode === 'ai' && settings.name ? (p === settings.human ? settings.name : 'Computer') : NAME[p]);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   // mode: ai | online | tutorial
   let settings = { mode: 'ai', human: 0, level: 'strong', levelR: 'strong', levelB: 'strong', speed: 'normal', board: 6 };
@@ -198,7 +198,7 @@
   function sendAiLog(ended) {
     if (!aiRec || aiRec.sent || aiRec.broken || aiRec.events.length < 4) return;
     aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; "נטוש" יכול להידרס אם ממשיכים
-    O.logAiGame({ gid: aiRec.gid, size: aiRec.size, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn });
+    O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn });
   }
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
@@ -939,7 +939,7 @@
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
     if (aiRec && !aiRec.sent) sendAiLog('abandoned');
-    aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, events: [], states: [], nn: false, sent: false } : null;
+    aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, name: settings.name || null, events: [], states: [], nn: false, sent: false } : null;
     if (aiRec && !aiRec.gid) aiRec = null;
     gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board, nn: !!window.Worker });
     save(); render();
@@ -1562,7 +1562,7 @@
       const d = await O.lobby(histLimit);
       if (!lobbyUnsub) { try { lobbyUnsub = O.watchLobby(() => { clearTimeout(lobbyDeb); lobbyDeb = setTimeout(refreshLobby, 500); }); } catch (e) { /* ignore */ } }
       const me = O.uid, sz = (g) => `<span class="sz">${g.size}×${g.size}</span>`;
-      const row = (g, d0, txt, icon, a) => `<div class="lb-row" data-id="${g.id}" data-a="${a}">${dot(d0)}<div class="lb-txt">${txt}</div><div class="lb-go">${icon || ''}</div></div>`;
+      const row = (g, d0, txt, icon, a) => `<div class="lb-row" data-id="${g.id}" data-a="${a}"${g.ai ? ' data-ai="1"' : ''}>${dot(d0)}<div class="lb-txt">${txt}</div><div class="lb-go">${icon || ''}</div></div>`;
       let h = '', prev = false;
       const sep = (n) => { const s = prev && n > 0 ? ' sep' : ''; prev = prev || n > 0; return s; };
       let s0 = sep(d.open.length);
@@ -1610,7 +1610,7 @@
     const b = e.target.closest('[data-size]'); if (!b) return;
     const size = +b.dataset.size;
     $('startModal').hidden = true;
-    if (startMode === 'ai') { pending = { mode: 'ai', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
+    if (startMode === 'ai') { const n = await askName(); if (!n) return; pending = { mode: 'ai', board: size, human: 0, level: 'strong', speed: 'normal', name: n }; startNew(); return; }
     if (startMode === 'watch' || startMode === 'watchold') { pending = { mode: 'watch', watch: startMode === 'watch' ? 'nn' : 'nnold', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
     const n = await askName(); if (!n) return;
     try { const id = await O.createGame(size, n); O.track('online_create', { board: size }); await openOnline(id); } catch (er) { netErr(er); }
@@ -1619,6 +1619,7 @@
     if (e.target.closest('#lbMore')) { histLimit += 20; refreshLobby(); return; }
     const r = e.target.closest('.lb-row'); if (!r) return;
     const id = r.dataset.id, a = r.dataset.a;
+    if (r.dataset.ai) { O.track('ai_replay'); openAiReplay(id); return; }
     try {
       const g = a === 'open' ? await O.getGame(id) : null;
       if (g && g.status === 'open' && g.p0 !== O.uid) { const n = await askName(); if (!n) return; await O.joinGame(id, n); O.track('online_join', { board: g.size }); await openOnline(id); }
@@ -1719,7 +1720,7 @@
   $('newBtn').onclick = openLobby;
   $('winNew').onclick = () => {
     $('overlay').hidden = true;
-    if (tut.active) { pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0 }); startNew(); } else if (online) openLobby(); else openNew();
+    if (tut.active) { askName().then((n) => { if (!n) return; pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0, name: n }); startNew(); }); } else if (online) openLobby(); else openNew();
   };
   $('tutBtn').onclick = startTutorial;
   $('coachExit').onclick = () => (train.active ? trainExit(false) : tutExit());
@@ -1728,14 +1729,14 @@
 
   if (BETA_FLAG) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Beta features are on. Open ?beta=0 to turn them off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
-  // אדמין: משחק נגד המחשב לצפייה חוזרת (קישור מהדשבורד: ?aireplay=<id>)
+  // משחק נגד המחשב שהסתיים: צפייה חוזרת (מההיסטוריה בלובי, או קישור ?aireplay=<id>)
   async function openAiReplay(id) {
     try {
-      const r = await O.adminAiGame(id);
+      const r = await O.publicAiGame(id);
       if (!r) { window.alert('Game not found.'); return; }
-      const g = { id, size: r.size, status: 'finished', winner: r.winner, ended_by: r.ended === 'win' ? 'win' : 'timeout', moves_count: r.events.length, name0: 'Player', name1: r.nn ? 'Computer (new AI)' : 'Computer', p0: null, p1: null, created_at: r.at, last_move_at: r.at, live: { last_move_at: r.at } };
+      const g = { id, size: r.size, status: 'finished', winner: r.winner, ended_by: r.ended === 'win' ? 'win' : 'timeout', moves_count: r.events.length, name0: r.name || 'Player', name1: 'Computer', p0: null, p1: null, created_at: r.at, last_move_at: r.at, live: { last_move_at: r.at } };
       await openOnline(id, { replay: true, inject: { game: g, moves: r.events } });
-    } catch (e) { console.error(e); window.alert('Cannot open this game. Sign in on the dashboard first, in the same browser.'); }
+    } catch (e) { console.error(e); window.alert('Cannot open this game.'); }
   }
   try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
   handleJoinLink();

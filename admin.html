@@ -35,6 +35,9 @@
   .aigames th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 8px; position: sticky; top: 0; background: var(--card); }
   .aigames td { padding: 7px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
   .aigames a { color: var(--ink); font-weight: 600; }
+  .tagil { background: #e3f1ff; color: #1b64b5; border-radius: 999px; padding: 2px 9px; font-weight: 600; font-size: 12px; }
+  .taggl { background: #eee9fb; color: #5b3fb0; border-radius: 999px; padding: 2px 9px; font-weight: 600; font-size: 12px; }
+  .aigames tr.dim td { opacity: .45; }
   .pw { color: #1f9d6b; font-weight: 600; } .cw { color: #3a86d8; font-weight: 600; } .ab { color: var(--muted); }
   #dayChip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-weight: 600; }
   .grid { display: grid; gap: 14px; }
@@ -187,6 +190,13 @@
     loadAiGames();
   }
 
+  $('aiGames').addEventListener('click', async (e) => {
+    const a = e.target.closest('[data-hide]'); if (!a) return; e.preventDefault();
+    const { error } = await sb.rpc('admin_hide_ai_game', { p_id: a.dataset.hide, p_hidden: a.dataset.to === '1' });
+    if (error) { $('aiSum').textContent = error.message; return; }
+    loadAiGames();
+  });
+
   async function loadAiGames() {
     const box = $('aiGames'), sum = $('aiSum');
     const { data, error } = await sb.rpc('admin_ai_games', selDay ? { p_days: days, p_day: selDay } : { p_days: days });
@@ -197,9 +207,11 @@
     const games = data.games || [];
     if (!games.length) { box.innerHTML = '<div class="sub">No games recorded yet</div>'; return; }
     const fmt = (iso) => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
-    box.innerHTML = '<table><tr><th>Time</th><th>Board</th><th>Result</th><th>Moves</th><th>Computer</th><th>Visitor</th><th></th></tr>' + games.map((g) => {
+    box.innerHTML = '<table><tr><th>Time</th><th>Player</th><th>From</th><th>Board</th><th>Result</th><th>Moves</th><th>Computer</th><th></th></tr>' + games.map((g) => {
       const res = g.ended !== 'win' ? '<span class="ab">Abandoned</span>' : g.winner === 0 ? '<span class="pw">Player won</span>' : '<span class="cw">Computer won</span>';
-      return `<tr><td>${fmt(g.at)}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td>${g.nn ? 'New AI' : 'Old AI'}</td><td>${g.vid}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a></td></tr>`;
+      const from = g.country === 'IL' ? '<span class="tagil">Israel</span>' : g.country ? '<span class="taggl">Global</span>' : '<span class="ab">?</span>';
+      const nm = String(g.name || 'Player').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      return `<tr class="${g.hidden ? 'dim' : ''}"><td>${fmt(g.at)}</td><td><b>${nm}</b> <span class="ab">${g.vid}</span></td><td>${from}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td>${g.nn ? 'New AI' : 'Old AI'}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a> · <a href="#" data-hide="${g.id}" data-to="${g.hidden ? 0 : 1}">${g.hidden ? 'Show' : 'Hide'}</a></td></tr>`;
     }).join('') + '</table>';
   }
 
