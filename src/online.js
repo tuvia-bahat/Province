@@ -38,7 +38,7 @@
     ]);
     const fin = must(finished);
     // משחקים נגד המחשב נכנסים להיסטוריה, ממוינים לפי זמן
-    const ai = (await publicAiGames(histLimit + 1)).map((a) => ({ id: a.id, ai: true, size: a.size, name0: a.name, name1: 'Computer', winner: a.winner, last_move_at: a.at, nn: a.nn }));
+    const ai = (await publicAiGames(histLimit + 1)).map((a) => ({ id: a.id, ai: true, quit: !!a.quit, size: a.size, name0: a.name, name1: 'Computer', winner: a.winner, last_move_at: a.at, nn: a.nn }));
     const all = fin.concat(ai).sort((x, y) => String(y.last_move_at).localeCompare(String(x.last_move_at)));
     return { open: must(open), active: must(active), finished: all.slice(0, histLimit), moreFinished: all.length > histLimit };
   }

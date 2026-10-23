@@ -190,6 +190,7 @@
   function recAi(kind, data, actor, after) {
     if (!recOn()) return;
     aiRec.events.push({ n: aiRec.events.length + 1, actor, kind, data }); aiRec.sigs.push(posSig(after));
+    queueLive();
   }
   function recSync() {   // אחרי ביטול מהלך: חותכים את היומן עד למצב הנוכחי
     if (!aiRec || aiRec.sent) return;
@@ -198,9 +199,14 @@
     else if (history.length === 0 && state.cells.every((c) => c.o === null)) { aiRec.events.length = 0; aiRec.sigs.length = 0; }
     else { aiRec.broken = true; }
   }
+  // התקדמות נשלחת לשרת תוך כדי המשחק (עד פעם ב-4 שניות), כך שמשחק שנעזב באמצע כבר קיים בשרת; שם הוא נחשב "נטוש" אחרי 30 דקות בלי מהלך
+  function queueLive() {
+    if (!aiRec || aiRec.lt) return;
+    aiRec.lt = setTimeout(() => { if (aiRec) { aiRec.lt = null; if (!aiRec.sent && state.winner === null) sendAiLog('live'); } }, 4000);
+  }
   function sendAiLog(ended) {
     if (!aiRec || aiRec.sent || aiRec.broken || aiRec.events.length < 4) return;
-    aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; "נטוש" יכול להידרס אם ממשיכים
+    aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; 'live' ו'נטוש' יכולים להידרס אם ממשיכים
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn });
   }
   function doRoll() {
@@ -941,6 +947,7 @@
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
+    if (aiRec && aiRec.lt) clearTimeout(aiRec.lt);
     if (aiRec && !aiRec.sent) sendAiLog('abandoned');
     aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, name: settings.name || null, events: [], sigs: [], nn: false, sent: false } : null;
     if (aiRec && !aiRec.gid) aiRec = null;
@@ -1334,8 +1341,8 @@
   svg.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // עוזבים באמצע משחק נגד המחשב: שולחים את מה שנשחק עד עכשיו (אם ממשיכים וגומרים, המשחק המלא דורס אותו)
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && aiRec && !aiRec.sent && state.winner === null) sendAiLog('abandoned'); });
-  window.addEventListener('pagehide', () => { if (aiRec && !aiRec.sent && state.winner === null) sendAiLog('abandoned'); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && aiRec && !aiRec.sent && state.winner === null) sendAiLog('live'); });
+  window.addEventListener('pagehide', () => { if (aiRec && !aiRec.sent && state.winner === null) sendAiLog('live'); });
 
   // ---------- אונליין ----------
   const netErr = (e) => { console.error(e); const m = $('lbMsg'); if (m) m.textContent = String((e && e.message) || e); if (online) resync(); };
@@ -1579,7 +1586,7 @@
       });
       const s1 = sep(d.finished.length);
       d.finished.forEach((g, k) => {
-        const win = g.winner === null ? '' : `<span class="lb-win">${esc(g.winner === 0 ? g.name0 : g.name1)} wins</span>`;
+        const win = g.winner === null ? '' : `<span class="lb-win">${esc(g.winner === 0 ? g.name0 : g.name1)} wins</span>${g.quit ? ' <span class="dim">(resigned)</span>' : ''}`;
         let r = row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}${win}`, '', 'replay');
         if (k === 0 && s1) r = r.replace('class="lb-row"', 'class="lb-row sep"');
         h += r;
@@ -1739,6 +1746,7 @@
       if (!r) { window.alert('Game not found.'); return; }
       const g = { id, size: r.size, status: 'finished', winner: r.winner, ended_by: r.ended === 'win' ? 'win' : 'timeout', moves_count: r.events.length, name0: r.name || 'Player', name1: 'Computer', p0: null, p1: null, created_at: r.at, last_move_at: r.at, live: { last_move_at: r.at } };
       await openOnline(id, { replay: true, inject: { game: g, moves: r.events } });
+      if (r.ended !== 'win' && online && online.replay) replayGo(online.replay.S.length - 1, false);
     } catch (e) { console.error(e); window.alert('Cannot open this game.'); }
   }
   try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
