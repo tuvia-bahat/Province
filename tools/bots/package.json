@@ -1,0 +1,1 @@
+{ "name": "province-bots", "private": true, "version": "1.0.0", "description": "Plays one real online game between two bot players (see botgame.js)", "dependencies": { "@supabase/supabase-js": "2.45.4" } }

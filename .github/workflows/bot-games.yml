@@ -1,0 +1,35 @@
+# Plays a real online game between two labelled bot players a few times a day, so the lobby always has something to watch.
+# Runs on a schedule (about 5 games a day at slightly random times) and can be started by hand from the Actions tab.
+# Uses only the public publishable key that is already in the site; no secrets.
+name: Bot games
+
+on:
+  schedule:
+    - cron: '40 5 * * *'
+    - cron: '15 9 * * *'
+    - cron: '50 12 * * *'
+    - cron: '30 16 * * *'
+    - cron: '20 19 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: bot-games
+  cancel-in-progress: false
+
+jobs:
+  play:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: tools/bots
+        run: npm ci
+      - name: Random start time (0-25 min)
+        if: github.event_name == 'schedule'
+        run: sleep $((RANDOM % 1500))
+      - name: Play one bot game
+        run: node tools/bots/botgame.js
