@@ -174,23 +174,45 @@
     const prev = state;
     if (tut.active) { tut.i++; tut.cardAt = Infinity; trackLesson(); }
     winShowAt = ns.winner !== null ? Infinity : 0;
-    history.push(state); lastMove = { p: state.turn, a }; state = ns;
+    history.push(state); lastMove = { p: state.turn, a }; const actor = state.turn; state = ns;
     ui = freshUi();
+    recAi('act', a, actor, state);
     if (online) emit('act', a);
     save(); render(); animateMove(prev, a, ns);
     return true;
+  }
+  // ---- יומן משחק נגד המחשב: נשמר לדשבורד (supabase/ai_games.sql) ----
+  let aiRec = null;   // { gid, size, events: [{ n, actor, kind, data }], states: [מצב אחרי כל אירוע], nn, sent }
+  const recOn = () => !!aiRec && !aiRec.sent && settings.mode === 'ai' && !online && !tut.active && !train.active;
+  function recAi(kind, data, actor, after) {
+    if (!recOn()) return;
+    aiRec.events.push({ n: aiRec.events.length + 1, actor, kind, data }); aiRec.states.push(after);
+  }
+  function recSync() {   // אחרי ביטול מהלך: חותכים את היומן עד למצב הנוכחי
+    if (!aiRec || aiRec.sent) return;
+    const k = aiRec.states.lastIndexOf(state);
+    if (k >= 0) { aiRec.events.length = k + 1; aiRec.states.length = k + 1; }
+    else if (history.length === 0 && state.cells.every((c) => c.o === null)) { aiRec.events.length = 0; aiRec.states.length = 0; }
+    else { aiRec.broken = true; }
+  }
+  function sendAiLog(ended) {
+    if (!aiRec || aiRec.sent || aiRec.broken || aiRec.events.length < 4) return;
+    aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; "נטוש" יכול להידרס אם ממשיכים
+    O.logAiGame({ gid: aiRec.gid, size: aiRec.size, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn });
   }
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
     state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
+    recAi('roll', { w: state.roll.w, b: state.roll.b }, state.turn, state);
     if (online) emit('roll', { w: state.roll.w, b: state.roll.b });
     save(); render();
   }
   function passOrSkip(fn) {
     const isPass = fn === R.passTurn;
-    history.push(state); lastMove = null; state = fn(state); ui = freshUi();
+    const actor = state.turn; history.push(state); lastMove = null; state = fn(state); ui = freshUi();
+    recAi('skip', isPass ? { pass: true } : {}, actor, state);
     if (online) emit('skip', isPass ? { pass: true } : {});
     if (tut.active) { tut.i++; tut.cardAt = Infinity; trackLesson(); }
     save(); render();
@@ -204,7 +226,7 @@
     state = history.pop();
     // נגד המחשב: חוזרים עד לתור האדם (ביטול מהלך המחשב יחד עם מהלך האדם)
     while (isAiTurn() && history.length) state = history.pop();
-    lastMove = null; ui = freshUi(); save(); render();
+    lastMove = null; ui = freshUi(); recSync(); save(); render();
   }
 
   // פותחים תמיד את חלון האישור, גם כשאין מה לבחור (בלי ביצוע אוטומטי)
@@ -503,7 +525,7 @@
         clearTimeout(timer); vnetPending = false;
         if (tok !== vnetTok || state !== snap) { if (!paused) scheduleAi(); return; }   // undo / new game while thinking: drop the answer
         if (e.data.error) { fallback(e.data.error); return; }
-        vnetTok++; window.__vnetMoves = (window.__vnetMoves || 0) + 1; apply(e.data.act);
+        vnetTok++; window.__vnetMoves = (window.__vnetMoves || 0) + 1; if (aiRec) aiRec.nn = true; apply(e.data.act);
       };
       w.postMessage({ id: tok, size: settings.board, state: snap });
       return true;
@@ -532,7 +554,9 @@
     }
     lastMove = a.type === 'pass' ? null : { p, a };
     winShowAt = state.winner !== null && a.type !== 'pass' ? Infinity : 0;
-    ui = freshUi(); save(); render();
+    ui = freshUi();
+    if (!R.hasAnyMove(prevS)) recAi('skip', {}, p, state); else if (a.type === 'pass') recAi('skip', { pass: true }, p, state); else recAi('act', a, p, state);
+    save(); render();
     if (a.type !== 'pass') animateMove(prevS, a, state);
   }
 
@@ -914,6 +938,9 @@
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
+    if (aiRec && !aiRec.sent) sendAiLog('abandoned');
+    aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, events: [], states: [], nn: false, sent: false } : null;
+    if (aiRec && !aiRec.gid) aiRec = null;
     gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board, nn: !!window.Worker });
     save(); render();
   }
@@ -1158,7 +1185,7 @@
       if (online.seat !== null && !online.replay && !onlineEndTracked.has(online.id)) { onlineEndTracked.add(online.id); O.track('online_end', { board: online.game.size, won: state.winner === online.seat }); }
       return;
     }
-    if (settings.mode === 'ai' && aiEndSeq !== gameSeq) { aiEndSeq = gameSeq; O.track('ai_end', { board: settings.board, won: state.winner === settings.human }); }
+    if (settings.mode === 'ai' && aiEndSeq !== gameSeq) { aiEndSeq = gameSeq; O.track('ai_end', { board: settings.board, won: state.winner === settings.human }); sendAiLog('win'); }
   }
   function render() {
     fxCancel();
@@ -1303,6 +1330,10 @@
   svg.addEventListener('pointercancel', (e) => endPointer(e, true));
   svg.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  // עוזבים באמצע משחק נגד המחשב: שולחים את מה שנשחק עד עכשיו (אם ממשיכים וגומרים, המשחק המלא דורס אותו)
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && aiRec && !aiRec.sent && state.winner === null) sendAiLog('abandoned'); });
+  window.addEventListener('pagehide', () => { if (aiRec && !aiRec.sent && state.winner === null) sendAiLog('abandoned'); });
+
   // ---------- אונליין ----------
   const netErr = (e) => { console.error(e); const m = $('lbMsg'); if (m) m.textContent = String((e && e.message) || e); if (online) resync(); };
   const onlineMyTurn = () => !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.turn === online.seat;
@@ -1372,7 +1403,7 @@
   async function openOnline(id, opts = {}) {
     clearTimeout(aiTimer); aiTimer = null; clearTimeout(winTimer); winShowAt = 0; fxCancel();
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
-    const g = await O.getGame(id);
+    const g = opts.inject ? opts.inject.game : await O.getGame(id);
     const seat = g.p0 === O.uid ? 0 : g.p1 === O.uid ? 1 : null;
     if (online) { if (online.unsub) online.unsub(); clearInterval(online.tick); }
     else if (!localBak) localBak = { state, history, settings: Object.assign({}, settings) };
@@ -1383,7 +1414,7 @@
     closeLobby(); $('overlay').hidden = true;
     $('overlay').dataset.dismissed = (opts.replay || g.status === 'finished') ? '1' : '';
     if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow, (row) => { if (online) online.game.live = row; });
-    const moves = await O.getMoves(id);
+    const moves = opts.inject ? opts.inject.moves : await O.getMoves(id);
     if (opts.replay) {
       const S = [R.newGame()];
       for (const ev of moves) S.push(evApply(S[S.length - 1], ev));
@@ -1697,8 +1728,18 @@
 
   if (BETA_FLAG) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Beta features are on. Open ?beta=0 to turn them off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
+  // אדמין: משחק נגד המחשב לצפייה חוזרת (קישור מהדשבורד: ?aireplay=<id>)
+  async function openAiReplay(id) {
+    try {
+      const r = await O.adminAiGame(id);
+      if (!r) { window.alert('Game not found.'); return; }
+      const g = { id, size: r.size, status: 'finished', winner: r.winner, ended_by: r.ended === 'win' ? 'win' : 'timeout', moves_count: r.events.length, name0: 'Player', name1: r.nn ? 'Computer (new AI)' : 'Computer', p0: null, p1: null, created_at: r.at, last_move_at: r.at, live: { last_move_at: r.at } };
+      await openOnline(id, { replay: true, inject: { game: g, moves: r.events } });
+    } catch (e) { console.error(e); window.alert('Cannot open this game. Sign in on the dashboard first, in the same browser.'); }
+  }
+  try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
   handleJoinLink();
   setTimeout(maybeTutPrompt, 2000);
   O.geo().then((g) => { setCountry(g.country); return g; }).then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));
-  window.__province = { get state() { return state; }, get ui() { return ui; }, get settings() { return settings; }, setCountry, setState(s) { state = s; history = []; ui = freshUi(); lastMove = lastRoll = null; render(); }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
+  window.__province = { get state() { return state; }, get aiRec() { return aiRec; }, get ui() { return ui; }, get settings() { return settings; }, setCountry, setState(s) { state = s; history = []; ui = freshUi(); lastMove = lastRoll = null; render(); }, playableMap, optionsFrom, cellX, cellY, get R() { return R; } };   // לנוחות בדיקה
 })();

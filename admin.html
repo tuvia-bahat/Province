@@ -30,6 +30,12 @@
   .seg button.on { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .ghost { border: 0; background: none; color: var(--muted); font-size: 13px; cursor: pointer; padding: 7px 10px; }
   .hit { cursor: pointer; }
+  .aigames { max-height: 420px; overflow: auto; margin-top: 8px; }
+  .aigames table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .aigames th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; padding: 6px 8px; position: sticky; top: 0; background: var(--card); }
+  .aigames td { padding: 7px 8px; border-top: 1px solid var(--line); white-space: nowrap; }
+  .aigames a { color: var(--ink); font-weight: 600; }
+  .pw { color: #1f9d6b; font-weight: 600; } .cw { color: #3a86d8; font-weight: 600; } .ab { color: var(--muted); }
   #dayChip { background: var(--card); border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-weight: 600; }
   .grid { display: grid; gap: 14px; }
   .tiles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 14px; }
@@ -119,6 +125,12 @@
       <div id="countries" class="countries"></div>
     </div>
 
+    <div class="card" style="margin-top:14px">
+      <div class="geohead"><h2>Games vs computer</h2></div>
+      <div id="aiSum" class="sub"></div>
+      <div id="aiGames" class="aigames"></div>
+    </div>
+
     <div class="grid two">
       <div class="card"><h2>Tutorial</h2><div class="sub">Visitors who completed each lesson</div><div id="lessons"></div></div>
       <div class="card"><h2>Vs computer</h2><table id="aiTable"></table></div>
@@ -172,6 +184,23 @@
     }
     $('msg').textContent = '';
     render(data);
+    loadAiGames();
+  }
+
+  async function loadAiGames() {
+    const box = $('aiGames'), sum = $('aiSum');
+    const { data, error } = await sb.rpc('admin_ai_games', selDay ? { p_days: days, p_day: selDay } : { p_days: days });
+    if (error) { sum.textContent = ''; box.innerHTML = '<div class="sub">' + (/function|schema cache|does not exist/i.test(error.message) ? 'Run supabase/ai_games.sql in the Supabase SQL Editor to start recording games vs the computer.' : error.message) + '</div>'; return; }
+    const m = data.summary || {};
+    const rate = (w, f) => (f ? Math.round(100 * w / f) + '%' : '–');
+    sum.innerHTML = `${n(m.games)} games · players won <b>${rate(n(m.player_wins), n(m.finished))}</b> of ${n(m.finished)} finished · new AI: <b>${rate(n(m.nn_player_wins), n(m.nn_finished))}</b> of ${n(m.nn_finished)} · old AI: <b>${rate(n(m.old_player_wins), n(m.old_finished))}</b> of ${n(m.old_finished)}`;
+    const games = data.games || [];
+    if (!games.length) { box.innerHTML = '<div class="sub">No games recorded yet</div>'; return; }
+    const fmt = (iso) => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
+    box.innerHTML = '<table><tr><th>Time</th><th>Board</th><th>Result</th><th>Moves</th><th>Computer</th><th>Visitor</th><th></th></tr>' + games.map((g) => {
+      const res = g.ended !== 'win' ? '<span class="ab">Abandoned</span>' : g.winner === 0 ? '<span class="pw">Player won</span>' : '<span class="cw">Computer won</span>';
+      return `<tr><td>${fmt(g.at)}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td>${g.nn ? 'New AI' : 'Old AI'}</td><td>${g.vid}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a></td></tr>`;
+    }).join('') + '</table>';
   }
 
   const row = (name, v, total, note) => `<div class="frow"><div class="name">${name}</div><div class="track"><div class="fill" style="width:${total ? Math.max(1, 100 * v / total) : 0}%"></div></div><div class="num">${v}<span>${note !== undefined ? note : pct(v, total)}</span></div></div>`;

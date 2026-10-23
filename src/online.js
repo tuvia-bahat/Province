@@ -106,6 +106,19 @@
     } catch (e) { /* ignore */ }
   }
 
+  // יומן משחק נגד המחשב (נשלח בסיום המשחק או כשעוזבים באמצע). נכשל בשקט; נקרא מהדשבורד בלבד (supabase/ai_games.sql)
+  function logAiGame(g) {
+    try {
+      fetch(URL + '/rest/v1/rpc/log_ai_game', {
+        method: 'POST', keepalive: true,
+        headers: { 'Content-Type': 'application/json', apikey: KEY },
+        body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn }),
+      }).catch(() => {});
+    } catch (e) { /* ignore */ }
+  }
+  // לאדמין בלבד: משחק אחד לצפייה חוזרת (ההתחברות של הדשבורד משותפת לאתר, באותו דפדפן)
+  async function adminAiGame(id) { await init(); return must(await sb.rpc('admin_ai_game', { p_id: id })); }
+
   // מיקום גס (עיר) מ-Worker של Cloudflare, אם הוגדר כתובת; נכשל בשקט ובלי לעכב את האתר יותר מ-2 שניות
   const GEO_URL = 'https://province-geo.tuvia000.workers.dev';
   let geoP = null;
@@ -126,7 +139,7 @@
   }
 
   root.Online = {
-    track, geo, get returning() { return returning; },
+    track, geo, logAiGame, adminAiGame, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };
