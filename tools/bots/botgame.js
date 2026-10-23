@@ -24,7 +24,7 @@ async function client(label) {
 async function rpc(sb, fn, args) { const { data, error } = await sb.rpc(fn, args); if (error) throw new Error(fn + ': ' + error.message); return data; }
 
 async function main() {
-  const size = +(process.env.BOT_SIZE || (Math.random() < 0.7 ? 6 : 8));
+  const size = +(process.env.BOT_SIZE || (Math.random() < 0.7 ? 8 : 6));
   const R = Rules.forSize(size); R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true;
   const V = VNet.forSize(size);
   const buf = fs.readFileSync(path.join(root, 'src', 'vnet' + size + '.bin'));
