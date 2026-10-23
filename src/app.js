@@ -86,7 +86,9 @@
         const d = JSON.parse(raw);
         if (d && d.state && (d.state.cells.length === 36 || d.state.cells.length === 64)) {
           state = d.state; history = d.history || []; settings = Object.assign(settings, d.settings || {});
-          settings.board = d.state.cells.length === 64 ? 8 : 6; return;
+          settings.board = d.state.cells.length === 64 ? 8 : 6;
+          if (d.rec && d.rec.gid && Array.isArray(d.rec.events) && Array.isArray(d.rec.sigs) && d.rec.events.length === d.rec.sigs.length) aiRec = Object.assign({ sent: false }, d.rec);
+          return;
         }
       }
     } catch (e) { /* ignore */ }
@@ -97,7 +99,7 @@
   function applyRules() { R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true; }
   function save() {
     if (tut.active || train.active || online) return;
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings, rec: aiRec && !aiRec.sent && !aiRec.broken ? { gid: aiRec.gid, size: aiRec.size, name: aiRec.name, nn: aiRec.nn, events: aiRec.events, sigs: aiRec.sigs } : null })); } catch (e) { /* ignore */ }
   }
 
   // ---------- חישובי אפשרויות ----------
@@ -182,17 +184,18 @@
     return true;
   }
   // ---- יומן משחק נגד המחשב: נשמר לדשבורד (supabase/ai_games.sql) ----
-  let aiRec = null;   // { gid, size, events: [{ n, actor, kind, data }], states: [מצב אחרי כל אירוע], nn, sent }
+  let aiRec = null;   // { gid, size, name, events: [{ n, actor, kind, data }], sigs: [חתימת המצב אחרי כל אירוע], nn, sent }
+  const posSig = (s) => JSON.stringify([s.cells.map((c) => (c.o === null ? 0 : c.o + 1) * 100 + c.n), s.bridges, s.turn, s.roll ? s.roll.cells : null, s.winner]);
   const recOn = () => !!aiRec && !aiRec.sent && settings.mode === 'ai' && !online && !tut.active && !train.active;
   function recAi(kind, data, actor, after) {
     if (!recOn()) return;
-    aiRec.events.push({ n: aiRec.events.length + 1, actor, kind, data }); aiRec.states.push(after);
+    aiRec.events.push({ n: aiRec.events.length + 1, actor, kind, data }); aiRec.sigs.push(posSig(after));
   }
   function recSync() {   // אחרי ביטול מהלך: חותכים את היומן עד למצב הנוכחי
     if (!aiRec || aiRec.sent) return;
-    const k = aiRec.states.lastIndexOf(state);
-    if (k >= 0) { aiRec.events.length = k + 1; aiRec.states.length = k + 1; }
-    else if (history.length === 0 && state.cells.every((c) => c.o === null)) { aiRec.events.length = 0; aiRec.states.length = 0; }
+    const k = aiRec.sigs.lastIndexOf(posSig(state));
+    if (k >= 0) { aiRec.events.length = k + 1; aiRec.sigs.length = k + 1; }
+    else if (history.length === 0 && state.cells.every((c) => c.o === null)) { aiRec.events.length = 0; aiRec.sigs.length = 0; }
     else { aiRec.broken = true; }
   }
   function sendAiLog(ended) {
@@ -939,7 +942,7 @@
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
     if (aiRec && !aiRec.sent) sendAiLog('abandoned');
-    aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, name: settings.name || null, events: [], states: [], nn: false, sent: false } : null;
+    aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, name: settings.name || null, events: [], sigs: [], nn: false, sent: false } : null;
     if (aiRec && !aiRec.gid) aiRec = null;
     gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board, nn: !!window.Worker });
     save(); render();
@@ -1739,6 +1742,7 @@
     } catch (e) { console.error(e); window.alert('Cannot open this game.'); }
   }
   try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
+  setTimeout(() => { try { O.retryAiLogs(); } catch (e) { /* ignore */ } }, 4000);
   handleJoinLink();
   setTimeout(maybeTutPrompt, 2000);
   O.geo().then((g) => { setCountry(g.country); return g; }).then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));

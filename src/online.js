@@ -110,14 +110,27 @@
   }
 
   // יומן משחק נגד המחשב (נשלח בסיום המשחק או כשעוזבים באמצע). נכשל בשקט; נקרא מהדשבורד בלבד (supabase/ai_games.sql)
+  const PEND = 'province.ailog.pending';
+  const pendGet = () => { try { return JSON.parse(localStorage.getItem(PEND) || '[]'); } catch (e) { return []; } };
+  const pendSet = (a) => { try { localStorage.setItem(PEND, JSON.stringify(a.slice(-5))); } catch (e) { /* ignore */ } };
+  function sendAiLog(g) {
+    return fetch(URL + '/rest/v1/rpc/log_ai_game', {
+      method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json', apikey: KEY },
+      body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn, p_name: g.name || null }),
+    }).then((r) => { if (!r.ok) throw new Error('log ' + r.status); });
+  }
+  // a finished game that could not be delivered (offline, server error, table not created yet) is kept and retried on the next visit
   function logAiGame(g) {
     try {
-      fetch(URL + '/rest/v1/rpc/log_ai_game', {
-        method: 'POST', keepalive: true,
-        headers: { 'Content-Type': 'application/json', apikey: KEY },
-        body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn, p_name: g.name || null }),
-      }).catch(() => {});
+      sendAiLog(g).then(() => { if (g.ended === 'win') pendSet(pendGet().filter((x) => x.gid !== g.gid)); })
+        .catch(() => { if (g.ended === 'win') pendSet(pendGet().filter((x) => x.gid !== g.gid).concat([g])); });
     } catch (e) { /* ignore */ }
+  }
+  function retryAiLogs() {
+    for (const g of pendGet()) {
+      try { sendAiLog(g).then(() => pendSet(pendGet().filter((x) => x.gid !== g.gid))).catch(() => {}); } catch (e) { /* ignore */ }
+    }
   }
   // משחקים נגד המחשב שהסתיימו: גלויים לכולם בהיסטוריה של הלובי (בלי מזהה מבקר ובלי מדינה)
   async function publicAiGames(limit) {
@@ -145,7 +158,7 @@
   }
 
   root.Online = {
-    track, geo, logAiGame, publicAiGames, publicAiGame, get returning() { return returning; },
+    track, geo, logAiGame, retryAiLogs, publicAiGames, publicAiGame, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };
