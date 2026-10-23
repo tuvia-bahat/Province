@@ -593,6 +593,7 @@
     const P = trainPuzzle(); let ns;
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     const before = state, ok = !!P.accept(R, before, a, ns);
+    train.ctx = { before, a, after: ns };
     train.tries++; train.ok = ok; train.phase = 'feedback';
     if (ok) train.results[train.i] = train.tries === 1 ? 'first' : 'second';
     O.track('train_puzzle', { lesson: train.lesson.id, i: train.i + 1, ok, tries: train.tries });
@@ -639,15 +640,16 @@
       title = pg.title; body = pg.body;
       btns = [[train.page < L.theory.length - 1 ? 'Next' : "Let's practice", () => { if (train.page < L.theory.length - 1) train.page++; else trainLoad(0); render(); }]];
     } else if (train.phase === 'practice') {
-      title = P.prompt; body = '';
+      title = P.prompt; body = P.info ? P.info(R, state) : '';
       for (const c of state.roll.cells) cells.push({ i: c, w: 10 });
     } else if (Date.now() < train.cardAt) { el.hidden = true; return; }
     else if (train.phase === 'feedback' && train.ok) {
-      title = 'Correct'; body = P.good; btns = [['Next', trainNext]];
+      title = 'Correct'; body = typeof P.good === 'function' ? P.good(R, train.ctx.before, train.ctx.a, train.ctx.after) : P.good; btns = [['Next', trainNext]];
     } else if (train.phase === 'feedback') {
       title = 'Not quite';
-      if (train.tries < 2) { body = P.hint; btns = [['Try again', () => { train.phase = 'practice'; trainLoad(train.i); train.tries = 1; render(); }]]; }
-      else { body = P.hint; btns = [['Show solution', trainShowSolution]]; }
+      const hint = typeof P.hint === 'function' ? P.hint(R, train.ctx.before, train.ctx.a, train.ctx.after) : P.hint;
+      if (train.tries < 2) { body = hint; btns = [['Try again', () => { train.phase = 'practice'; trainLoad(train.i); train.tries = 1; render(); }]]; }
+      else { body = hint; btns = [['Show solution', trainShowSolution]]; }
     } else if (train.phase === 'solution') {
       title = 'Solution'; body = P.shown; btns = [['Next', trainNext]];
     } else if (train.phase === 'done') {

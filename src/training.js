@@ -44,47 +44,100 @@
 
   const ctlOf = (R, s, p) => R.provinceControl(s).map((o, k) => (o === p ? k : -1)).filter((k) => k >= 0);
 
+  // ---- measurements used by the lessons (all exact, computed from the rules) ----
+  // chance (over the 36 dice rolls) that player p could attack at least one enemy base on their turn; with `cell`, that exact base
+  function strike(R, s, p, cell) {
+    const base = R.clone(s); base.turn = p; base.roll = null; base.winner = null;
+    let n = 0;
+    for (let w = 1; w <= 6; w++) for (let b = 1; b <= 6; b++) {
+      const t = R.roll(base, w, b); let hit = false;
+      for (const Rc of t.roll.cells) {
+        for (const f of R.sources(t, 'move', Rc)) for (const x of R.targets(t, 'move', Rc, f)) if (x.kind === 'attack' && (cell === undefined || x.to === cell)) hit = true;
+        if (hit) break;
+      }
+      if (hit) n++;
+    }
+    return n / 36;
+  }
+  // expected number of enemy soldiers player p could kill on their turn (over the 36 rolls, best single attack each time;
+  // an attack can use only the soldiers standing on the attacking base)
+  function kills(R, s, p) {
+    const base = R.clone(s); base.turn = p; base.roll = null; base.winner = null;
+    let tot = 0;
+    for (let w = 1; w <= 6; w++) for (let b = 1; b <= 6; b++) {
+      const t = R.roll(base, w, b); let best = 0;
+      for (const Rc of t.roll.cells) for (const f of R.sources(t, 'move', Rc)) for (const x of R.targets(t, 'move', Rc, f))
+        if (x.kind === 'attack') best = Math.max(best, Math.min(t.cells[f].n, t.cells[x.to].n));
+      tot += best;
+    }
+    return tot / 36;
+  }
+  // chance that at least one of the two lit squares falls inside player p's territory (= a "free turn")
+  function freeTurn(R, s, p) {
+    const nodes = R.territoryNodes(s, p); let n = 0;
+    for (let w = 1; w <= 6; w++) for (let b = 1; b <= 6; b++) if (nodes[R.idx(w - 1, b - 1)] || nodes[R.idx(6 - w, 6 - b)]) n++;
+    return n / 36;
+  }
+  const terrSize = (R, s, p) => Array.from(R.territoryNodes(s, p)).filter(Boolean).length;
+  const pct = (x) => Math.round(100 * x) + '%';
+  const heldOf = (R, s, p) => R.provinceControl(s).filter((o) => o === p).length;
+  const adjacentContact = (R, s) => { for (let i = 0; i < R.CELLS; i++) if (s.cells[i].o === 0) for (const n of R.neighbors(i)) if (s.cells[n].o === 1) return true; return false; };
+  const asTurn = (R, s, p) => { const t = R.clone(s); t.turn = p; t.roll = null; t.winner = null; return t; };
+
   // ---- lesson 1: Importance of Territory ----
+  // Every claim below was checked: free-turn numbers are exact (36 dice rolls), and each practice position was run through the
+  // neural-network evaluation (tests/puzzle_eval.js): the accepted moves are the ones the net rates best.
+  const I = (x, y) => y * 6 + x;
+  const GREEN3 = { g: [[0, 0, 3], [1, 1, 4], [2, 1, 3], [1, 2, 3], [1, 3, 4]], br: [[1, 1, 2, 1, 0], [1, 1, 1, 2, 0]] };   // three connected provinces
   const territory = {
     id: 'territory',
     name: 'Importance of Territory',
-    idea: 'Claim it, connect it, protect it.',
+    idea: 'Territory is freedom. Freedom decides who strikes first.',
     theory: [
-      { title: 'Territory', body: 'Hold a province <b>alone</b> and every square in it becomes <b>your territory</b>.' },
-      { title: 'Why it matters', body: 'In your territory you can play from <b>any</b> base. Outside it, your options shrink.' },
-      { title: 'To win', body: 'You need <b>5 provinces</b>, all <b>connected</b>. Claim them, connect them, protect them.' },
+      { title: 'Territory is freedom', body: 'A lit square inside your connected territory lets you play from <b>any</b> base in it. Each province you hold gives about <b>20% more</b> free turns.' },
+      { title: 'Free turns', body: '4 squares: free in <b>22%</b> of turns. 8: <b>44%</b>. 12: <b>67%</b>. 16: <b>78%</b>. Hold 5 provinces and nearly every turn is free.' },
+      { title: 'Strike first', body: 'Attackers lose nothing: they go back to camp. Defenders <b>die for good</b>. A strike kills as many as the attacking base holds, up to what it hits.' },
+      { title: 'Size decides', body: 'On a free turn you can hit <b>any</b> enemy base that touches <b>any</b> of your bases. The bigger territory usually strikes first.' },
+      { title: 'The rule', body: 'Bigger than them? <b>Press</b>, with more soldiers than their base next door. And hit the base that is <b>alone</b> in its province: it costs them the whole province.' },
     ],
-    puzzles: [
-      {
-        prompt: 'Claim a new province.',
-        spec: { g: [[0, 0, 3], [1, 1, 4]], b: [[2, 4, 4], [3, 5, 3]], dice: [2, 2] },
-        accept: (R, before, a, after) => ctlOf(R, after, 0).length > ctlOf(R, before, 0).length,
-        solution: { type: 'land', R: 28, to: 28, count: 4 },
-        good: 'Yes! You are alone in that province, so the <b>whole province</b> is yours now.',
-        hint: 'Reinforcing a province you already hold gains no territory. Land where <b>nobody</b> has soldiers.',
-        shown: 'Land in the empty province. It becomes yours.',
-      },
-      {
-        prompt: 'Connect your territory.',
-        spec: { g: [[0, 0, 3], [1, 1, 5], [2, 1, 3], [3, 0, 2]], b: [[4, 4, 4], [5, 5, 3]], dice: [3, 2] },
-        accept: (R, before, a, after) => R.winProgress(after, 0) > R.winProgress(before, 0),
-        solution: { type: 'move', R: 8, from: 7, to: 8, count: 1 },
-        good: 'The bridge joins your two provinces into <b>one territory</b>. Both count now.',
-        hint: 'Two provinces that are not connected count <b>separately</b>. Build a bridge across the river between them.',
-        shown: 'Cross the river from your left base to build a bridge.',
-      },
-      {
-        prompt: 'Take back your province.',
-        spec: { g: [[0, 0, 4], [0, 1, 3], [3, 0, 3], [2, 1, 2]], b: [[1, 1, 1], [2, 4, 3]], dice: [2, 2] },
-        accept: (R, before, a, after) => R.provinceControl(after)[0] === 0,
-        solution: { type: 'move', R: 7, from: 6, to: 7, count: 1 },
-        good: "Blue's soldier is gone, so the province is <b>yours again</b>.",
-        hint: 'Blue has a soldier in your province, so <b>nobody</b> controls it. Attack it.',
-        shown: 'Attack the lone soldier from the base next to it.',
-      },
-    ],
-    recap: 'Claim it, connect it, protect it.',
+    puzzles: [],
+    recap: 'Territory is freedom. Grow it cheaply, press when you are bigger, and hit the lone base.',
   };
+  const note = (R, s) => `Your territory: <b>${terrSize(R, s, 0)}</b> squares, free in <b>${pct(freeTurn(R, s, 0))}</b> of turns. Blue: <b>${terrSize(R, s, 1)}</b>, free in <b>${pct(freeTurn(R, s, 1))}</b>.`;
+  territory.puzzles = [
+    {   // 1. the cheapest way to add a province
+      prompt: 'Find the cheapest territory.',
+      spec: Object.assign({}, { g: GREEN3.g.concat([[3, 0, 2], [4, 3, 2]]), br: GREEN3.br, b: [[1, 4, 6], [0, 5, 2], [5, 5, 3]], dice: [2, 3] }),
+      info: (R, s) => note(R, s),
+      accept: (R, before, a, after) => freeTurn(R, after, 0) - freeTurn(R, before, 0) >= 0.15,
+      solution: { type: 'move', R: I(1, 2), from: I(3, 0), to: I(4, 0), count: 1 },
+      good: (R, before, a, after) => `Free turns: <b>${pct(freeTurn(R, before, 0))}</b> to <b>${pct(freeTurn(R, after, 0))}</b>. One soldier crossing the river claimed an empty province and built the bridge to it.`,
+      hint: (R) => `A new province adds the most <b>free turns</b>. A single soldier across the river is enough.`,
+      shown: 'Move one soldier across the river. The empty province becomes yours, and your free turns jump.',
+    },
+    {   // 2. press when bigger, with force
+      prompt: 'You are bigger. Press.',
+      spec: { g: [[0, 0, 3], [1, 1, 3], [2, 1, 2], [3, 0, 2], [1, 2, 2], [1, 3, 3]], br: GREEN3.br, b: [[4, 2, 5], [5, 3, 3], [5, 4, 5], [4, 5, 3]], dice: [4, 3] },
+      info: (R, s) => note(R, s),
+      accept: (R, before, a, after) => a.type === 'land' && a.to === I(3, 2) && a.count >= 6,
+      solution: { type: 'land', R: I(3, 2), to: I(3, 2), count: 20 },
+      good: (R, before, a, after) => `Blue's base next door holds <b>5</b>, so a strike could kill at most 5 of your <b>${after.cells[I(3, 2)].n}</b>. Now you threaten it.`,
+      hint: (R, before, a, after) => (a.type === 'land' && a.to === I(3, 2)
+        ? `Blue's base next door holds <b>5</b>: a strike would kill every soldier you land. Bring <b>more than 5</b>.`
+        : `You hold more territory, so you strike first. <b>Get close</b> to Blue's base, and land more soldiers than it holds.`),
+      shown: 'Land next to Blue with more soldiers than their base holds. You threaten it, and it cannot wipe you out.',
+    },
+    {   // 3. the lone base
+      prompt: 'Free turn. Choose your target.',
+      spec: { g: [[0, 0, 3], [1, 1, 4], [2, 1, 3], [1, 2, 3], [1, 3, 4], [4, 3, 2]], br: GREEN3.br, b: [[2, 3, 3], [1, 4, 6], [0, 5, 2], [5, 5, 3]], dice: [2, 3] },
+      info: (R, s) => note(R, s),
+      accept: (R, before, a, after) => a.type === 'move' && heldOf(R, after, 1) < heldOf(R, before, 1),
+      solution: { type: 'move', R: I(1, 2), from: I(1, 3), to: I(2, 3), count: 3 },
+      good: (R, before, a, after) => `That base was alone in its province, so Blue lost the whole province: <b>${heldOf(R, before, 1)}</b> to <b>${heldOf(R, after, 1)}</b> provinces.`,
+      hint: 'The prize is not soldiers, it is <b>provinces</b>. Look for the enemy base that is <b>alone</b> in its province.',
+      shown: 'Hit the lone base. Blue loses the whole province, and your attackers go back to camp.',
+    },
+  ];
 
   const lessons = { territory };
 
@@ -115,6 +168,6 @@
     return { ok: out.every((x) => x.good), out };
   }
 
-  root.TRAINING = { groups, lessons, position, verify };
+  root.TRAINING = { groups, lessons, position, verify, strike, freeTurn, terrSize, kills };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.TRAINING;
 })(typeof window !== 'undefined' ? window : globalThis);
