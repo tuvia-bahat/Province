@@ -202,17 +202,15 @@
     const box = $('aiGames'), sum = $('aiSum');
     const { data, error } = await sb.rpc('admin_ai_games', selDay ? { p_days: days, p_day: selDay } : { p_days: days });
     if (error) { sum.textContent = ''; box.innerHTML = '<div class="sub">' + (/function|schema cache|does not exist/i.test(error.message) ? 'Run supabase/ai_games.sql in the Supabase SQL Editor to start recording games vs the computer.' : error.message) + '</div>'; return; }
-    const m = data.summary || {};
-    const rate = (w, f) => (f ? Math.round(100 * w / f) + '%' : '–');
-    sum.innerHTML = `${n(m.games)} games · players won <b>${rate(n(m.player_wins), n(m.finished))}</b> of ${n(m.finished)} finished · new AI: <b>${rate(n(m.nn_player_wins), n(m.nn_finished))}</b> of ${n(m.nn_finished)} · old AI: <b>${rate(n(m.old_player_wins), n(m.old_finished))}</b> of ${n(m.old_finished)}<br>Players who left: <b>${n(m.quit)}</b>${n(m.quit) ? ` (${rate(n(m.quit), n(m.games) - n(m.live))} of games) · half of them left within <b>${Math.round(n(m.quit_median_moves))}</b> moves · ${n(m.quit_early)} left in the first 4 moves` : ''}${n(m.live) ? ` · ${n(m.live)} playing now` : ''}`;
+    sum.textContent = '';
     const games = data.games || [];
     if (!games.length) { box.innerHTML = '<div class="sub">No games recorded yet</div>'; return; }
     const fmt = (iso) => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
-    box.innerHTML = '<table><tr><th>Time</th><th>Player</th><th>From</th><th>Board</th><th>Result</th><th>Moves</th><th>Computer</th><th></th></tr>' + games.map((g) => {
+    box.innerHTML = '<table><tr><th>Time</th><th>Player</th><th>From</th><th>Board</th><th>Result</th><th>Moves</th><th></th></tr>' + games.map((g) => {
       const res = g.ended === 'live' ? '<span class="ab">Playing…</span>' : g.ended !== 'win' ? `<span class="qt">Left after ${g.my_moves} moves</span>` : g.winner === 0 ? '<span class="pw">Player won</span>' : '<span class="cw">Computer won</span>';
       const from = g.country === 'IL' ? '<span class="tagil">Israel</span>' : g.country ? '<span class="taggl">Global</span>' : '<span class="ab">?</span>';
       const nm = String(g.name || 'Player').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-      return `<tr class="${g.hidden ? 'dim' : ''}"><td>${fmt(g.at)}</td><td><b>${nm}</b> <span class="ab">${g.vid}</span></td><td>${from}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td>${g.nn ? 'New AI' : 'Old AI'}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a> · <a href="#" data-hide="${g.id}" data-to="${g.hidden ? 0 : 1}">${g.hidden ? 'Show' : 'Hide'}</a></td></tr>`;
+      return `<tr class="${g.hidden ? 'dim' : ''}"><td>${fmt(g.at)}</td><td><b>${nm}</b> <span class="ab">${g.vid}</span></td><td>${from}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a> · <a href="#" data-hide="${g.id}" data-to="${g.hidden ? 0 : 1}">${g.hidden ? 'Show' : 'Hide'}</a></td></tr>`;
     }).join('') + '</table>';
   }
 
