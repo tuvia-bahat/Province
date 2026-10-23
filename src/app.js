@@ -73,9 +73,11 @@
   // בחירת בסיס מתמשכת (נבדקה כתכונת ניסוי ופתוחה כעת לכולם); בטוטוריאל הבחירה הישנה נשארת כדי שההדרכה תישאר ממוקדת
   const BETA = true;
   const betaOn = () => BETA && (!tut.active || TV3);
+  // Training (beta): theory cards + practice positions (src/training.js)
+  const train = { active: false, lesson: null, phase: 'theory', page: 0, i: 0, tries: 0, results: [], ok: false, backup: null, cardAt: 0, timer: null };
   // מצב בחירת בסיס: הבסיס נשאר נבחר אחרי לחיצה, יעדי התנועה מודגשים, ואפשר ללחוץ על יעד כדי לבחור כמה חיילים להזיז
   const selMode = () => betaOn() && ui.sel !== null && !isAiTurn() && phase() === 'play' && (!online || onlineMyTurn()) && (ui.sheet === null || ui.sheet.kind === 'adjust');
-  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game') && (!online || onlineMyTurn());
+  const canAct = () => !isAiTurn() && phase() === 'play' && ui.sheet === null && (!tut.active || tut.phase === 'game') && (!train.active || train.phase === 'practice') && (!online || onlineMyTurn());
 
   function load() {
     try {
@@ -94,7 +96,7 @@
   // כללי גרסה 2 בכל המצבים (פרובינציה בשליטה = טריטוריה; ניצחון ב-5 פרובינציות מחוברות). המחשב אומן עליהם.
   function applyRules() { R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true; }
   function save() {
-    if (tut.active || online) return;
+    if (tut.active || train.active || online) return;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify({ state, history: history.slice(-60), settings })); } catch (e) { /* ignore */ }
   }
 
@@ -165,6 +167,7 @@
 
   // ---------- ביצוע ----------
   function commit(a) {
+    if (train.active) return trainCommit(a);
     let ns;
     if (tut.active && !tutMatches(a)) { tutNudge('Follow the highlighted move'); return false; }
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
@@ -534,6 +537,136 @@
   }
 
 
+
+  // ---------- אימון (בטא): כרטיסי תיאוריה + תרגול ממצבי לוח נתונים (src/training.js) ----------
+  const TRAIN_KEY = 'province.train';
+  const trainProgress = () => { try { return JSON.parse(localStorage.getItem(TRAIN_KEY) || '{}'); } catch (e) { return {}; } };
+  const trainPuzzle = () => (train.lesson ? train.lesson.puzzles[train.i] : null);
+  const trainStartState = () => R.clone(window.TRAINING.position(window.Rules, trainPuzzle().spec));
+  function openTrainMenu() {
+    const prog = trainProgress(), box = $('trainList'); box.textContent = '';
+    for (const g of window.TRAINING.groups) {
+      const h = document.createElement('div'); h.className = 'tr-group'; h.textContent = g.title; box.appendChild(h);
+      for (const l of g.lessons) {
+        const ready = !!window.TRAINING.lessons[l.id], done = prog[l.id] && prog[l.id].done;
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'tile tr-lesson' + (ready ? '' : ' soon');
+        b.innerHTML = `<span>${l.name}</span><em>${ready ? (done ? '✓' : '') : 'Soon'}</em>`;
+        if (ready) b.onclick = () => trainStart(l.id); else b.disabled = true;
+        box.appendChild(b);
+      }
+    }
+    $('trainModal').hidden = false;
+  }
+  function trainStart(id) {
+    const L = window.TRAINING.lessons[id]; if (!L) return;
+    $('trainModal').hidden = true; $('startModal').hidden = true; closeLobby();
+    if (tut.active) tutExit();
+    clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0; fxCancel();
+    if (!train.active) train.backup = { state, history, settings: Object.assign({}, settings) };
+    Object.assign(train, { active: true, lesson: L, phase: 'theory', page: 0, i: 0, tries: 0, results: [], ok: false, cardAt: 0 });
+    settings = Object.assign({}, settings, { mode: 'train', human: 0, board: 6 });
+    useBoard(6); applyRules();
+    train.i = 0; state = trainStartState(); state.roll = null;   // theory cards are shown over the first position
+    history = []; lastMove = lastRoll = null; ui = freshUi();
+    $('overlay').dataset.dismissed = ''; $('overlay').hidden = true;
+    O.track('train_start', { lesson: id });
+    render();
+  }
+  function trainExit(toMenu) {
+    if (!train.active) return;
+    if (train.phase !== 'done') O.track('train_exit', { lesson: train.lesson.id, at: train.phase === 'theory' ? 0 : train.i + 1 });
+    clearTimeout(train.timer); fxCancel();
+    train.active = false;
+    const b = train.backup; train.backup = null;
+    if (b) { settings = b.settings; state = b.state; history = b.history; }
+    useBoard(settings.board); applyRules();
+    lastMove = lastRoll = null; ui = freshUi(); $('overlay').hidden = true; $('coach').hidden = true;
+    render();
+    if (toMenu) openTrainMenu();
+  }
+  function trainLoad(i) {
+    train.i = i; train.tries = 0; train.phase = 'practice'; train.ok = false;
+    state = trainStartState(); history = []; lastMove = null; ui = freshUi(); fxCancel();
+    render();
+  }
+  function trainCommit(a) {   // the player made a move in a practice position
+    const P = trainPuzzle(); let ns;
+    try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
+    const before = state, ok = !!P.accept(R, before, a, ns);
+    train.tries++; train.ok = ok; train.phase = 'feedback';
+    if (ok) train.results[train.i] = train.tries === 1 ? 'first' : 'second';
+    O.track('train_puzzle', { lesson: train.lesson.id, i: train.i + 1, ok, tries: train.tries });
+    history.push(state); lastMove = { p: 0, a }; state = ns; ui = freshUi(); winShowAt = 0;
+    train.cardAt = Date.now() + 99999;
+    render(); animateMove(before, a, ns);
+    clearTimeout(train.timer);
+    train.cardAt = Date.now() + Math.max(0, fxUntil - Date.now()) + 500;
+    train.timer = setTimeout(() => { if (train.active) render(); }, Math.max(0, fxUntil - Date.now()) + 530);
+    return true;
+  }
+  function trainShowSolution() {
+    const P = trainPuzzle();
+    state = trainStartState(); history = []; lastMove = null; ui = freshUi(); fxCancel();
+    train.phase = 'solution'; train.results[train.i] = 'shown'; train.cardAt = Date.now() + 99999;
+    render();
+    const before = state; let ns;
+    try { ns = R.apply(state, P.solution); } catch (e) { console.error(e); train.cardAt = 0; render(); return; }
+    clearTimeout(train.timer);
+    train.timer = setTimeout(() => {
+      if (!train.active) return;
+      history.push(state); lastMove = { p: 0, a: P.solution }; state = ns; ui = freshUi();
+      render(); animateMove(before, P.solution, ns);
+      train.cardAt = Date.now() + Math.max(0, fxUntil - Date.now()) + 400;
+      train.timer = setTimeout(() => { if (train.active) render(); }, Math.max(0, fxUntil - Date.now()) + 430);
+    }, 500);
+  }
+  function trainNext() {
+    if (train.i + 1 < train.lesson.puzzles.length) { trainLoad(train.i + 1); return; }
+    train.phase = 'done';
+    const first = train.results.filter((r) => r === 'first').length, prog = trainProgress();
+    prog[train.lesson.id] = { done: true, best: Math.max(first, (prog[train.lesson.id] && prog[train.lesson.id].best) || 0) };
+    try { localStorage.setItem(TRAIN_KEY, JSON.stringify(prog)); } catch (e) { /* ignore */ }
+    O.track('train_done', { lesson: train.lesson.id, score: first });
+    render();
+  }
+  function renderCoachTrain() {
+    const el = $('coach');
+    if (!train.active) { el.hidden = true; return; }
+    const L = train.lesson, P = train.phase === 'theory' || train.phase === 'done' ? null : trainPuzzle();
+    let title = '', body = '', btns = [], cells = [];
+    if (train.phase === 'theory') {
+      const pg = L.theory[train.page];
+      title = pg.title; body = pg.body;
+      btns = [[train.page < L.theory.length - 1 ? 'Next' : "Let's practice", () => { if (train.page < L.theory.length - 1) train.page++; else trainLoad(0); render(); }]];
+    } else if (train.phase === 'practice') {
+      title = P.prompt; body = '';
+      for (const c of state.roll.cells) cells.push({ i: c, w: 10 });
+    } else if (Date.now() < train.cardAt) { el.hidden = true; return; }
+    else if (train.phase === 'feedback' && train.ok) {
+      title = 'Correct'; body = P.good; btns = [['Next', trainNext]];
+    } else if (train.phase === 'feedback') {
+      title = 'Not quite';
+      if (train.tries < 2) { body = P.hint; btns = [['Try again', () => { train.phase = 'practice'; trainLoad(train.i); train.tries = 1; render(); }]]; }
+      else { body = P.hint; btns = [['Show solution', trainShowSolution]]; }
+    } else if (train.phase === 'solution') {
+      title = 'Solution'; body = P.shown; btns = [['Next', trainNext]];
+    } else if (train.phase === 'done') {
+      const first = train.results.filter((r) => r === 'first').length, n = L.puzzles.length;
+      title = 'Lesson complete';
+      body = `${L.recap}<div class="tr-score">${first} of ${n} on the first try</div>`;
+      btns = [['Back to lessons', () => trainExit(true)]];
+    }
+    el.classList.add('v3');
+    $('coachStep').textContent = '';
+    $('coachTitle').textContent = title;
+    $('coachBody').innerHTML = body + (btns.length ? `<div class="coach-next">${btns.map((b, k) => `<button class="btn" data-k="${k}" type="button">${b[0]}</button>`).join('')}</div>` : '');
+    $('coachFoot').innerHTML = '';
+    $('coachNudge').textContent = '';
+    $('coachBody').querySelectorAll('.coach-next .btn').forEach((b) => { b.onclick = () => btns[+b.dataset.k][1](); });
+    el.hidden = false;
+    placeCoach(el, cells);
+  }
+
   // ---------- טוטוריאל ----------
   // משחק מתוסרט על 6×6 (src/tutorial.js): האדם משחק אדום, המחשב מבצע מהלכים קבועים. כל צעד של האדם מוכתב: מסומן על הלוח בדיוק מה לעשות,
   // ומעל פאנל היריב מופיע כרטיס הסבר שנסגר אחרי כל מהלך.
@@ -624,6 +757,18 @@
     const st = tutStepNow();
     return !!(st && st.who === 0 && st.hl && state.turn === 0 && Date.now() >= tut.cardAt);
   }
+  // הכרטיס צף על הלוח: למעלה או למטה, איפה שפחות מכסה את המשבצות שמעורבות במהלך (cells: [{ i, w }])
+  function placeCoach(el, cells) {
+    const bb = $('board').getBoundingClientRect(), sc = bb.width / W;
+    const cw = Math.min(bb.width - 12, 460);
+    el.style.left = (bb.left + (bb.width - cw) / 2) + 'px'; el.style.width = cw + 'px';
+    el.style.top = '0px'; el.style.minHeight = ''; el.style.maxHeight = '';
+    const h = el.offsetHeight, pad = 8;
+    const score = (t) => cells.reduce((acc, c) => { const y = bb.top + cellY(c.i) * sc, up = cellY(c.i) > CR * 4, lo = y - (up ? CR + 36 : CR + 4) * sc, hi = y + (up ? CR + 4 : CR + 36) * sc; return acc + (hi > t && lo < t + h ? c.w : 0); }, 0);
+    let best = bb.top + pad, bs = Infinity;
+    for (let t = bb.top + pad; t <= bb.bottom - pad - h + 0.5; t += 6) { const v = score(t); if (v < bs - 0.01) { bs = v; best = t; } }
+    el.style.top = best + 'px';
+  }
   function renderCoachV3() {
     const el = $('coach');
     if (!tut.active || state.winner !== null) { el.hidden = true; return; }
@@ -655,19 +800,10 @@
       render();
     };
     el.hidden = false;
-    // הכרטיס צף על הלוח: למעלה או למטה, איפה שפחות מכסה את המשבצות שמעורבות במהלך
-    const bb = $('board').getBoundingClientRect(), sc = bb.width / W;
-    const cw = Math.min(bb.width - 12, 460);
-    el.style.left = (bb.left + (bb.width - cw) / 2) + 'px'; el.style.width = cw + 'px';
-    el.style.top = '0px'; el.style.minHeight = ''; el.style.maxHeight = '';
-    const h = el.offsetHeight, pad = 8;
-    // מנסים כמה מקומות לאורך הלוח ובוחרים את זה שמכסה הכי פחות מהמשבצות (יעדי המהלך חשובים יותר מהמשבצות שהוטלו)
-    const score = (t) => cells.reduce((acc, c) => { const y = bb.top + cellY(c.i) * sc, up = cellY(c.i) > CR * 4, lo = y - (up ? CR + 36 : CR + 4) * sc, hi = y + (up ? CR + 4 : CR + 36) * sc; return acc + (hi > t && lo < t + h ? c.w : 0); }, 0);
-    let best = bb.top + pad, bs = Infinity;
-    for (let t = bb.top + pad; t <= bb.bottom - pad - h + 0.5; t += 6) { const v = score(t); if (v < bs - 0.01) { bs = v; best = t; } }
-    el.style.top = best + 'px';
+    placeCoach(el, cells);
   }
   function renderCoach() {
+    if (train.active) { renderCoachTrain(); return; }
     if (TV3) { renderCoachV3(); return; }
     const el = $('coach');
     if (!tut.active || state.winner !== null) { el.hidden = true; return; }
@@ -738,6 +874,7 @@
   }
   const trackLesson = () => O.track('tutorial_lesson_done', { n: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
   function startTutorial() {
+    if (train.active) trainExit(false);
     O.track('tutorial_start', { beta: BETA_FLAG }); tut.doneTracked = false;
     try { localStorage.setItem('province.tutprompt', '1'); } catch (e) { /* ignore */ }
     hideTutPrompt();
@@ -868,7 +1005,7 @@
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '') + (p === 0 && tutHighlightsMeter() ? ' hlprov' : '');
-      const tag = settings.mode === 'watch' ? (settings.watch === 'nnold' ? (p === 0 ? 'NEW AI' : 'OLD AI') : 'AI') : settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
+      const tag = settings.mode === 'train' ? (p === 0 ? 'You' : '') : settings.mode === 'watch' ? (settings.watch === 'nnold' ? (p === 0 ? 'NEW AI' : 'OLD AI') : 'AI') : settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let prov = '';
       for (let k = 0; k < R.WIN_PROVINCES; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
@@ -927,6 +1064,7 @@
     };
     const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
 
+    if (train.active && train.phase !== 'practice') { msg.innerHTML = ''; return; }
     if (online && renderOnlineDock(msg, addBtn, row)) return;
     if (state.winner !== null && tut.active) { msg.innerHTML = ''; return; }   // בטוטוריאל: בלי כפתור New game מתחת ללוח; ממשיכים דרך חלון הניצחון
     if (state.winner !== null) {
@@ -997,7 +1135,7 @@
     }
 
     msg.innerHTML = '';
-    if (tut.active) return;
+    if (tut.active || (train.active && ui.sel === null)) return;
     if (betaOn() && ui.sel !== null) {
       const n = optionsFrom(ui.sel).size;
       msg.innerHTML = n ? 'Tap a lit square to move soldiers' : 'This base can\'t move with this roll';
@@ -1029,7 +1167,7 @@
     const watching = settings.mode === 'watch' && !online && !tut.active;
     $('undoBtn').textContent = online ? 'Resign' : watching ? (paused ? 'Resume' : 'Pause') : 'Undo';
     $('undoBtn').hidden = !!online && !canResign;
-    $('undoBtn').disabled = tut.active || (watching ? state.winner !== null : (!online && history.length === 0));
+    $('undoBtn').disabled = tut.active || train.active || (watching ? state.winner !== null : (!online && history.length === 0));
     $('speedBtn').hidden = !watching;
     $('speedBtn').textContent = 'Speed: ' + SPEED_LABEL[settings.speed];
     $('tutBtn').hidden = !!online;
@@ -1047,6 +1185,7 @@
           : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
       $('winText').hidden = !tut.active;
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
+      $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
       $('winCommunity').hidden = communityDone() || !showCommunity(); communityText();
       o.hidden = false;
@@ -1375,6 +1514,7 @@
     leaveOnline();
     $('startModal').hidden = true; $('nameModal').hidden = true; $('bar').classList.remove('open');
     if (tut.active) tutExit();
+    if (train.active) trainExit(false);
     $('lobby').hidden = false;
     $('lbMsg').textContent = '';
     histLimit = 20;
@@ -1454,6 +1594,12 @@
     } catch (er) { netErr(er); refreshLobby(); }
   });
   $('lbAi').onclick = openNew;
+  // beta: Training lessons
+  if (BETA_FLAG) { $('lbTrain').hidden = false; }
+  $('lbTrain').onclick = () => { $('startModal').hidden = true; openTrainMenu(); };
+  $('trainClose').onclick = () => { $('trainModal').hidden = true; };
+  $('trainModal').addEventListener('click', (e) => { if (e.target === $('trainModal')) $('trainModal').hidden = true; });
+  $('winTrain').onclick = () => { $('overlay').hidden = true; openTrainMenu(); };
   // beta: watch the computer play itself
   if (BETA_FLAG) { $('lbWatch').hidden = false; $('lbWatchOld').hidden = false; }
   const openWatch = (m) => { startMode = m; $('lbCont').hidden = true; $('startMain').hidden = true; $('startSize').hidden = false; };
@@ -1543,7 +1689,7 @@
     if (tut.active) { pending = Object.assign({}, tut.backup ? tut.backup.settings : settings, { mode: 'ai', board: 6, human: 0 }); startNew(); } else if (online) openLobby(); else openNew();
   };
   $('tutBtn').onclick = startTutorial;
-  $('coachExit').onclick = tutExit;
+  $('coachExit').onclick = () => (train.active ? trainExit(false) : tutExit());
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 

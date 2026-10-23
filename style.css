@@ -330,3 +330,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tp-card.big .tp-txt span { font-size: 14px; }
 .tp-card.big .tp-go { padding: 13px 20px; font-size: 13px; background: #34c98a; color: #fff; box-shadow: 0 6px 16px -6px rgba(52,201,138,.8); }
 @keyframes tpwiggle { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-6px); } 86% { transform: none; } 93% { transform: translateY(-3px); } }
+
+/* ---- Training (beta) ---- */
+.tr-group { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 12px 2px 2px; }
+.tr-lesson { display: flex; align-items: center; justify-content: space-between; text-align: left; }
+.tr-lesson em { font-style: normal; font-weight: 700; color: #34c98a; font-size: 14px; }
+.tr-lesson.soon { opacity: .45; }
+.tr-lesson.soon em { color: var(--muted); font-weight: 600; font-size: 12px; }
+.tr-score { margin-top: 8px; font-weight: 700; color: #34c98a; }
