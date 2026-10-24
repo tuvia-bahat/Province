@@ -135,6 +135,11 @@
       <div id="aiGames" class="aigames"></div>
     </div>
 
+    <div class="card" style="margin-top:14px">
+      <div class="geohead"><h2>Feedback</h2></div>
+      <div id="fbList" class="aigames"></div>
+    </div>
+
     <div class="grid two">
       <div class="card"><h2>Tutorial</h2><div class="sub">Visitors who completed each lesson</div><div id="lessons"></div></div>
       <div class="card"><h2>Vs computer</h2><table id="aiTable"></table></div>
@@ -189,6 +194,7 @@
     $('msg').textContent = '';
     render(data);
     loadAiGames();
+    loadFeedback();
   }
 
   $('aiGames').addEventListener('click', async (e) => {
@@ -197,6 +203,20 @@
     if (error) { $('aiSum').textContent = error.message; return; }
     loadAiGames();
   });
+
+  async function loadFeedback() {
+    const box = $('fbList');
+    const { data, error } = await sb.rpc('admin_feedback', { p_limit: 200 });
+    if (error) { box.innerHTML = '<div class="sub">' + (/function|schema cache|does not exist/i.test(error.message) ? 'Run supabase/feedback.sql in the Supabase SQL Editor to start collecting feedback.' : error.message) + '</div>'; return; }
+    if (!(data || []).length) { box.innerHTML = '<div class="sub">No feedback yet</div>'; return; }
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmt = (iso) => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
+    box.innerHTML = '<table><tr><th>Time</th><th>From</th><th>After</th><th>Feedback</th></tr>' + data.map((f) => {
+      const c = f.ctx || {}, from = f.country === 'IL' ? '<span class="tagil">Israel</span>' : f.country ? '<span class="taggl">Global</span>' : '<span class="ab">?</span>';
+      const after = (c.mode === 'ai' ? 'vs computer' : c.mode ? esc(c.mode) : '') + (c.board ? ' ' + c.board + '\u00d7' + c.board : '') + (c.won === true ? ' \u00b7 won' : c.won === false ? ' \u00b7 lost' : '');
+      return `<tr><td>${fmt(f.at)}</td><td>${from}</td><td>${after}</td><td style="white-space:normal;min-width:260px">${esc(f.body)}</td></tr>`;
+    }).join('') + '</table>';
+  }
 
   async function loadAiGames() {
     const box = $('aiGames'), sum = $('aiSum');

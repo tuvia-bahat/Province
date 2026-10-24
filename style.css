@@ -338,3 +338,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tr-lesson.soon { opacity: .45; }
 .tr-lesson.soon em { color: var(--muted); font-weight: 600; font-size: 12px; }
 .tr-score { margin-top: 8px; font-weight: 700; color: #34c98a; }
+
+.fb-btn { border: 0; cursor: pointer; font-family: inherit; }
+#fbModal { z-index: 200; }
+#fbModal .modal { border-radius: 24px; padding: 22px 18px 16px; gap: 14px; width: min(340px, 100%); }
+#fbModal h2 { font-size: 13px; font-weight: 600; letter-spacing: .1em; color: var(--muted); }
+#fbIn { width: 100%; box-sizing: border-box; resize: none; border: 1px solid #e3e5ea; border-radius: 14px; padding: 12px; font: inherit; font-size: 15px; color: inherit; background: #fff; text-transform: none; letter-spacing: 0; }
+#fbThanks { font-size: 14px; color: #25a85a; }

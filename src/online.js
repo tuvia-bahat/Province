@@ -120,6 +120,13 @@
       body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn, p_name: g.name || null }),
     }).then((r) => { if (!r.ok) throw new Error('log ' + r.status); });
   }
+  function sendFeedback(body, ctx) {
+    return fetch(URL + '/rest/v1/rpc/submit_feedback', {
+      method: 'POST', keepalive: true,
+      headers: { 'Content-Type': 'application/json', apikey: KEY },
+      body: JSON.stringify({ p_vid: VID, p_body: body, p_ctx: ctx || {} }),
+    }).then((r) => { if (!r.ok) throw new Error('feedback ' + r.status); });
+  }
   // a finished game that could not be delivered (offline, server error, table not created yet) is kept and retried on the next visit
   function logAiGame(g) {
     try {
@@ -158,7 +165,7 @@
   }
 
   root.Online = {
-    track, geo, logAiGame, retryAiLogs, publicAiGames, publicAiGame, get returning() { return returning; },
+    track, geo, sendFeedback, logAiGame, retryAiLogs, publicAiGames, publicAiGame, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };

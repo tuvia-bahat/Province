@@ -211,7 +211,8 @@
   }
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
-    state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
+    const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
+    state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : fd ? R.roll(state, fd[0], fd[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
     recAi('roll', { w: state.roll.w, b: state.roll.b }, state.turn, state);
@@ -542,9 +543,11 @@
   }
   function aiStep() {
     aiTimer = null;
+    if (window.__demoMode) return;   // dev hook: demo footage is driven by __demoRoll/__demoAct
     if (!isAiTurn()) return;
     if (tut.active) { tutAiStep(); return; }
     if (!state.roll) { doRoll(); return; }
+    if (window.__scriptAi && window.__scriptAi.length) { aiApply(window.__scriptAi.shift()); return; }   // dev hook for recording demo footage
     let a = { type: 'pass' };
     if (R.hasAnyMove(state)) {
       if (vnetAsk(state, aiApply)) return;   // beta: neural-network computer (worker); the move is applied when it answers
@@ -552,6 +555,8 @@
     }
     aiApply(a);
   }
+  window.__demoRoll = (w, b) => { state = R.roll(state, w, b); render(); };   // dev hooks for recording a real game's moves with the real animations
+  window.__demoAct = (a) => aiApply(a);
   function aiApply(a) {
     const p = state.turn;
     const prevS = state;
@@ -1226,7 +1231,8 @@
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
-      $('winCommunity').hidden = communityDone() || !showCommunity(); communityText();
+      $('winCommunity').hidden = BETA_FLAG || communityDone() || !showCommunity(); communityText();
+      $('winFeedback').hidden = !BETA_FLAG || tut.active || feedbackDone();
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -1715,6 +1721,17 @@
   $('lbCommunity').addEventListener('click', () => markCommunity('lobby'));
   applyCommunity();
   $('winCommunity').addEventListener('click', () => markCommunity('win'));
+  // feedback after a game (beta): stored on the server, read in the dashboard
+  const feedbackDone = () => { try { return localStorage.getItem('province.feedback') === '1'; } catch (e) { return false; } };
+  const fbShow = (on) => { $('fbModal').hidden = !on; if (on) { $('fbThanks').hidden = true; $('fbSend').hidden = false; $('fbIn').hidden = false; $('fbIn').value = ''; setTimeout(() => $('fbIn').focus(), 50); } };
+  $('winFeedback').onclick = () => { O.track('feedback_open'); fbShow(true); };
+  $('fbCancel').onclick = () => fbShow(false);
+  $('fbSend').onclick = () => {
+    const t = $('fbIn').value.trim(); if (t.length < 2) return;
+    O.sendFeedback(t, { board: settings.board, mode: settings.mode, won: state.winner === settings.human, beta: !!BETA_FLAG }).catch(() => {});
+    O.track('feedback_sent'); try { localStorage.setItem('province.feedback', '1'); } catch (e) { /* ignore */ }
+    $('winFeedback').hidden = true; $('fbIn').hidden = true; $('fbSend').hidden = true; $('fbThanks').hidden = false; setTimeout(() => fbShow(false), 1600);
+  };
   $('lbInstallX').onclick = () => { O.track('install_dismiss'); try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
   renderInstall();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
