@@ -1231,8 +1231,8 @@
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
-      $('winCommunity').hidden = BETA_FLAG || communityDone() || !showCommunity(); communityText();
-      $('winFeedback').hidden = !BETA_FLAG || tut.active || feedbackDone();
+      $('winCommunity').hidden = true;
+      $('winFeedback').hidden = tut.active || feedbackDone();
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
