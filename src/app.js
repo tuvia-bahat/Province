@@ -1232,7 +1232,7 @@
       $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
       $('winCommunity').hidden = true;
-      $('winFeedback').hidden = tut.active || feedbackDone();
+      $('winFeedback').hidden = feedbackDone();
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -1728,7 +1728,7 @@
   $('fbCancel').onclick = () => fbShow(false);
   $('fbSend').onclick = () => {
     const t = $('fbIn').value.trim(); if (t.length < 2) return;
-    O.sendFeedback(t, { board: settings.board, mode: settings.mode, won: state.winner === settings.human, beta: !!BETA_FLAG }).catch(() => {});
+    O.sendFeedback(t, { board: settings.board, mode: settings.mode, won: state.winner === settings.human, tutorial: !!tut.active, beta: !!BETA_FLAG }).catch(() => {});
     O.track('feedback_sent'); try { localStorage.setItem('province.feedback', '1'); } catch (e) { /* ignore */ }
     $('winFeedback').hidden = true; $('fbIn').hidden = true; $('fbSend').hidden = true; $('fbThanks').hidden = false; setTimeout(() => fbShow(false), 1600);
   };
