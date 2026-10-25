@@ -211,10 +211,10 @@
     if (!(data || []).length) { box.innerHTML = '<div class="sub">No feedback yet</div>'; return; }
     const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const fmt = (iso) => { try { return new Date(iso).toLocaleString('en-GB', { timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
-    box.innerHTML = '<table><tr><th>Time</th><th>From</th><th>After</th><th>Feedback</th></tr>' + data.map((f) => {
+    box.innerHTML = '<table><tr><th>Time</th><th>Player</th><th>From</th><th>After</th><th>Feedback</th></tr>' + data.map((f) => {
       const c = f.ctx || {}, from = f.country === 'IL' ? '<span class="tagil">Israel</span>' : f.country ? '<span class="taggl">Global</span>' : '<span class="ab">?</span>';
       const after = (c.tutorial ? 'tutorial' : c.mode === 'ai' ? 'vs computer' : c.mode ? esc(c.mode) : '') + (c.board ? ' ' + c.board + '\u00d7' + c.board : '') + (c.won === true ? ' \u00b7 won' : c.won === false ? ' \u00b7 lost' : '');
-      return `<tr><td>${fmt(f.at)}</td><td>${from}</td><td>${after}</td><td style="white-space:normal;min-width:260px">${esc(f.body)}</td></tr>`;
+      return `<tr><td>${fmt(f.at)}</td><td><b>${esc(c.name || 'Unknown')}</b> <span class="ab">${esc(f.vid || '')}</span></td><td>${from}</td><td>${after}</td><td style="white-space:normal;min-width:260px">${esc(f.body)}</td></tr>`;
     }).join('') + '</table>';
   }
 
@@ -260,7 +260,7 @@
       ['Joined an online game', n(s.online_join)],
       ['Used Invite a friend', n(s.invite_click)],
       ['Installed as an app', n(s.app_installed)],
-      ['Opened the WhatsApp community', n(s.community_click)],
+      ['Opened the community invite (Discord; WhatsApp before)', n(s.community_click)],
     ];
     $('funnel').innerHTML = funnel.map(([k, v]) => row(k, v, visitors)).join('');
 

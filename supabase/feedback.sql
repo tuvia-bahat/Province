@@ -1,5 +1,5 @@
 -- Province: player feedback written at the end of a game. Safe to re-run. Run in the Supabase SQL Editor (needs supabase/analytics.sql first: uses is_admin()).
--- The visitor id is stored only to limit spam (5 messages a day per visitor); the dashboard shows only the country.
+-- The visitor id is stored only to limit spam (5 messages a day per visitor); the dashboard shows the player's name (if they typed one), the first 6 characters of the visitor id (the same id the games list shows) and the country.
 
 create table if not exists public.feedback (
   id bigserial primary key,
@@ -28,7 +28,7 @@ create or replace function public.admin_feedback(p_limit int default 200)
 returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   if not is_admin() then raise exception 'forbidden'; end if;
-  return (select coalesce(jsonb_agg(jsonb_build_object('id', f.id, 'at', f.created_at, 'body', f.body, 'ctx', f.ctx,
+  return (select coalesce(jsonb_agg(jsonb_build_object('id', f.id, 'at', f.created_at, 'body', f.body, 'ctx', f.ctx, 'vid', left(f.vid, 6),
             'country', (select e.country from events e where e.vid = f.vid and e.country is not null order by e.at desc limit 1)) order by f.created_at desc), '[]'::jsonb)
           from (select * from feedback order by created_at desc limit greatest(1, least(coalesce(p_limit, 200), 500))) f);
 end $$;

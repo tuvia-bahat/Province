@@ -1706,7 +1706,7 @@
     const il = isIL();
     for (const a of [$('lbCommunity'), $('winCommunity')]) {
       a.dir = il ? 'rtl' : 'ltr'; a.lang = il ? 'he' : 'en';
-      const t = a.lastChild; if (t && t.nodeType === 3) t.textContent = il ? 'הצטרפו לקהילת הוואטסאפ של המשחק' : 'Join the Province WhatsApp community';
+      const t = a.lastChild; if (t && t.nodeType === 3) t.textContent = il ? 'הצטרפו לקהילת הדיסקורד של המשחק' : 'Join the Province Discord community';
     }
   }
   function applyCommunity() { $('lbCommunity').hidden = !showCommunity(); communityText(); }
@@ -1728,7 +1728,7 @@
   $('fbCancel').onclick = () => fbShow(false);
   $('fbSend').onclick = () => {
     const t = $('fbIn').value.trim(); if (t.length < 2) return;
-    O.sendFeedback(t, { board: settings.board, mode: settings.mode, won: state.winner === settings.human, tutorial: !!tut.active, beta: !!BETA_FLAG }).catch(() => {});
+    O.sendFeedback(t, { board: settings.board, mode: settings.mode, name: O.getName() || '', won: state.winner === settings.human, tutorial: !!tut.active, beta: !!BETA_FLAG }).catch(() => {});
     O.track('feedback_sent'); try { localStorage.setItem('province.feedback', '1'); } catch (e) { /* ignore */ }
     $('fbIn').hidden = true; $('fbSend').hidden = true; $('fbThanks').hidden = false; setTimeout(() => fbShow(false), 1600);
   };
