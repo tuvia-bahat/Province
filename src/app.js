@@ -231,7 +231,6 @@
   function doReroll() {
     if (!canReroll()) return;
     applyReroll();
-    showRerollMsg(R.hasAnyMove(state) ? 'Re-rolled · the first squares are locked' : 'Re-rolled · still no legal move', 2200);
   }
   function aiRerollSoon() {
     const shown = state;
