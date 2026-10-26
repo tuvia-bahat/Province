@@ -346,5 +346,3 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #fbIn { width: 100%; box-sizing: border-box; resize: none; border: 1px solid #e3e5ea; border-radius: 14px; padding: 12px; font: inherit; font-size: 15px; color: inherit; background: #fff; text-transform: none; letter-spacing: 0; }
 #fbThanks { font-size: 14px; color: #25a85a; }
 
-#rerollMsg { position: fixed; left: 50%; top: 46%; transform: translate(-50%, -50%) scale(.92); z-index: 150; padding: 12px 20px; border-radius: 999px; background: rgba(27,30,36,.92); color: #fff; font-size: 15px; font-weight: 600; letter-spacing: .02em; white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .2s, transform .2s; }
-#rerollMsg.on { opacity: 1; transform: translate(-50%, -50%) scale(1); }

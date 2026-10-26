@@ -217,10 +217,6 @@
   let rerollTimer = null;
   const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
   const canReroll = () => BETA_FLAG && !tut.active && !train.active && !online && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
-  function showRerollMsg(text, ms) {
-    const m = $('rerollMsg'); m.textContent = text; m.classList.add('on');
-    clearTimeout(showRerollMsg.t); showRerollMsg.t = setTimeout(() => m.classList.remove('on'), ms);
-  }
   function applyReroll() {
     const old = state.roll.cells.slice(); let ns = rollDice();
     ns.roll.cells = ns.roll.cells.filter((c) => !old.includes(c)); ns.roll.rerolled = true; ns.roll.blocked = old;
@@ -239,7 +235,7 @@
       if (state !== shown) { scheduleAi(); return; }   // the game was changed meanwhile (new game, undo...)
       applyReroll();
     }, 1500);
-    showRerollMsg('Computer: no legal move · re-rolling', 1500); render();
+    render();
   }
   function finishRoll() {
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
