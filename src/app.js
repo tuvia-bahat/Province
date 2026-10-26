@@ -1225,7 +1225,7 @@
       addBtn(row(), 'Cancel', 'soft sm', () => { ui.sel = null; render(); });
       return;
     }
-    if (canReroll()) { const r3 = row(); addBtn(r3, 'Re-roll', 'soft', doReroll); addBtn(r3, 'Pass', 'soft', doPass); return; }
+    if (canReroll()) { addBtn(row(), 'Re-roll', 'soft', doReroll); return; }   // Pass only appears after the re-roll was used
     addBtn(row(), 'Pass', 'soft', doPass);
   }
 
