@@ -163,6 +163,20 @@
     const ch = sb.channel('aigame-' + gid).on('broadcast', { event: 'ev' }, (m) => cb(m.payload)).subscribe();
     return () => sb.removeChannel(ch);
   }
+  // who is watching: everyone in a game (players and viewers) joins a presence channel named after the game; viewers announce role 'viewer'.
+  // cb({ count }) = number of viewers now, cb({ joined: true }) = a new viewer arrived. Returns a function that leaves the channel.
+  function watchPresence(name, role, cb) {
+    let ch = null, dead = false;
+    init().then(() => {
+      if (dead) return;
+      const key = Math.random().toString(36).slice(2) + Date.now().toString(36); let ready = false;
+      ch = sb.channel('watch-' + name, { config: { presence: { key } } });
+      ch.on('presence', { event: 'sync' }, () => { const st = ch.presenceState(); let n = 0; for (const k in st) if (st[k].some((m) => m.role === 'viewer')) n++; cb({ count: n }); })
+        .on('presence', { event: 'join' }, (p) => { if (ready && p.key !== key && (p.newPresences || []).some((m) => m.role === 'viewer')) cb({ joined: true }); })
+        .subscribe((st) => { if (st === 'SUBSCRIBED') { ch.track({ role }); setTimeout(() => { ready = true; }, 1500); } });
+    }).catch(() => {});
+    return () => { dead = true; if (ch) { try { sb.removeChannel(ch); } catch (e) { /* ignore */ } ch = null; } };
+  }
   async function publicAiGame(id) { await init(); return must(await sb.rpc('public_ai_game', { p_id: id })); }
 
   // מיקום גס (עיר) מ-Worker של Cloudflare, אם הוגדר כתובת; נכשל בשקט ובלי לעכב את האתר יותר מ-2 שניות
@@ -185,7 +199,7 @@
   }
 
   root.Online = {
-    track, geo, sendFeedback, logAiGame, retryAiLogs, publicAiGames, publicAiGame, aiLive, watchAiGame, get returning() { return returning; },
+    track, geo, sendFeedback, logAiGame, retryAiLogs, publicAiGames, publicAiGame, aiLive, watchAiGame, watchPresence, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };

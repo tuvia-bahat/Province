@@ -183,6 +183,24 @@
     save(); render(); animateMove(prev, a, ns);
     return true;
   }
+  // ---- viewers of a live game: eye + count, floating eye when somebody joins ----
+  function setWatchers(n) { $('watchN').textContent = n; $('watchers').hidden = !n || !BETA_FLAG; }   // beta: only shown with ?beta=1 (viewers are always counted)
+  function onWatchers(ev) {
+    if (ev.count !== undefined) setWatchers(ev.count);
+    if (ev.joined && BETA_FLAG) {
+      const w = $('watchers'); w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump');
+      const f = document.createElement('div'); f.className = 'watch-float'; f.innerHTML = w.querySelector('svg').outerHTML.replace('width="17" height="17"', 'width="26" height="26"');
+      $('app').appendChild(f); setTimeout(() => f.remove(), 1900);
+    }
+  }
+  let aiPres = null;
+  function aiWatchSync() {   // the player of a game vs the computer listens for viewers on a channel named after the game
+    if (!BETA_FLAG) return;
+    if (!aiRec || aiRec.sent || aiRec.events.length < 1) { if (aiPres) { aiPres.leave(); aiPres = null; setWatchers(0); } return; }
+    if (aiPres && aiPres.gid === aiRec.gid) return;
+    if (aiPres) aiPres.leave();
+    setWatchers(0); aiPres = { gid: aiRec.gid, leave: O.watchPresence('ai-' + aiRec.gid, 'player', onWatchers) };
+  }
   // ---- יומן משחק נגד המחשב: נשמר לדשבורד (supabase/ai_games.sql) ----
   let aiRec = null;   // { gid, size, name, events: [{ n, actor, kind, data }], sigs: [חתימת המצב אחרי כל אירוע], nn, sent }
   const posSig = (s) => JSON.stringify([s.cells.map((c) => (c.o === null ? 0 : c.o + 1) * 100 + c.n), s.bridges, s.turn, s.roll ? s.roll.cells : null, s.winner]);
@@ -192,6 +210,7 @@
     const ev = { n: aiRec.events.length + 1, actor, kind, data };
     aiRec.events.push(ev); aiRec.sigs.push(posSig(after));
     O.aiLive(aiRec.gid, { n: ev.n, ev });
+    aiWatchSync();
     queueLive();
   }
   function recSync() {   // אחרי ביטול מהלך: חותכים את היומן עד למצב הנוכחי
@@ -209,7 +228,7 @@
   function sendAiLog(ended) {
     if (!aiRec || aiRec.sent || aiRec.broken || aiRec.events.length < 4) return;
     aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; 'live' ו'נטוש' יכולים להידרס אם ממשיכים
-    if (ended === 'win') O.aiLive(aiRec.gid, { end: true });
+    if (ended === 'win') { O.aiLive(aiRec.gid, { end: true }); setTimeout(aiWatchSync, 0); }
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn, beta: !!BETA_FLAG });
   }
   // beta rule: once per turn the player may re-roll the dice. After a re-roll the squares of the first roll are locked for this turn
@@ -989,6 +1008,7 @@
     if (aiRec && !aiRec.sent) sendAiLog('abandoned');
     aiRec = settings.mode === 'ai' ? { gid: (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null, size: settings.board, name: settings.name || null, events: [], sigs: [], nn: false, sent: false } : null;
     if (aiRec && !aiRec.gid) aiRec = null;
+    aiWatchSync();
     gameSeq++; if (settings.mode === 'ai') O.track('ai_start', { board: settings.board, nn: !!window.Worker });
     save(); render();
   }
@@ -1460,7 +1480,7 @@
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
     const g = opts.inject ? opts.inject.game : await O.getGame(id);
     const seat = g.p0 === O.uid ? 0 : g.p1 === O.uid ? 1 : null;
-    if (online) { if (online.unsub) online.unsub(); clearInterval(online.tick); }
+    if (online) { if (online.unsub) online.unsub(); if (online.presLeave) online.presLeave(); clearInterval(online.tick); }
     else if (!localBak) localBak = { state, history, settings: Object.assign({}, settings) };
     settings = Object.assign({}, settings, { mode: 'online', board: g.size });
     useBoard(g.size); applyRules();
@@ -1469,6 +1489,8 @@
     closeLobby(); $('overlay').hidden = true;
     $('overlay').dataset.dismissed = (opts.replay || g.status === 'finished') ? '1' : '';
     if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow, (row) => { if (online) online.game.live = row; });
+    setWatchers(0);
+    if (!opts.replay && ((seat !== null && BETA_FLAG) || (seat === null && g.status === 'active')) && g.status !== 'finished') online.presLeave = O.watchPresence('g-' + id, seat === null ? 'viewer' : 'player', onWatchers);
     const moves = opts.inject ? opts.inject.moves : await O.getMoves(id);
     if (opts.replay) {
       const S = [R.newGame()];
@@ -1589,6 +1611,8 @@
   function leaveOnline() {
     if (!online) return;
     if (online.unsub) online.unsub();
+    if (online.presLeave) online.presLeave();
+    setWatchers(0);
     clearInterval(online.tick);
     if (online.replay && online.replay.timer) clearTimeout(online.replay.timer);
     online = null;
@@ -1848,6 +1872,7 @@
       else if (m.end) { setTimeout(poll, 1200); }
     });
     online.tick = setInterval(poll, 8000);
+    online.presLeave = O.watchPresence('ai-' + id, 'viewer', onWatchers);
     poll();
   }
   try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
