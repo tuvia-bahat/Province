@@ -1168,7 +1168,7 @@
     }
     if (ph === 'skip') {
       msg.innerHTML = '';
-      if (canReroll()) { const r2 = row(); addBtn(r2, 'Re-roll', 'soft', doReroll); addBtn(r2, 'Pass', '', doSkip); return; }
+      if (canReroll()) { addBtn(row(), 'Re-roll', 'wide', doReroll); return; }   // no legal move: the only sensible choice is to try again
       addBtn(row(), 'Pass', tut.active ? 'guide' : '', doSkip);
       return;
     }
