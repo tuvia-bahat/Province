@@ -1,0 +1,58 @@
+{
+ "6": {
+  "old": {
+   "n": 200,
+   "finished": 199,
+   "turns_mean": 43.904522613065325,
+   "turns_med": 39,
+   "q1": 25.0,
+   "q3": 55.0,
+   "acts_mean": 38.768844221105525,
+   "skips_mean": 3.9748743718592965,
+   "rerolls_mean": 0,
+   "tmax": 155,
+   "tmin": 11
+  },
+  "reroll": {
+   "n": 200,
+   "finished": 196,
+   "turns_mean": 45.31122448979592,
+   "turns_med": 41.0,
+   "q1": 27.25,
+   "q3": 54.75,
+   "acts_mean": 43.64795918367347,
+   "skips_mean": 0,
+   "rerolls_mean": 5.36734693877551,
+   "tmax": 142,
+   "tmin": 11
+  }
+ },
+ "8": {
+  "old": {
+   "n": 100,
+   "finished": 95,
+   "turns_mean": 74.76842105263158,
+   "turns_med": 68,
+   "q1": 50.0,
+   "q3": 93.0,
+   "acts_mean": 65.70526315789473,
+   "skips_mean": 7.28421052631579,
+   "rerolls_mean": 0,
+   "tmax": 203,
+   "tmin": 25
+  },
+  "reroll": {
+   "n": 100,
+   "finished": 92,
+   "turns_mean": 90.03260869565217,
+   "turns_med": 82.5,
+   "q1": 59.0,
+   "q3": 103.0,
+   "acts_mean": 84.8804347826087,
+   "skips_mean": 0,
+   "rerolls_mean": 11.782608695652174,
+   "tmax": 307,
+   "tmin": 24
+  }
+ }
+}

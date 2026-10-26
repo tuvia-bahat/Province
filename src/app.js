@@ -213,6 +213,8 @@
     const sc = tut.active ? tutStepNow() : null;
     const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
     state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : fd ? R.roll(state, fd[0], fd[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
+    // beta rule: when the dice give the player no legal move they are re-rolled automatically (not in the tutorial or online games, where the server records the dice)
+    if (BETA_FLAG && !sc && !fd && !online) for (let k = 0; k < 200 && !R.hasAnyMove(state); k++) state = R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
     recAi('roll', { w: state.roll.w, b: state.roll.b }, state.turn, state);
