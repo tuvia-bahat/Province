@@ -221,16 +221,16 @@
     save(); render();
   }
   function rerollSoon() {
-    const shown = state;
-    lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true; render();
-    const m = $('rerollMsg'); m.classList.add('on');
-    rerollTimer = setTimeout(() => {
+    const shown = state, m = $('rerollMsg');
+    rerollTimer = setTimeout(() => {   // set before render(): render schedules the computer's turn, which must wait for the re-roll
       rerollTimer = null; m.classList.remove('on');
       if (state !== shown) { scheduleAi(); return; }   // the game was changed meanwhile (new game, undo...)
       state = rollDice();
       if (!R.hasAnyMove(state)) { rerollSoon(); return; }
       finishRoll();
     }, 1500);
+    lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true; render();
+    m.classList.add('on');
   }
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
