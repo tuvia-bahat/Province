@@ -207,7 +207,7 @@
   function sendAiLog(ended) {
     if (!aiRec || aiRec.sent || aiRec.broken || aiRec.events.length < 4) return;
     aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; 'live' ו'נטוש' יכולים להידרס אם ממשיכים
-    O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn });
+    O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn, beta: !!BETA_FLAG });
   }
   // beta rule: when the dice give the player no legal move they are shown for a moment and then re-rolled automatically
   // (not in the tutorial or online games, where the server records the dice)
@@ -1789,6 +1789,7 @@
   }
   try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
   setTimeout(() => { try { O.retryAiLogs(); } catch (e) { /* ignore */ } }, 4000);
+  setInterval(() => { if (!$('lobby').hidden && document.visibilityState === 'visible') refreshLobby(); }, 15000);   // games vs the computer being played now are not pushed by the realtime channel
   handleJoinLink();
   setTimeout(maybeTutPrompt, 2000);
   O.geo().then((g) => { setCountry(g.country); return g; }).then((g) => O.track('visit', Object.assign({ mobile: isPhone, standalone: standalone(), returning: O.returning }, g)));

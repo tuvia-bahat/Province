@@ -230,7 +230,7 @@
       const res = g.ended === 'live' ? '<span class="ab">Playing…</span>' : g.ended !== 'win' ? `<span class="qt">Left after ${g.my_moves} moves</span>` : g.winner === 0 ? '<span class="pw">Player won</span>' : '<span class="cw">Computer won</span>';
       const from = g.country === 'IL' ? '<span class="tagil">Israel</span>' : g.country ? '<span class="taggl">Global</span>' : '<span class="ab">?</span>';
       const nm = String(g.name || 'Player').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-      return `<tr class="${g.hidden ? 'dim' : ''}"><td>${fmt(g.at)}</td><td><b>${nm}</b> <span class="ab">${g.vid}</span></td><td>${from}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a> · <a href="#" data-hide="${g.id}" data-to="${g.hidden ? 0 : 1}">${g.hidden ? 'Show' : 'Hide'}</a></td></tr>`;
+      return `<tr class="${g.hidden ? 'dim' : ''}"><td>${fmt(g.at)}</td><td><b>${nm}</b>${g.beta ? ' <span class="ab">beta</span>' : ''} <span class="ab">${g.vid}</span></td><td>${from}</td><td>${g.size}×${g.size}</td><td>${res}</td><td>${g.moves}</td><td><a href="index.html?aireplay=${g.id}" target="_blank" rel="noopener">Watch</a> · <a href="#" data-hide="${g.id}" data-to="${g.hidden ? 0 : 1}">${g.hidden ? 'Show' : 'Hide'}</a></td></tr>`;
     }).join('') + '</table>';
   }
 

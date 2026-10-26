@@ -38,9 +38,11 @@
     ]);
     const fin = must(finished);
     // משחקים נגד המחשב נכנסים להיסטוריה, ממוינים לפי זמן
-    const ai = (await publicAiGames(histLimit + 1)).map((a) => ({ id: a.id, ai: true, quit: !!a.quit, size: a.size, name0: a.name, name1: 'Computer', winner: a.winner, last_move_at: a.at, nn: a.nn }));
+    const aiAll = (await publicAiGames(histLimit + 1)).map((a) => ({ id: a.id, ai: true, live: !!a.live, quit: !!a.quit, size: a.size, name0: a.name, name1: 'Computer', winner: a.winner, last_move_at: a.at, nn: a.nn }));
+    const ai = aiAll.filter((a) => !a.live), aiLive = aiAll.filter((a) => a.live);   // games being played against the computer right now sit with the live games
     const all = fin.concat(ai).sort((x, y) => String(y.last_move_at).localeCompare(String(x.last_move_at)));
-    return { open: must(open), active: must(active), finished: all.slice(0, histLimit), moreFinished: all.length > histLimit };
+    const act = must(active).concat(aiLive);
+    return { open: must(open), active: act, finished: all.slice(0, histLimit), moreFinished: all.length > histLimit };
   }
   async function getGame(id) {
     await init();
@@ -117,7 +119,7 @@
     return fetch(URL + '/rest/v1/rpc/log_ai_game', {
       method: 'POST', keepalive: true,
       headers: { 'Content-Type': 'application/json', apikey: KEY },
-      body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn, p_name: g.name || null }),
+      body: JSON.stringify({ p_gid: g.gid, p_vid: VID, p_size: g.size, p_events: g.events, p_winner: g.winner === undefined ? null : g.winner, p_ended: g.ended, p_nn: !!g.nn, p_name: g.name || null, ...(g.beta ? { p_beta: true } : {}) }),
     }).then((r) => { if (!r.ok) throw new Error('log ' + r.status); });
   }
   function sendFeedback(body, ctx) {

@@ -20,6 +20,7 @@ create table if not exists public.ai_games (
 );
 alter table public.ai_games add column if not exists name text;
 alter table public.ai_games add column if not exists hidden boolean not null default false;
+alter table public.ai_games add column if not exists beta boolean not null default false;   -- played with ?beta=1: never shown in the public lobby list
 alter table public.ai_games add column if not exists my_moves int not null default 0;   -- actions (moves and passes) the player made
 alter table public.ai_games drop constraint if exists ai_games_ended_check;
 alter table public.ai_games add constraint ai_games_ended_check check (ended in ('win', 'abandoned', 'live'));
@@ -29,7 +30,8 @@ alter table public.ai_games enable row level security;   -- no policies: all acc
 
 drop function if exists public.log_ai_game(uuid, text, int, jsonb, int, text, boolean);
 drop function if exists public.log_ai_game(uuid, text, int, jsonb, int, text, boolean, text);
-create or replace function public.log_ai_game(p_gid uuid, p_vid text, p_size int, p_events jsonb, p_winner int, p_ended text, p_nn boolean, p_name text default null)
+drop function if exists public.log_ai_game(uuid, text, int, jsonb, int, text, boolean, text, boolean);
+create or replace function public.log_ai_game(p_gid uuid, p_vid text, p_size int, p_events jsonb, p_winner int, p_ended text, p_nn boolean, p_name text default null, p_beta boolean default false)
 returns void language plpgsql security definer set search_path = public as $$
 declare nm text := left(coalesce(nullif(trim(p_name), ''), 'Player'), 20); mine int;
 begin
@@ -40,23 +42,27 @@ begin
   if not exists (select 1 from ai_games where gid = p_gid)
      and (select count(*) from ai_games where vid = p_vid and created_at > now() - interval '1 day') >= 200 then return; end if;
   select count(*) into mine from jsonb_array_elements(p_events) e where e ->> 'actor' = '0' and e ->> 'kind' in ('act', 'skip');
-  insert into ai_games (gid, vid, size, events, moves, my_moves, winner, ended, nn, name)
-  values (p_gid, p_vid, p_size, p_events, jsonb_array_length(p_events), mine, p_winner, p_ended, coalesce(p_nn, false), nm)
+  insert into ai_games (gid, vid, size, events, moves, my_moves, winner, ended, nn, name, beta)
+  values (p_gid, p_vid, p_size, p_events, jsonb_array_length(p_events), mine, p_winner, p_ended, coalesce(p_nn, false), nm, coalesce(p_beta, false))
   on conflict (gid) do update
-    set events = excluded.events, moves = excluded.moves, my_moves = excluded.my_moves, winner = excluded.winner, ended = excluded.ended, nn = excluded.nn, name = excluded.name, updated_at = now()
+    set events = excluded.events, moves = excluded.moves, my_moves = excluded.my_moves, winner = excluded.winner, ended = excluded.ended, nn = excluded.nn, name = excluded.name, beta = excluded.beta, updated_at = now()
     where ai_games.vid = excluded.vid;
 end $$;
-grant execute on function public.log_ai_game(uuid, text, int, jsonb, int, text, boolean, text) to anon, authenticated;
+grant execute on function public.log_ai_game(uuid, text, int, jsonb, int, text, boolean, text, boolean) to anon, authenticated;
 
--- PUBLIC: lobby history = finished games + abandoned games (a win for the computer). No visitor id, no country.
+-- PUBLIC: lobby list = games being played right now (a move in the last 10 minutes) + finished games + abandoned games (a win for the computer).
+-- Beta games (?beta=1) are never listed. No visitor id, no country.
 create or replace function public.public_ai_games(p_limit int default 20)
 returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce(jsonb_agg(g), '[]'::jsonb) from (
     select jsonb_build_object('id', gid, 'at', updated_at, 'size', size, 'name', coalesce(name, 'Player'), 'moves', moves, 'nn', nn,
-             'winner', case when ended = 'win' then winner else 1 end, 'quit', ended <> 'win') g
+             'live', ended = 'live' and updated_at >= now() - interval '10 minutes',
+             'winner', case when ended = 'win' then winner when ended = 'live' and updated_at >= now() - interval '10 minutes' then null else 1 end,
+             'quit', ended <> 'win' and not (ended = 'live' and updated_at >= now() - interval '10 minutes')) g
     from ai_games
-    where not hidden and moves >= 6
-      and (ended in ('win', 'abandoned') or (ended = 'live' and updated_at < now() - interval '30 minutes'))
+    where not hidden and not beta
+      and ((ended = 'live' and updated_at >= now() - interval '10 minutes' and moves >= 4)
+        or (moves >= 6 and (ended in ('win', 'abandoned') or (ended = 'live' and updated_at < now() - interval '30 minutes'))))
     order by updated_at desc limit greatest(1, least(coalesce(p_limit, 20), 100))) t;
 $$;
 grant execute on function public.public_ai_games(int) to anon, authenticated;
@@ -65,7 +71,8 @@ grant execute on function public.public_ai_games(int) to anon, authenticated;
 create or replace function public.public_ai_game(p_id uuid)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object('id', gid, 'at', updated_at, 'size', size, 'name', coalesce(name, 'Player'), 'nn', nn, 'events', events,
-           'winner', case when ended = 'win' then winner else 1 end, 'ended', case when ended = 'win' then 'win' else 'abandoned' end)
+           'winner', case when ended = 'win' then winner when ended = 'live' and updated_at >= now() - interval '10 minutes' then null else 1 end,
+           'ended', case when ended = 'win' then 'win' when ended = 'live' and updated_at >= now() - interval '10 minutes' then 'live' else 'abandoned' end)
   from ai_games where gid = p_id and not hidden;
 $$;
 grant execute on function public.public_ai_game(uuid) to anon, authenticated;
@@ -92,7 +99,7 @@ begin
                   'old_finished', count(*) filter (where eff = 'win' and not nn), 'old_player_wins', count(*) filter (where eff = 'win' and winner = 0 and not nn)) from x),
     'games', (select coalesce(jsonb_agg(g order by (g ->> 'at') desc), '[]'::jsonb) from (
                 select jsonb_build_object('id', x.gid, 'at', x.created_at, 'size', x.size, 'moves', x.moves, 'my_moves', x.my_moves, 'winner', x.winner, 'ended', x.eff, 'nn', x.nn,
-                         'name', coalesce(x.name, 'Player'), 'hidden', x.hidden, 'vid', left(x.vid, 6),
+                         'name', coalesce(x.name, 'Player'), 'hidden', x.hidden, 'beta', x.beta, 'vid', left(x.vid, 6),
                          'country', (select e.country from events e where e.vid = x.vid and e.country is not null order by e.at desc limit 1)) g
                 from x order by x.created_at desc limit greatest(1, least(coalesce(p_limit, 200), 500))) t)));
 end $$;
