@@ -212,10 +212,36 @@
     if (ended === 'win') O.aiLive(aiRec.gid, { end: true });
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn, beta: !!BETA_FLAG });
   }
-  // beta rule: when the dice give the player no legal move they are shown for a moment and then re-rolled automatically
-  // (not in the tutorial or online games, where the server records the dice)
+  // beta rule: once per turn the player may re-roll the dice. After a re-roll the squares of the first roll are locked for this turn
+  // (they are removed from roll.cells, which is what every action is checked against). The computer re-rolls only when it has no legal move.
   let rerollTimer = null;
   const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
+  const canReroll = () => BETA_FLAG && !tut.active && !train.active && !online && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
+  function showRerollMsg(text, ms) {
+    const m = $('rerollMsg'); m.textContent = text; m.classList.add('on');
+    clearTimeout(showRerollMsg.t); showRerollMsg.t = setTimeout(() => m.classList.remove('on'), ms);
+  }
+  function applyReroll() {
+    const old = state.roll.cells.slice(); let ns = rollDice();
+    ns.roll.cells = ns.roll.cells.filter((c) => !old.includes(c)); ns.roll.rerolled = true; ns.roll.blocked = old;
+    state = ns; lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true;
+    recAi('roll', { w: state.roll.w, b: state.roll.b, blocked: old }, state.turn, state);
+    save(); render();
+  }
+  function doReroll() {
+    if (!canReroll()) return;
+    applyReroll();
+    showRerollMsg(R.hasAnyMove(state) ? 'Re-rolled · the first squares are locked' : 'Re-rolled · still no legal move', 2200);
+  }
+  function aiRerollSoon() {
+    const shown = state;
+    rerollTimer = setTimeout(() => {   // set before render(): render schedules the computer's turn, which must wait
+      rerollTimer = null;
+      if (state !== shown) { scheduleAi(); return; }   // the game was changed meanwhile (new game, undo...)
+      applyReroll();
+    }, 1500);
+    showRerollMsg('Computer: no legal move · re-rolling', 1500); render();
+  }
   function finishRoll() {
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
@@ -223,23 +249,10 @@
     if (online) emit('roll', { w: state.roll.w, b: state.roll.b });
     save(); render();
   }
-  function rerollSoon() {
-    const shown = state, m = $('rerollMsg');
-    rerollTimer = setTimeout(() => {   // set before render(): render schedules the computer's turn, which must wait for the re-roll
-      rerollTimer = null; m.classList.remove('on');
-      if (state !== shown) { scheduleAi(); return; }   // the game was changed meanwhile (new game, undo...)
-      state = rollDice();
-      if (!R.hasAnyMove(state)) { rerollSoon(); return; }
-      finishRoll();
-    }, 1500);
-    lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true; render();
-    m.classList.add('on');
-  }
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
     const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
     state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : fd ? R.roll(state, fd[0], fd[1]) : rollDice();
-    if (BETA_FLAG && !sc && !fd && !online && !R.hasAnyMove(state)) { rerollSoon(); return; }
     finishRoll();
   }
   function passOrSkip(fn) {
@@ -571,6 +584,7 @@
     if (!isAiTurn()) return;
     if (tut.active) { tutAiStep(); return; }
     if (!state.roll) { doRoll(); return; }
+    if (canReroll() && !R.hasAnyMove(state)) { aiRerollSoon(); return; }
     if (window.__scriptAi && window.__scriptAi.length) { aiApply(window.__scriptAi.shift()); return; }   // dev hook for recording demo footage
     let a = { type: 'pass' };
     if (R.hasAnyMove(state)) {
@@ -1154,6 +1168,7 @@
     }
     if (ph === 'skip') {
       msg.innerHTML = '';
+      if (canReroll()) { const r2 = row(); addBtn(r2, 'Re-roll', 'soft', doReroll); addBtn(r2, 'Pass', '', doSkip); return; }
       addBtn(row(), 'Pass', tut.active ? 'guide' : '', doSkip);
       return;
     }
@@ -1210,6 +1225,7 @@
       addBtn(row(), 'Cancel', 'soft sm', () => { ui.sel = null; render(); });
       return;
     }
+    if (canReroll()) { const r3 = row(); addBtn(r3, 'Re-roll', 'soft', doReroll); addBtn(r3, 'Pass', 'soft', doPass); return; }
     addBtn(row(), 'Pass', 'soft', doPass);
   }
 
@@ -1379,7 +1395,11 @@
   const onlineMyTurn = () => !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.turn === online.seat;
 
   function evApply(s, ev) {
-    if (ev.kind === 'roll') return R.roll(s, ev.data.w, ev.data.b);
+    if (ev.kind === 'roll') {
+      const ns = R.roll(s, ev.data.w, ev.data.b);
+      if (ev.data.blocked) { ns.roll.cells = ns.roll.cells.filter((c) => !ev.data.blocked.includes(c)); ns.roll.rerolled = true; ns.roll.blocked = ev.data.blocked; }
+      return ns;
+    }
     if (ev.kind === 'skip') return ev.data && ev.data.pass ? R.passTurn(s) : R.skipTurn(s);
     return R.apply(s, ev.data);
   }
