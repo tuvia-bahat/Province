@@ -330,7 +330,7 @@
     } catch (e) { /* ignore */ }
   };
   const stats = (s, pl) => ({ prov: R.winProgress(s, pl), sold: R.camp(s, pl), brid: s.bridgesLeft[pl], dead: s.graveyard[pl] });
-  const HALO = 'paint-order:stroke;stroke:#fff;stroke-width:4px;stroke-linejoin:round;';
+  const HALO = 'paint-order:stroke;stroke:var(--bg);stroke-width:4px;stroke-linejoin:round;';
 
   function animateMove(prev, a, next) {
     fxCancel();
@@ -449,7 +449,7 @@
           o1 = mk(g, 'g', { transform: `translate(${mx} ${my})` });
           const big = mk(o1, 'g', { transform: 'scale(1.25)' });
           sw = mk(big, 'g', {});
-          const st0 = `fill:${col};stroke:#fff;stroke-width:2.4px;paint-order:stroke;stroke-linejoin:round;`;
+          const st0 = `fill:${col};stroke:var(--bg);stroke-width:2.4px;paint-order:stroke;stroke-linejoin:round;`;
           for (const ang of [-42, 42]) {
             const sd = mk(sw, 'g', { transform: `rotate(${ang})` });
             mk(sd, 'polygon', { points: '0,-13 2.3,-10 2.3,5 -2.3,5 -2.3,-10', style: st0 });   // להב
@@ -508,7 +508,7 @@
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
       const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
-      const tintLight = ['#e7f9f1', '#e7f3fe'][wp];
+      const tintLight = (document.documentElement.getAttribute('data-theme') === 'dark' ? ['#1a3a2d', '#1a3248'] : ['#e7f9f1', '#e7f3fe'])[wp];
       for (const k of group) {
         const pxk = FLIP ? R.PR - 1 - (k % R.PR) : k % R.PR, pyk = Math.floor(k / R.PR), top = FLIP ? pyk : R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
@@ -1793,6 +1793,21 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
+  // dark mode (beta): follows the phone's setting until the player picks one in the menu
+  function applyTheme() {
+    if (!BETA_FLAG) return;
+    let saved = null; try { saved = localStorage.getItem('province.theme'); } catch (e) { /* ignore */ }
+    const dark = saved === 'dark' || (saved === null && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', dark ? '#14171c' : '#ffffff');
+    $('themeBtn').textContent = dark ? 'Light mode' : 'Dark mode';
+    return dark;
+  }
+  if (BETA_FLAG) {
+    $('themeBtn').hidden = false; applyTheme();
+    $('themeBtn').onclick = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; try { localStorage.setItem('province.theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ } applyTheme(); };
+    try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) { /* ignore */ }
+  }
   if (BETA_FLAG) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Beta features are on. Open ?beta=0 to turn them off.'; document.body.appendChild(b); }
   load(); afterLoad(); useBoard(settings.board); applyRules(); aiEndSeq = state.winner !== null ? 0 : -1; if (state.winner !== null) $('overlay').dataset.dismissed = '1'; render(); openLobby();
   // משחק נגד המחשב שהסתיים: צפייה חוזרת (מההיסטוריה בלובי, או קישור ?aireplay=<id>)
