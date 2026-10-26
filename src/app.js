@@ -1793,9 +1793,8 @@
   window.addEventListener('resize', () => { if (tut.active) renderCoach(); });
   $('winClose').onclick = () => { $('overlay').dataset.dismissed = '1'; $('overlay').hidden = true; };
 
-  // dark mode (beta): follows the phone's setting until the player picks one in the menu
+  // dark mode: follows the phone's setting until the player picks one with the lobby switch
   function applyTheme() {
-    if (!BETA_FLAG) return;
     let saved = null; try { saved = localStorage.getItem('province.theme'); } catch (e) { /* ignore */ }
     const dark = saved === 'dark' || (saved === null && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
@@ -1803,7 +1802,7 @@
     $('themeSw').setAttribute('aria-checked', dark ? 'true' : 'false');
     return dark;
   }
-  if (BETA_FLAG) {
+  {
     $('themeSw').hidden = false; applyTheme();
     $('themeSw').onclick = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; try { localStorage.setItem('province.theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ } applyTheme(); };
     try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) { /* ignore */ }
