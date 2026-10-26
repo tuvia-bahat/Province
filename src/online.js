@@ -145,6 +145,24 @@
   async function publicAiGames(limit) {
     try { await init(); const d = await sb.rpc('public_ai_games', { p_limit: limit }); return d.error ? [] : (d.data || []); } catch (e) { return []; }
   }
+  // live following of a game vs the computer: the player's browser broadcasts every event on a channel named after the game, viewers listen.
+  // payload: { n, ev } = event number n was added, { cut: n } = the log was cut back to n events (undo), { end: true } = the game is over
+  let bc = null;
+  function aiLive(gid, payload) {
+    init().then(() => {
+      if (!bc || bc.gid !== gid) {
+        if (bc) sb.removeChannel(bc.ch);
+        const ch = sb.channel('aigame-' + gid); const me = { gid, ch, ready: false, q: [] }; bc = me;
+        ch.subscribe((st) => { if (st === 'SUBSCRIBED') { me.ready = true; me.q.splice(0).forEach((p) => ch.send({ type: 'broadcast', event: 'ev', payload: p })); } });
+      }
+      if (bc.ready) bc.ch.send({ type: 'broadcast', event: 'ev', payload }); else bc.q.push(payload);
+      if (payload.end) { const me = bc; setTimeout(() => { if (bc === me) { sb.removeChannel(me.ch); bc = null; } }, 3000); }
+    }).catch(() => {});
+  }
+  function watchAiGame(gid, cb) {
+    const ch = sb.channel('aigame-' + gid).on('broadcast', { event: 'ev' }, (m) => cb(m.payload)).subscribe();
+    return () => sb.removeChannel(ch);
+  }
   async function publicAiGame(id) { await init(); return must(await sb.rpc('public_ai_game', { p_id: id })); }
 
   // מיקום גס (עיר) מ-Worker של Cloudflare, אם הוגדר כתובת; נכשל בשקט ובלי לעכב את האתר יותר מ-2 שניות
@@ -167,7 +185,7 @@
   }
 
   root.Online = {
-    track, geo, sendFeedback, logAiGame, retryAiLogs, publicAiGames, publicAiGame, get returning() { return returning; },
+    track, geo, sendFeedback, logAiGame, retryAiLogs, publicAiGames, publicAiGame, aiLive, watchAiGame, get returning() { return returning; },
     init, presence, lobby, getGame, getMoves, createGame, joinGame, cancelGame, resign, claimTimeout, submit, watchLobby, watchGame,
     getName, setName, cleanName, get uid() { return uid; },
   };

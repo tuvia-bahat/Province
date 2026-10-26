@@ -189,24 +189,27 @@
   const recOn = () => !!aiRec && !aiRec.sent && settings.mode === 'ai' && !online && !tut.active && !train.active;
   function recAi(kind, data, actor, after) {
     if (!recOn()) return;
-    aiRec.events.push({ n: aiRec.events.length + 1, actor, kind, data }); aiRec.sigs.push(posSig(after));
+    const ev = { n: aiRec.events.length + 1, actor, kind, data };
+    aiRec.events.push(ev); aiRec.sigs.push(posSig(after));
+    O.aiLive(aiRec.gid, { n: ev.n, ev });
     queueLive();
   }
   function recSync() {   // אחרי ביטול מהלך: חותכים את היומן עד למצב הנוכחי
     if (!aiRec || aiRec.sent) return;
     const k = aiRec.sigs.lastIndexOf(posSig(state));
-    if (k >= 0) { aiRec.events.length = k + 1; aiRec.sigs.length = k + 1; }
+    if (k >= 0) { aiRec.events.length = k + 1; aiRec.sigs.length = k + 1; O.aiLive(aiRec.gid, { cut: k + 1 }); }
     else if (history.length === 0 && state.cells.every((c) => c.o === null)) { aiRec.events.length = 0; aiRec.sigs.length = 0; }
     else { aiRec.broken = true; }
   }
-  // התקדמות נשלחת לשרת תוך כדי המשחק (עד פעם ב-4 שניות), כך שמשחק שנעזב באמצע כבר קיים בשרת; שם הוא נחשב "נטוש" אחרי 30 דקות בלי מהלך
+  // התקדמות נשלחת לשרת תוך כדי המשחק (עד פעם ב-1.5 שניות; הצופים מקבלים כל אירוע מיד דרך ערוץ שידור), כך שמשחק שנעזב באמצע כבר קיים בשרת; שם הוא נחשב "נטוש" אחרי 30 דקות בלי מהלך
   function queueLive() {
     if (!aiRec || aiRec.lt) return;
-    aiRec.lt = setTimeout(() => { if (aiRec) { aiRec.lt = null; if (!aiRec.sent && state.winner === null) sendAiLog('live'); } }, 4000);
+    aiRec.lt = setTimeout(() => { if (aiRec) { aiRec.lt = null; if (!aiRec.sent && state.winner === null) sendAiLog('live'); } }, 1500);
   }
   function sendAiLog(ended) {
     if (!aiRec || aiRec.sent || aiRec.broken || aiRec.events.length < 4) return;
     aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; 'live' ו'נטוש' יכולים להידרס אם ממשיכים
+    if (ended === 'win') O.aiLive(aiRec.gid, { end: true });
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn, beta: !!BETA_FLAG });
   }
   // beta rule: when the dice give the player no legal move they are shown for a moment and then re-rolled automatically
@@ -1494,7 +1497,7 @@
   function renderOnlineDock(msg, addBtn, row) {
     const g = online.game, rp = online.replay;
     if (rp) {
-      msg.textContent = `Step ${rp.i} / ${rp.S.length - 1}`;
+      msg.textContent = `Step ${rp.i} / ${rp.S.length - 1}` + (rp.live ? ' · Live' : '');
       const r = row();
       addBtn(r, '‹', 'soft sm', () => { rp.playing = false; replayGo(rp.i - 1, false); });
       addBtn(r, rp.playing ? 'Pause' : (rp.i >= rp.S.length - 1 ? 'Restart' : 'Play'), 'sm', () => {
@@ -1785,7 +1788,38 @@
       const g = { id, size: r.size, status: 'finished', winner: r.winner, ended_by: r.ended === 'win' ? 'win' : 'timeout', moves_count: r.events.length, name0: r.name || 'Player', name1: 'Computer', p0: null, p1: null, created_at: r.at, last_move_at: r.at, live: { last_move_at: r.at } };
       await openOnline(id, { replay: true, inject: { game: g, moves: r.events } });
       if (r.ended !== 'win' && online && online.replay) replayGo(online.replay.S.length - 1, false);
+      if (r.ended === 'live' && online && online.replay) followAiLive(id, r);
     } catch (e) { console.error(e); window.alert('Cannot open this game.'); }
+  }
+  // follow a game vs the computer that is being played right now: new events arrive on a broadcast channel (instantly) and by a slow poll (safety net)
+  function followAiLive(id, first) {
+    const rp = online.replay; rp.live = true;
+    const same = () => online && online.replay === rp;
+    const cut = (n) => { rp.A.length = n; rp.S.length = n + 1; if (rp.i > n) replayGo(n, false); };
+    const add = (ev) => {
+      const atEnd = rp.i === rp.S.length - 1;
+      rp.A.push(ev); rp.S.push(evApply(rp.S[rp.S.length - 1], ev));
+      if (atEnd) replayGo(rp.S.length - 1, true); else renderDock();
+    };
+    const sync = (events, ended) => {
+      if (events.length < rp.A.length) cut(events.length);
+      for (let k = rp.A.length; k < events.length; k++) add(events[k]);
+      if (ended !== 'live') { rp.live = false; if (online.unsub) { online.unsub(); online.unsub = null; } clearInterval(online.tick); }
+      renderDock();
+    };
+    let polling = false;
+    const poll = async () => {
+      if (!same() || polling) return; polling = true;
+      try { const r = await O.publicAiGame(id); if (r && same()) sync(r.events, r.ended); } catch (e) { /* ignore */ } polling = false;
+    };
+    online.unsub = O.watchAiGame(id, (m) => {
+      if (!same() || !m) return;
+      if (m.cut !== undefined) { cut(m.cut); renderDock(); }
+      else if (m.ev) { if (m.ev.n === rp.A.length + 1) add(m.ev); else if (m.ev.n > rp.A.length + 1) poll(); }
+      else if (m.end) { setTimeout(poll, 1200); }
+    });
+    online.tick = setInterval(poll, 8000);
+    poll();
   }
   try { const ar = new URLSearchParams(location.search).get('aireplay'); if (ar) openAiReplay(ar); } catch (e) { /* ignore */ }
   setTimeout(() => { try { O.retryAiLogs(); } catch (e) { /* ignore */ } }, 4000);
