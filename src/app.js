@@ -184,10 +184,10 @@
     return true;
   }
   // ---- viewers of a live game: eye + count, floating eye when somebody joins ----
-  function setWatchers(n) { $('watchN').textContent = n; $('watchers').hidden = !n || !BETA_FLAG; }   // beta: only shown with ?beta=1 (viewers are always counted)
+  function setWatchers(n) { $('watchN').textContent = n; $('watchers').hidden = !n; }
   function onWatchers(ev) {
     if (ev.count !== undefined) setWatchers(ev.count);
-    if (ev.joined && BETA_FLAG) {
+    if (ev.joined) {
       const w = $('watchers'); w.classList.remove('bump'); void w.offsetWidth; w.classList.add('bump');
       const f = document.createElement('div'); f.className = 'watch-float'; f.innerHTML = w.querySelector('svg').outerHTML.replace('width="17" height="17"', 'width="26" height="26"');
       $('app').appendChild(f); setTimeout(() => f.remove(), 1900);
@@ -195,7 +195,6 @@
   }
   let aiPres = null;
   function aiWatchSync() {   // the player of a game vs the computer listens for viewers on a channel named after the game
-    if (!BETA_FLAG) return;
     if (!aiRec || aiRec.sent || aiRec.events.length < 1) { if (aiPres) { aiPres.leave(); aiPres = null; setWatchers(0); } return; }
     if (aiPres && aiPres.gid === aiRec.gid) return;
     if (aiPres) aiPres.leave();
@@ -1490,7 +1489,7 @@
     $('overlay').dataset.dismissed = (opts.replay || g.status === 'finished') ? '1' : '';
     if (!opts.replay && g.status !== 'finished') online.unsub = O.watchGame(id, onRemoteMove, onGameRow, (row) => { if (online) online.game.live = row; });
     setWatchers(0);
-    if (!opts.replay && ((seat !== null && BETA_FLAG) || (seat === null && g.status === 'active')) && g.status !== 'finished') online.presLeave = O.watchPresence('g-' + id, seat === null ? 'viewer' : 'player', onWatchers);
+    if (!opts.replay && (seat !== null || g.status === 'active') && g.status !== 'finished') online.presLeave = O.watchPresence('g-' + id, seat === null ? 'viewer' : 'player', onWatchers);
     const moves = opts.inject ? opts.inject.moves : await O.getMoves(id);
     if (opts.replay) {
       const S = [R.newGame()];
