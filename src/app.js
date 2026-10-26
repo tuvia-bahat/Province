@@ -209,19 +209,38 @@
     aiRec.sent = ended === 'win';   // משחק שנגמר נשלח פעם אחת; 'live' ו'נטוש' יכולים להידרס אם ממשיכים
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn });
   }
-  function doRoll() {
-    const sc = tut.active ? tutStepNow() : null;
-    const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
-    state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : fd ? R.roll(state, fd[0], fd[1]) : R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
-    // beta rule: when the dice give the player no legal move they are re-rolled automatically (not in the tutorial or online games, where the server records the dice)
-    if (BETA_FLAG && !sc && !fd && !online) for (let k = 0; k < 200 && !R.hasAnyMove(state); k++) state = R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
+  // beta rule: when the dice give the player no legal move they are shown for a moment and then re-rolled automatically
+  // (not in the tutorial or online games, where the server records the dice)
+  let rerollTimer = null;
+  const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
+  function finishRoll() {
     lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null;
     ui = freshUi(); ui.rolled = true;
     recAi('roll', { w: state.roll.w, b: state.roll.b }, state.turn, state);
     if (online) emit('roll', { w: state.roll.w, b: state.roll.b });
     save(); render();
   }
+  function rerollSoon() {
+    const shown = state;
+    lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true; render();
+    const m = $('rerollMsg'); m.classList.add('on');
+    rerollTimer = setTimeout(() => {
+      rerollTimer = null; m.classList.remove('on');
+      if (state !== shown) { scheduleAi(); return; }   // the game was changed meanwhile (new game, undo...)
+      state = rollDice();
+      if (!R.hasAnyMove(state)) { rerollSoon(); return; }
+      finishRoll();
+    }, 1500);
+  }
+  function doRoll() {
+    const sc = tut.active ? tutStepNow() : null;
+    const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
+    state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : fd ? R.roll(state, fd[0], fd[1]) : rollDice();
+    if (BETA_FLAG && !sc && !fd && !online && !R.hasAnyMove(state)) { rerollSoon(); return; }
+    finishRoll();
+  }
   function passOrSkip(fn) {
+    if (rerollTimer) return;
     const isPass = fn === R.passTurn;
     const actor = state.turn; history.push(state); lastMove = null; state = fn(state); ui = freshUi();
     recAi('skip', isPass ? { pass: true } : {}, actor, state);
@@ -509,7 +528,7 @@
     render();
   }
   function scheduleAi() {
-    if (aiTimer || paused || vnetPending || !isAiTurn()) return;
+    if (aiTimer || paused || vnetPending || rerollTimer || !isAiTurn()) return;
     aiTimer = setTimeout(aiStep, Math.max((state.roll ? 1000 : 700) * SPEED[settings.speed], fxUntil - Date.now() + 250));
   }
   // ---- learned (neural network) computer opponent, computed in a Web Worker (falls back to the old AI if anything fails) ----
