@@ -359,3 +359,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   --surface: #1e2229; --surface-2: #2a2f38; --surface-3: #262b33; --line: #2c323b; --press: #343a45; --dot: #454b57;
   --overlay: rgba(14, 16, 20, .82); --on-ink: #14171c; --screen-top: #1a1d23;
 }
+
+/* dark-mode switch in the lobby (beta) */
+.theme-sw { position: absolute; top: calc(max(5vw, env(safe-area-inset-top)) + 4px); right: 5vw; z-index: 2; width: 46px; height: 28px; padding: 0; border: 0; border-radius: 999px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); transition: background .2s; }
+.theme-sw i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--surface); color: var(--muted); display: grid; place-items: center; box-shadow: 0 1px 4px rgba(20,25,40,.25); transition: transform .2s; }
+.theme-sw .moon { display: none; }
+:root[data-theme="dark"] .theme-sw { background: var(--p0); box-shadow: none; }
+:root[data-theme="dark"] .theme-sw i { transform: translateX(18px); }
+:root[data-theme="dark"] .theme-sw .sun { display: none; }
+:root[data-theme="dark"] .theme-sw .moon { display: block; }

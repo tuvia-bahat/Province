@@ -1800,12 +1800,12 @@
     const dark = saved === 'dark' || (saved === null && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', dark ? '#14171c' : '#ffffff');
-    $('themeBtn').textContent = dark ? 'Light mode' : 'Dark mode';
+    $('themeSw').setAttribute('aria-checked', dark ? 'true' : 'false');
     return dark;
   }
   if (BETA_FLAG) {
-    $('themeBtn').hidden = false; applyTheme();
-    $('themeBtn').onclick = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; try { localStorage.setItem('province.theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ } applyTheme(); };
+    $('themeSw').hidden = false; applyTheme();
+    $('themeSw').onclick = () => { const dark = document.documentElement.getAttribute('data-theme') === 'dark'; try { localStorage.setItem('province.theme', dark ? 'light' : 'dark'); } catch (e) { /* ignore */ } applyTheme(); };
     try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) { /* ignore */ }
   }
   if (BETA_FLAG) { const b = document.createElement('div'); b.id = 'betaBadge'; b.textContent = 'BETA'; b.title = 'Beta features are on. Open ?beta=0 to turn them off.'; document.body.appendChild(b); }
