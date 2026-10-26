@@ -51,8 +51,9 @@ end $$;
 grant execute on function public.log_ai_game(uuid, text, int, jsonb, int, text, boolean, text, boolean) to anon, authenticated;
 
 -- PUBLIC: lobby list = games being played right now (a move in the last 10 minutes) + finished games + abandoned games (a win for the computer).
--- Beta games (?beta=1) are never listed. No visitor id, no country.
-create or replace function public.public_ai_games(p_limit int default 20)
+-- Beta games (?beta=1) are listed only for visitors who are in beta themselves. No visitor id, no country.
+drop function if exists public.public_ai_games(int);
+create or replace function public.public_ai_games(p_limit int default 20, p_beta boolean default false)
 returns jsonb language sql stable security definer set search_path = public as $$
   select coalesce(jsonb_agg(g), '[]'::jsonb) from (
     select jsonb_build_object('id', gid, 'at', updated_at, 'size', size, 'name', coalesce(name, 'Player'), 'moves', moves, 'nn', nn,
@@ -60,12 +61,12 @@ returns jsonb language sql stable security definer set search_path = public as $
              'winner', case when ended = 'win' then winner when ended = 'live' and updated_at >= now() - interval '10 minutes' then null else 1 end,
              'quit', ended <> 'win' and not (ended = 'live' and updated_at >= now() - interval '10 minutes')) g
     from ai_games
-    where not hidden and not beta
+    where not hidden and (not beta or coalesce(p_beta, false))   -- beta games are listed only for people who opened the site with ?beta=1
       and ((ended = 'live' and updated_at >= now() - interval '10 minutes' and moves >= 4)
         or (moves >= 6 and (ended in ('win', 'abandoned') or (ended = 'live' and updated_at < now() - interval '30 minutes'))))
     order by updated_at desc limit greatest(1, least(coalesce(p_limit, 20), 100))) t;
 $$;
-grant execute on function public.public_ai_games(int) to anon, authenticated;
+grant execute on function public.public_ai_games(int, boolean) to anon, authenticated;
 
 -- PUBLIC: one game with its move log (for the replay)
 create or replace function public.public_ai_game(p_id uuid)

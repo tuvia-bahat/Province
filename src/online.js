@@ -143,7 +143,8 @@
   }
   // משחקים נגד המחשב שהסתיימו: גלויים לכולם בהיסטוריה של הלובי (בלי מזהה מבקר ובלי מדינה)
   async function publicAiGames(limit) {
-    try { await init(); const d = await sb.rpc('public_ai_games', { p_limit: limit }); return d.error ? [] : (d.data || []); } catch (e) { return []; }
+    try { await init(); let beta = false; try { beta = localStorage.getItem('province.beta') === '1'; } catch (e) { /* ignore */ }   // beta visitors also see beta games
+      const d = await sb.rpc('public_ai_games', beta ? { p_limit: limit, p_beta: true } : { p_limit: limit }); return d.error ? [] : (d.data || []); } catch (e) { return []; }
   }
   // live following of a game vs the computer: the player's browser broadcasts every event on a channel named after the game, viewers listen.
   // payload: { n, ev } = event number n was added, { cut: n } = the log was cut back to n events (undo), { end: true } = the game is over
