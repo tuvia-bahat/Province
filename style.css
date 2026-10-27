@@ -384,3 +384,8 @@ button.lb-community { border: 0; cursor: pointer; font-family: inherit; }
 /* small Discord icon in the corner of the lobby */
 .lb-dc { position: absolute; top: calc(max(5vw, env(safe-area-inset-top)) + 3px); left: 5vw; z-index: 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #5865f2; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
 .lb-dc:active { background: var(--press); }
+
+/* a new version is on the server and we are in the middle of a game: a small bar instead of reloading under the player's hands */
+#updateBar { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-size: 14px; font-weight: 500; box-shadow: 0 8px 24px rgba(20,25,40,.3); white-space: nowrap; }
+#updateBar[hidden] { display: none; }
+#updateBar button { border: 0; border-radius: 999px; padding: 7px 14px; background: var(--p0); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }

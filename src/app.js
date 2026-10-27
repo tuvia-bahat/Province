@@ -1752,6 +1752,41 @@
   $('tpStart').onclick = () => { hideTutPrompt(); O.track('tutorial_prompt_accept'); startTutorial(); };
   $('tpSkip').onclick = () => { hideTutPrompt(); O.track('tutorial_prompt_skip'); };
 
+  // ---------- automatic update ----------
+  // version.json on the server holds the build id of the latest deploy (tools/stamp.py, run by the pre-commit hook); window.BUILD (src/version.js) is the id this page was
+  // loaded with. When they differ the page reloads itself: at once when it is safe (lobby open, game over, tab in the background), otherwise a small bar offers the update.
+  (function updater() {
+    const mine = window.BUILD; if (!mine) return;
+    let pending = false, checking = false;
+    const safe = () => document.hidden || !$('lobby').hidden || state.winner !== null;
+    function reload() {
+      try {   // never reload in a loop if the server keeps serving an older copy for a moment
+        const last = JSON.parse(sessionStorage.getItem('province.upd') || 'null');
+        if (last && last.v === pending && Date.now() - last.t < 3 * 60e3) return;
+        sessionStorage.setItem('province.upd', JSON.stringify({ v: pending, t: Date.now() }));
+      } catch (e) { /* ignore */ }
+      O.track('auto_update');
+      try { navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {}); } catch (e) { /* ignore */ }
+      setTimeout(() => location.reload(), 50);
+    }
+    function apply() {
+      if (!pending) return;
+      if (safe()) { $('updateBar').hidden = true; reload(); } else $('updateBar').hidden = false;
+    }
+    async function check() {
+      if (checking) return; checking = true;
+      try {
+        const r = await fetch('version.json?_=' + Date.now(), { cache: 'no-store' });
+        if (r.ok) { const j = await r.json(); if (j && j.v && j.v !== mine) { pending = j.v; apply(); } }
+      } catch (e) { /* offline: try again later */ }
+      checking = false;
+    }
+    $('updateBtn').onclick = () => { $('updateBar').hidden = true; reload(); };
+    document.addEventListener('visibilitychange', () => { if (document.hidden) apply(); else check(); });
+    setTimeout(check, 4000); setInterval(check, 5 * 60e3); setInterval(apply, 15e3);
+    window.__updateCheck = check;
+  })();
+
   // ---------- התקנה כאפליקציה ----------
   // no more install invitation in the lobby; we only keep the browser from showing its own banner, and count installs
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
