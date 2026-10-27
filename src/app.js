@@ -234,12 +234,13 @@
   // The computer re-rolls only when it has no legal move.
   let rerollTimer = null;
   const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
-  const canReroll = () => (tut.active ? tutRR() : !train.active && !online) && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
+  const canReroll = () => (tut.active ? tutRR() : !train.active && (!online || (!online.replay && onlineMyTurn()))) && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
   function applyReroll() {
     const stt = tut.active ? tutStepNow() : null;
     const ns = stt ? R.roll(state, stt.dice[0], stt.dice[1]) : rollDice(); ns.roll.rerolled = true;   // the new roll replaces the old one: only its squares are active (the old squares are not an option any more)
     state = ns; lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true;
     recAi('roll', { w: state.roll.w, b: state.roll.b, re: true }, state.turn, state);
+    if (online) emit('roll', { w: state.roll.w, b: state.roll.b, re: true });   // online: the second roll of the turn is an ordinary roll event
     save(); render();
   }
   function doReroll() {
@@ -1423,7 +1424,7 @@
   const onlineMyTurn = () => !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.turn === online.seat;
 
   function evApply(s, ev) {
-    if (ev.kind === 'roll') return R.roll(s, ev.data.w, ev.data.b);
+    if (ev.kind === 'roll') { const ns = R.roll(s, ev.data.w, ev.data.b); if (s.roll) ns.roll.rerolled = true; return ns; }   // a roll while the turn already has one = the re-roll
     if (ev.kind === 'skip') return ev.data && ev.data.pass ? R.passTurn(s) : R.skipTurn(s);
     return R.apply(s, ev.data);
   }
