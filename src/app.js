@@ -230,16 +230,15 @@
     if (ended === 'win') { O.aiLive(aiRec.gid, { end: true }); setTimeout(aiWatchSync, 0); }
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn, beta: !!BETA_FLAG });
   }
-  // beta rule: once per turn the player may re-roll the dice. After a re-roll the squares of the first roll are locked for this turn
-  // (they are removed from roll.cells, which is what every action is checked against). The computer re-rolls only when it has no legal move.
+  // beta rule: once per turn the player may re-roll the dice; the new roll replaces the old one, so there is no going back to the first squares.
+  // The computer re-rolls only when it has no legal move.
   let rerollTimer = null;
   const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
   const canReroll = () => BETA_FLAG && !tut.active && !train.active && !online && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
   function applyReroll() {
-    const old = state.roll.cells.slice(); let ns = rollDice();
-    ns.roll.cells = ns.roll.cells.filter((c) => !old.includes(c)); ns.roll.rerolled = true; ns.roll.blocked = old;
+    const ns = rollDice(); ns.roll.rerolled = true;   // the new roll replaces the old one: only its squares are active (the old squares are not an option any more)
     state = ns; lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true;
-    recAi('roll', { w: state.roll.w, b: state.roll.b, blocked: old }, state.turn, state);
+    recAi('roll', { w: state.roll.w, b: state.roll.b, re: true }, state.turn, state);
     save(); render();
   }
   function doReroll() {
@@ -1409,11 +1408,7 @@
   const onlineMyTurn = () => !!online && online.seat !== null && !online.replay && online.game.status === 'active' && state.turn === online.seat;
 
   function evApply(s, ev) {
-    if (ev.kind === 'roll') {
-      const ns = R.roll(s, ev.data.w, ev.data.b);
-      if (ev.data.blocked) { ns.roll.cells = ns.roll.cells.filter((c) => !ev.data.blocked.includes(c)); ns.roll.rerolled = true; ns.roll.blocked = ev.data.blocked; }
-      return ns;
-    }
+    if (ev.kind === 'roll') return R.roll(s, ev.data.w, ev.data.b);
     if (ev.kind === 'skip') return ev.data && ev.data.pass ? R.passTurn(s) : R.skipTurn(s);
     return R.apply(s, ev.data);
   }
