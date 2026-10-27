@@ -6,19 +6,22 @@ importScripts('rules.js', 'vnet.js');
 const nets = {};
 let msPerEval = 0;   // moving average, 0 = unknown yet
 onmessage = async (e) => {
-  const { id, size, state } = e.data;
+  const { id, size, state, canReroll, rr } = e.data;
   try {
     const R = Rules.forSize(size);
     R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true;
-    if (!nets[size]) {
-      const res = await fetch('vnet' + size + '.bin');
+    // rr: the re-roll rule is on (beta): use the net that was trained with it (vnet<size>rr.bin, it also knows when to re-roll); fall back to the plain net
+    const key = size + (rr ? 'rr' : '');
+    if (!nets[key]) {
+      let res = rr ? await fetch('vnet' + size + 'rr.bin') : null;
+      if (!res || !res.ok) res = await fetch('vnet' + size + '.bin');
       if (!res.ok) throw new Error('weights ' + res.status);
-      const V = VNet.forSize(size); V.setNet(await res.arrayBuffer()); nets[size] = V;
+      const V = VNet.make(size); V.setNet(await res.arrayBuffer()); nets[key] = V;
     }
-    const V = nets[size], maxEvals = msPerEval ? Math.max(150, Math.floor(9000 / msPerEval)) : 1500;
-    const t0 = Date.now(), act = V.chooseAction(state, { maxEvals });
+    const V = nets[key], maxEvals = msPerEval ? Math.max(150, Math.floor(9000 / msPerEval)) : 1500;
+    const t0 = Date.now(), res = V.decide(state, { maxEvals, canReroll: !!canReroll });
     const dt = Date.now() - t0, n = Math.max(1, V.lastEvals);
     msPerEval = msPerEval ? 0.6 * msPerEval + 0.4 * (dt / n) : dt / n;
-    postMessage({ id, act });
+    if (res.reroll) postMessage({ id, reroll: true }); else postMessage({ id, act: res.act });
   } catch (err) { postMessage({ id, error: String(err && err.message || err) }); }
 };

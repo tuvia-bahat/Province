@@ -2,10 +2,12 @@
 import sys, struct
 import numpy as np, torch
 from train import Net
+from train_rr import Net2
 
 ck = torch.load(sys.argv[1], map_location='cpu'); a = ck['args']
 size, ch, blocks = a['size'], a['ch'], a['blocks']
-net = Net(size, ch, blocks); net.load_state_dict(ck['net']); net.eval()
+has_g = 'out2.weight' in ck['net']
+net = (Net2 if has_g else Net)(size, ch, blocks); net.load_state_dict(ck['net']); net.eval()   # nets trained with train_rr.py also carry the re-roll head g (out2)
 sd = {k: v.numpy().astype(np.float32) for k, v in net.state_dict().items()}
 C = size * size
 parts = []
@@ -20,6 +22,7 @@ parts += [np.ascontiguousarray(w.transpose(2, 1, 0).reshape(C * ch, fc)), sd['fc
 parts += [np.ascontiguousarray(sd['sc.weight'].T), sd['sc.bias']]
 parts += [np.ascontiguousarray(sd['fc2.weight'].T), sd['fc2.bias']]
 parts += [sd['out.weight'].reshape(-1), sd['out.bias'].reshape(-1)]
+if has_g: parts += [sd['out2.weight'].reshape(-1), sd['out2.bias'].reshape(-1)]   # optional tail: src/vnet.js reads it when present
 with open(sys.argv[2], 'wb') as f:
     f.write(struct.pack('<4i', size, ch, blocks, fc))
     for p in parts: f.write(np.ascontiguousarray(p, dtype='<f4').tobytes())

@@ -6,7 +6,7 @@ static class Program
 {
     static int Main(string[] args)
     {
-        if (args.Length >= 1 && args[0] == "serve") return Server.Run(int.Parse(args[1]), int.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]), args.Length > 5 && args[5] == "packed");
+        if (args.Length >= 1 && args[0] == "serve") return Server.Run(int.Parse(args[1]), int.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]), args.Skip(5).Contains("packed"), args.Skip(5).Contains("reroll"));
         if (args.Length >= 4 && args[0] == "dumpfeat") return Parity.DumpFeat(args[1], args[2], int.Parse(args[3]));
         if (args.Length >= 2 && args[0] == "parity") return Parity.Run(args[1]);
         if (args.Length >= 1 && args[0] == "bench") return Bench.Run(args.Length > 1 ? int.Parse(args[1]) : 6, args.Length > 2 ? int.Parse(args[2]) : 2000);

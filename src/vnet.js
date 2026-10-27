@@ -77,6 +77,7 @@
       net.scW = f32(SCALARS * 32); net.scB = f32(32);
       net.fc2W = f32((fc + 32) * 128); net.fc2B = f32(128);
       net.outW = f32(128); net.outB = f32(1);
+      if (buf.byteLength - off >= 129 * 4) { net.out2W = f32(128); net.out2B = f32(1); net.hasG = true; }   // optional tail: the re-roll head g (see tools/train/train_rr.py)
       net.t = { x: new Float32Array(C * PLANES), a: new Float32Array(C * ch), b: new Float32Array(C * ch), c: new Float32Array(C * ch), h: new Float32Array(fc), z: new Float32Array(128), s: new Float32Array(32) };
       NET = net;
     }
@@ -120,8 +121,9 @@
       const z = t.z; for (let j = 0; j < 128; j++) z[j] = n.fc2B[j];
       for (let i = 0; i < fc; i++) { const v = h[i]; if (v === 0) continue; const row = i * 128; for (let j = 0; j < 128; j++) z[j] += v * n.fc2W[row + j]; }
       for (let i = 0; i < 32; i++) { const v = s[i]; if (v === 0) continue; const row = (fc + i) * 128; for (let j = 0; j < 128; j++) z[j] += v * n.fc2W[row + j]; }
-      let out = n.outB[0];
-      for (let j = 0; j < 128; j++) if (z[j] > 0) out += z[j] * n.outW[j];
+      let out = n.outB[0], g = n.hasG ? n.out2B[0] : 0;
+      for (let j = 0; j < 128; j++) if (z[j] > 0) { out += z[j] * n.outW[j]; if (n.hasG) g += z[j] * n.out2W[j]; }
+      lastG = g;
       return out;
     }
 
@@ -217,8 +219,36 @@
       }
       return best;
     }
-    let lastEvals = 0;
-    return { F, encode, forward, candidates, chooseAction, chooseSearch, setNet, get lastEvals() { return lastEvals; }, get loaded() { return !!NET; } };
+    // ---------- beta rule: once per turn the player may throw the dice again ----------
+    // g(s) (second head of the net) = expected value (logit of the win probability) for the player to roll at position s of the best move a fresh roll gives.
+    // The position before the roll is encoded exactly like the opponent's afterstate. Returns null for nets without the g head.
+    function preValue(s) {
+      if (!NET || !NET.hasG) return null;
+      const feat = new Uint8Array(F); encode(s, 1 - s.turn, feat); forward(feat); return lastG;
+    }
+    // opts: { maxEvals, canReroll, margin }. Returns { act } or { reroll: true }.
+    // canReroll: first roll of the turn (a pass is not offered then); the computer re-rolls when it has no move, or when g says a fresh roll is worth more than its best move.
+    function decide(s, opts) {
+      opts = opts || {};
+      const p = s.turn, list = thin(candidates(s), opts.maxEvals), feat = new Uint8Array(F);
+      lastEvals = list.length;
+      let bestAny = null, vAny = -Infinity, bestNP = null, vNP = -Infinity;
+      for (const a of list) {
+        const ns = a.type === 'pass' ? R.passFast(s) : R.apply(s, a, true);
+        if (ns.winner === p) return { act: a };
+        encode(ns, p, feat);
+        const v = forward(feat);
+        if (v > vAny) { vAny = v; bestAny = a; }
+        if (a.type !== 'pass' && v > vNP) { vNP = v; bestNP = a; }
+      }
+      if (!opts.canReroll) return { act: bestAny };
+      if (!bestNP) return { reroll: true };
+      const g = preValue(s);
+      if (g !== null && g > vNP + (opts.margin || 0)) return { reroll: true };
+      return { act: bestNP };
+    }
+    let lastEvals = 0, lastG = 0;
+    return { F, encode, forward, candidates, chooseAction, chooseSearch, decide, preValue, setNet, get hasG() { return !!(NET && NET.hasG); }, get lastG() { return lastG; }, get lastEvals() { return lastEvals; }, get loaded() { return !!NET; } };
   }
 
   const cache = {};

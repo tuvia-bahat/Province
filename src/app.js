@@ -584,9 +584,11 @@
         clearTimeout(timer); vnetPending = false;
         if (tok !== vnetTok || state !== snap) { if (!paused) scheduleAi(); return; }   // undo / new game while thinking: drop the answer
         if (e.data.error) { fallback(e.data.error); return; }
-        vnetTok++; window.__vnetMoves = (window.__vnetMoves || 0) + 1; if (aiRec) aiRec.nn = true; apply(e.data.act);
+        vnetTok++; window.__vnetMoves = (window.__vnetMoves || 0) + 1; if (aiRec) aiRec.nn = true;
+        if (e.data.reroll) { aiRerollSoon(); return; }   // the net decided a fresh roll is worth more than its best move (beta re-roll rule)
+        apply(e.data.act);
       };
-      w.postMessage({ id: tok, size: settings.board, state: snap });
+      w.postMessage({ id: tok, size: settings.board, state: snap, canReroll: canReroll(), rr: !!BETA_FLAG });
       return true;
     } catch (e) { console.error(e); return false; }
   }

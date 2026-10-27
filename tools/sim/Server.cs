@@ -7,28 +7,34 @@
 //   total_nc x F bytes of afterstate features (see Features.Encode), slot after slot
 //   total_nc bytes: 1 if that candidate wins the game immediately
 // Python -> server: G x int32 (chosen candidate index per slot; -1 to quit)
+//
+// RE-ROLL mode (extra arg "reroll", used for the beta rule "once per turn the player may re-roll the dice"):
+//   the per-slot header has an 8th int canReroll (1 = this roll is the first of the turn, the player may answer -2 = re-roll),
+//   and after the candidate bytes comes G x F bytes: the position BEFORE the roll encoded as the opponent's afterstate (Features.Encode(s, 1 - turn)),
+//   which the value network's second head ("g") turns into the expected value of a fresh roll.
+//   Answer -2 = re-roll (the slot gets a new roll and canReroll becomes 0); the turn counter does not advance.
 using System.Diagnostics;
 
 namespace Province;
 
 public static class Server
 {
-    static bool Packed;
+    static bool Packed, Reroll;
     [ThreadStatic] static byte[] tmpBuf;
     sealed class Slot
     {
         public State S; public Random Rng; public int Turns; public List<Act> Acts = new(); public byte[] Feat = new byte[0]; public byte[] Term = new byte[0];
-        public int Finished = -2, P0, P1, H0, H1;
+        public int Finished = -2, P0, P1, H0, H1; public bool Rerolled; public byte[] Pre = new byte[0];
     }
 
-    public static int Run(int size, int G, int seed, int maxTurns, bool packed = false)
+    public static int Run(int size, int G, int seed, int maxTurns, bool packed = false, bool reroll = false)
     {
-        var b = new Board(size); int F = packed ? Features.PackedLength(b) : Features.Length(b); Packed = packed;
+        var b = new Board(size); int F = packed ? Features.PackedLength(b) : Features.Length(b); Packed = packed; Reroll = reroll;
         var slots = new Slot[G];
         for (int g = 0; g < G; g++) { slots[g] = new Slot { Rng = new Random(seed * 100003 + g) }; Start(b, slots[g]); }
         var stdout = new BufferedStream(Console.OpenStandardOutput(), 1 << 20);
         var stdin = Console.OpenStandardInput();
-        var hdr = new byte[4 * (1 + 7 * G)]; var choice = new byte[4 * G];
+        var hdr = new byte[4 * (1 + 8 * G)]; var choice = new byte[4 * G];
 
         while (true)
         {
@@ -36,19 +42,20 @@ public static class Server
             int total = 0; foreach (var sl in slots) total += sl.Acts.Count;
             var w = new BinaryWriter(stdout);
             w.Write(G);
-            foreach (var sl in slots) { w.Write(sl.Acts.Count); w.Write(sl.S.Turn); w.Write(sl.Finished); w.Write(sl.P0); w.Write(sl.P1); w.Write(sl.H0); w.Write(sl.H1); }
+            foreach (var sl in slots) { w.Write(sl.Acts.Count); w.Write(sl.S.Turn); w.Write(sl.Finished); w.Write(sl.P0); w.Write(sl.P1); w.Write(sl.H0); w.Write(sl.H1); if (Reroll) w.Write(sl.Rerolled ? 0 : 1); }
             foreach (var sl in slots) stdout.Write(sl.Feat, 0, sl.Acts.Count * F);
             foreach (var sl in slots) stdout.Write(sl.Term, 0, sl.Acts.Count);
+            if (Reroll) foreach (var sl in slots) stdout.Write(sl.Pre, 0, F);
             stdout.Flush();
             int got = 0; while (got < choice.Length) { int r = stdin.Read(choice, got, choice.Length - got); if (r <= 0) return 0; got += r; }
-            var ch = new int[G]; for (int g = 0; g < G; g++) { ch[g] = BitConverter.ToInt32(choice, 4 * g); if (ch[g] < 0) return 0; }
+            var ch = new int[G]; for (int g = 0; g < G; g++) { ch[g] = BitConverter.ToInt32(choice, 4 * g); if (ch[g] < 0 && !(Reroll && ch[g] == -2)) return 0; }
             Parallel.For(0, G, g => Advance(b, slots[g], ch[g], maxTurns));
         }
     }
 
     static void Start(Board b, Slot sl)
     {
-        sl.S = new State(b); sl.Turns = 0;
+        sl.S = new State(b); sl.Turns = 0; sl.Rerolled = false;
         sl.S.Roll(sl.Rng.Next(1, b.Size + 1), sl.Rng.Next(1, b.Size + 1));
     }
 
@@ -59,6 +66,12 @@ public static class Server
         int n = sl.Acts.Count;
         if (sl.Feat.Length < n * F) { sl.Feat = new byte[n * F * 5 / 4]; sl.Term = new byte[n * 5 / 4 + 8]; }
         int m = s.Turn;
+        if (Reroll)
+        {
+            if (sl.Pre.Length < F) sl.Pre = new byte[F];
+            tmpBuf ??= new byte[Features.Length(b)];
+            if (Packed) Features.EncodePacked(s, 1 - m, sl.Pre, 0, tmpBuf); else Features.Encode(s, 1 - m, sl.Pre, 0);
+        }
         for (int i = 0; i < n; i++)
         {
             var ns = Rules.Apply(s, sl.Acts[i], t);
@@ -72,6 +85,10 @@ public static class Server
     {
         sl.Finished = -2;
         var s = sl.S; var t = Rules.Terrs(s);
+        if (choice == -2)   // re-roll: a fresh roll for the same player, once per turn
+        {
+            s.Roll(sl.Rng.Next(1, b.Size + 1), sl.Rng.Next(1, b.Size + 1)); sl.Rerolled = true; return;
+        }
         var ns = Rules.Apply(s, sl.Acts[choice], t);
         sl.Turns++;
         if (ns.Winner >= 0 || sl.Turns >= maxTurns)
@@ -81,6 +98,6 @@ public static class Server
             sl.H0 = Rules.ProvincesHeld(ns, 0); sl.H1 = Rules.ProvincesHeld(ns, 1);
             Start(b, sl);
         }
-        else { sl.S = ns; ns.Roll(sl.Rng.Next(1, b.Size + 1), sl.Rng.Next(1, b.Size + 1)); }
+        else { sl.S = ns; sl.Rerolled = false; ns.Roll(sl.Rng.Next(1, b.Size + 1), sl.Rng.Next(1, b.Size + 1)); }
     }
 }

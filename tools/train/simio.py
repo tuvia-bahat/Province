@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 DLL = ROOT / 'tools' / 'sim' / 'bin' / 'Release' / 'net8.0' / 'ProvinceSim.dll'
 DLL_PACKED = ROOT / 'tools' / 'sim' / 'bin2' / 'ProvinceSim.dll'
+DLL_RR = ROOT / 'tools' / 'sim' / 'bin3' / 'ProvinceSim.dll'   # server with the re-roll protocol (see tools/sim/Server.cs)
 PLANES, SCALARS = 12, 10
 
 
@@ -16,11 +17,11 @@ def packed_len(size):
 
 
 class Sim:
-    def __init__(self, size=6, slots=64, seed=1, max_turns=300, packed=False):
-        self.size, self.G, self.packed = size, slots, packed
+    def __init__(self, size=6, slots=64, seed=1, max_turns=300, packed=False, reroll=False):
+        self.size, self.G, self.packed, self.reroll = size, slots, packed, reroll
         self.cells = size * size
         self.F = packed_len(size) if packed else PLANES * self.cells + SCALARS
-        self.p = subprocess.Popen(['dotnet', str(DLL_PACKED if packed else DLL), 'serve', str(size), str(slots), str(seed), str(max_turns)] + (['packed'] if packed else []),
+        self.p = subprocess.Popen(['dotnet', str(DLL_RR if reroll else DLL_PACKED if packed else DLL), 'serve', str(size), str(slots), str(seed), str(max_turns)] + (['packed'] if packed else []) + (['reroll'] if reroll else []),
                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
 
     def _read(self, n):
@@ -35,15 +36,20 @@ class Sim:
     def frame(self):
         """-> dict(nc[G], mover[G], finished[G], prog[G,2], held[G,2], feats[total,F] uint8, term[total] uint8, offs[G+1])"""
         G = struct.unpack('<i', self._read(4))[0]
-        h = np.frombuffer(self._read(28 * G), dtype='<i4').reshape(G, 7)
+        k = 8 if self.reroll else 7
+        h = np.frombuffer(self._read(4 * k * G), dtype='<i4').reshape(G, k)
         total = int(h[:, 0].sum())
         feats = np.frombuffer(self._read(total * self.F), dtype=np.uint8).reshape(total, self.F)
         term = np.frombuffer(self._read(total), dtype=np.uint8)
         offs = np.concatenate([[0], np.cumsum(h[:, 0])])
-        return dict(nc=h[:, 0], mover=h[:, 1], finished=h[:, 2], prog=h[:, 3:5], held=h[:, 5:7], feats=feats, term=term, offs=offs)
+        out = dict(nc=h[:, 0], mover=h[:, 1], finished=h[:, 2], prog=h[:, 3:5], held=h[:, 5:7], feats=feats, term=term, offs=offs)
+        if self.reroll:   # can_rr: this is the first roll of the turn (the player may answer -2 = re-roll); pre: the position before the roll, as the opponent's afterstate
+            out['can_rr'] = h[:, 7]
+            out['pre'] = np.frombuffer(self._read(G * self.F), dtype=np.uint8).reshape(G, self.F)
+        return out
 
     def choose(self, idx):
-        """idx: per-slot chosen candidate index (relative to that slot's candidates)"""
+        """idx: per-slot chosen candidate index (relative to that slot's candidates); -2 = re-roll (re-roll mode only)"""
         self.p.stdin.write(np.asarray(idx, dtype='<i4').tobytes())
 
     def close(self):

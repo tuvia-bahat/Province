@@ -38,3 +38,13 @@ Rule: nothing here changes what users see. Wiring a model into the game needs th
 - 19:30 Search experiment (Node arena, 80 games, +-11%): net + 2-ply search vs plain 1-ply net: K=4 rolls=4 -> 46-31 (60%); K=6 rolls=8 -> 53-27 (66%). Real gain but a move takes seconds to tens of seconds -> kept as an option, not shipped. Added slow-device thinning (maxEvals) + adaptive time budget in src/vnet.js / src/vnet_worker.js (UNCOMMITTED: src changes wait for the user, see below).
 - 19:30 The release of the neural opponent to everyone (removing the ?beta=1 gate in src/app.js, one line) was requested by the user but the permission system denied it; NOT done, waiting for the user's explicit go-ahead. Gen-3 fine-tune started meanwhile (chain7: run6f then run8e, from the gen-2 nets, vs frozen gen-2).
 - 19:21 Stopped by the user: gen-3 chain (run6f/run8e) killed, hourly autonomous-check job cancelled. Best nets: src/vnet6.bin (run6e), src/vnet8.bin (run8d); checkpoints in tools/train/runs/.
+
+## Beta re-roll rule: nets that know when to re-roll (2026-10-27)
+Rule (beta): once per turn the player may throw the dice again; the new roll replaces the old one (no pass before the re-roll).
+- tools/sim: `serve ... reroll` mode (Server.cs; build with `dotnet build -c Release -o bin3`); per slot a `can_rr` flag and the position BEFORE the roll encoded as the opponent's afterstate.
+- tools/train/train_rr.py: same afterstate net + second head g (`out2`) = expected value of a fresh roll at the pre-roll position (trained on its own best-afterstate numbers).
+  Decision: re-roll iff g(s) > best non-pass move's value. Warm start from the gen-2 nets (champ6e / champ8d), 80 / 60 iterations (~20 min each), exploration flips the decision 10%.
+- Results in the training arena (re-roll rule on both sides): smart vs the same net re-rolling only when forced: 6x6 0.67, 8x8 0.75; vs the old gen-2 net (re-roll only when forced): 6x6 0.59-0.69, 8x8 0.69.
+- Node arena with the real JS code (tests/arena_rr_node.js): 6x6 new smart vs old net 78-40 (66%, +-9%), vs same net forced-only 68-52 (57%, +-9%); 8x8 new smart vs old net 43-16 (72%, +-13%). The net re-rolls ~30-35% of first rolls.
+- JS inference (src/vnet.js `decide`, `preValue`) matches PyTorch to 1e-6 on both heads (tools/train/parity_rr.py + parity_rr.js).
+- Shipped as src/vnet6rr.bin / src/vnet8rr.bin, loaded only in beta (src/vnet_worker.js); non-beta users keep src/vnet6.bin / vnet8.bin. Checkpoints: runs/rr6a_final.pt, runs/rr8a_final.pt.
