@@ -1753,20 +1753,11 @@
   $('tpSkip').onclick = () => { hideTutPrompt(); O.track('tutorial_prompt_skip'); };
 
   // ---------- התקנה כאפליקציה ----------
-  let installEv = null;
+  // no more install invitation in the lobby; we only keep the browser from showing its own banner, and count installs
   const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isPhone = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-  const installDismissed = () => { try { return Date.now() - (+localStorage.getItem('province.installDismiss') || 0) < 7 * 864e5; } catch (e) { return false; } };
-  function renderInstall() {
-    const show = isPhone && !standalone() && !installDismissed() && (!!installEv || isIos);
-    $('lbInstall').hidden = !show;
-    $('lbInstallBtn').hidden = !installEv;
-    $('lbInstallTxt').textContent = installEv ? 'Add Province to your home screen' : 'Tap Share, then Add to Home Screen';
-  }
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEv = e; O.track('install_available'); renderInstall(); });
-  window.addEventListener('appinstalled', () => { O.track('app_installed'); installEv = null; renderInstall(); });
-  $('lbInstallBtn').onclick = async () => { if (!installEv) return; O.track('install_click'); installEv.prompt(); try { const c = await installEv.userChoice; if (c && c.outcome === 'accepted') O.track('install_accepted'); } catch (e) { /* ignore */ } installEv = null; renderInstall(); };
+  window.addEventListener('beforeinstallprompt', (e) => e.preventDefault());
+  window.addEventListener('appinstalled', () => O.track('app_installed'));
   // הזמנה לקבוצת הוואטסאפ: במסך הניצחון רק למי שעוד לא לחץ עליה אף פעם
   // ההזמנה לקבוצת הוואטסאפ (בעברית) מוצגת רק למי שנכנס מישראל
   let userCountry = null;
@@ -1804,8 +1795,6 @@
     O.track('feedback_sent'); try { localStorage.setItem('province.feedback', '1'); } catch (e) { /* ignore */ }
     $('fbIn').hidden = true; $('fbSend').hidden = true; $('fbThanks').hidden = false; setTimeout(() => fbShow(false), 1600);
   };
-  $('lbInstallX').onclick = () => { O.track('install_dismiss'); try { localStorage.setItem('province.installDismiss', String(Date.now())); } catch (e) { /* ignore */ } $('lbInstall').hidden = true; };
-  renderInstall();
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 
   // ---------- כפתורים ----------
