@@ -524,16 +524,16 @@
       const wg = document.createElementNS(NS, 'g');
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
-      const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = [0, rv(1), rv(2), W];
       const tintLight = (document.documentElement.getAttribute('data-theme') === 'dark' ? ['#1a3a2d', '#1a3248'] : ['#e7f9f1', '#e7f3fe'])[wp];
+      const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = Array.from({ length: R.PR + 1 }, (_, j) => (j === 0 ? 0 : j === R.PR ? W : rv(j)));   // province borders (every board size, not only 6x6)
       for (const k of group) {
         const pxk = FLIP ? R.PR - 1 - (k % R.PR) : k % R.PR, pyk = Math.floor(k / R.PR), top = FLIP ? pyk : R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
         r0.setAttribute('x', edges[pxk]); r0.setAttribute('y', edges[top]);
         r0.setAttribute('width', edges[pxk + 1] - edges[pxk]); r0.setAttribute('height', edges[top + 1] - edges[top]);
-        r0.setAttribute('fill', tintLight); r0.setAttribute('opacity', 0);
+        r0.setAttribute('fill', BETA_FLAG ? COLORS[wp] : tintLight); r0.setAttribute('opacity', 0);   // beta: a stronger colour (the player's own, 40%)
         wg.appendChild(r0);
-        try { r0.animate([{ opacity: 0 }, { opacity: 1, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
+        try { r0.animate([{ opacity: 0 }, { opacity: BETA_FLAG ? .4 : 1, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
       }
       releaseWin(startMs + 3 * PULSE + 350);
     }
