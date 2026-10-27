@@ -59,7 +59,7 @@
   })();
   const TUT = window.TUTORIAL_V3 || window.TUTORIAL_NEW || window.TUTORIAL;   // V3 (שוחרר לכולם): לחיצות בלבד, חץ מצביע, כרטיסים צפים על הלוח
   const TV3 = TUT === window.TUTORIAL_V3;
-  const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null, sub: 0, subFor: -1 };
+  const tut = { active: false, i: 0, page: 0, phase: 'pages', backup: null, cardAt: 0, cardTimer: null, nudgeTimer: null, sub: 0, subFor: -1, notice: null };
   let ui = freshUi();
   function freshUi() { return { sel: null, sheet: null, hover: null, rolled: false }; }
   const SPEED = { slow: 2, normal: 1, fast: 0.12 };
@@ -174,7 +174,7 @@
     if (tut.active && !tutMatches(a)) { tutNudge('Follow the highlighted move'); return false; }
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     const prev = state;
-    if (tut.active) { tut.i++; tut.cardAt = Infinity; trackLesson(); }
+    if (tut.active) { const st0 = tutStepNow(); if (BETA_FLAG && st0 && st0.bridgeNote) tut.notice = st0.bridgeNote; tut.i++; tut.cardAt = Infinity; trackLesson(); }
     winShowAt = ns.winner !== null ? Infinity : 0;
     history.push(state); lastMove = { p: state.turn, a }; const actor = state.turn; state = ns;
     ui = freshUi();
@@ -848,10 +848,7 @@
     return tut.sub < tutIntroList(st).length - 1;
   };
   function tutHighlightsBridges() {   // beta: the bridge counter pulses while the limited-bridges card is shown
-    if (!BETA_FLAG || !TV3 || !tut.active || state.winner !== null) return false;
-    if (tut.phase === 'pages') { const pg = tutPages()[tut.page]; return !!(pg && pg.hl === 'bridges'); }
-    const st = tutStepNow();
-    return !!(st && st.who === 0 && st.hlb && state.turn === 0 && !state.roll && Date.now() >= tut.cardAt);
+    return !!(BETA_FLAG && TV3 && tut.active && state.winner === null && tut.notice);
   }
   function tutHighlightsMeter() {
     if (!TV3 || !tut.active || state.winner !== null) return false;
@@ -875,7 +872,8 @@
     const el = $('coach');
     if (!tut.active || state.winner !== null) { el.hidden = true; return; }
     let title, body, next = '', cells = [];
-    if (tut.phase === 'pages') {
+    if (tut.notice) { title = tut.notice.title; body = tut.notice.body; next = 'Got it'; }
+    else if (tut.phase === 'pages') {
       const pg = tutPages()[tut.page];
       title = pg.title; body = pg.body;
       next = tut.page < tutPages().length - 1 ? 'Next' : "Let's play";
@@ -899,7 +897,9 @@
     $('coachFoot').innerHTML = '';
     const nb = $('coachNext');
     if (nb) nb.onclick = () => {
-      if (tut.phase === 'pages') { if (tut.page < tutPages().length - 1) tut.page++; else { tut.phase = 'game'; tut.i = 0; tut.cardAt = 0; } }
+      if (tut.notice) tut.notice = null;
+      else if (tut.phase === 'pages') { if (tut.page < tutPages().length - 1) tut.page++; else { tut.phase = 'game'; tut.i = 0; tut.cardAt = 0; } }
+      else if (tut.notice) tut.notice = null;
       else tut.sub++;
       render();
     };
@@ -979,7 +979,7 @@
   const trackLesson = () => O.track('tutorial_lesson_done', { n: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
   function startTutorial() {
     if (train.active) trainExit(false);
-    O.track('tutorial_start', { beta: BETA_FLAG }); tut.doneTracked = false;
+    O.track('tutorial_start', { beta: BETA_FLAG }); tut.doneTracked = false; tut.notice = null;
     try { localStorage.setItem('province.tutprompt', '1'); } catch (e) { /* ignore */ }
     hideTutPrompt();
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0; fxCancel();
@@ -995,7 +995,7 @@
     if (!tut.active) return;
     if (state.winner === null) O.track('tutorial_exit', { at: TUT.steps.slice(0, tut.i).filter((x) => x.who === 0).length });
     clearTimeout(aiTimer); aiTimer = null; clearTimeout(winTimer); winShowAt = 0; fxCancel(); clearTimeout(tut.cardTimer);
-    tut.active = false;
+    tut.active = false; tut.notice = null;
     const b = tut.backup; tut.backup = null;
     if (b) { settings = b.settings; state = b.state; history = b.history; }
     useBoard(settings.board); applyRules();
@@ -1189,7 +1189,7 @@
     const ph = phase();
     if (ph === 'roll') {
       msg.innerHTML = '';
-      if (tut.active && (tut.phase !== 'game' || Date.now() < tut.cardAt || tutIntroPending())) return;
+      if (tut.active && (tut.phase !== 'game' || Date.now() < tut.cardAt || tutIntroPending() || tut.notice)) return;
       addBtn(row(), 'Roll dice', 'wide' + (tut.active ? ' guide' : ''), doRoll);
       return;
     }
