@@ -219,8 +219,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-fin { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; white-space: nowrap; }
 .lb-fin .lb-names { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .lb-fin .sz { flex: none; margin-left: 0; }
-.lb-win { margin-left: auto; flex: 0 1 auto; max-width: 42%; min-width: 0; display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }   /* the winner: a dot in his colour and his name */
-.lb-win .lb-wd { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.lb-win { margin-left: auto; flex: 0 1 auto; max-width: 42%; min-width: 0; display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }   /* the winner: a trophy (no colour) and his name */
+.lb-win .lb-wd { flex: none; color: var(--muted); }
 .lb-win .lb-wn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
 .lb-dot.open { background: var(--p0); animation: lbpulse 1.6s ease-out infinite; }
