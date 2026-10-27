@@ -24,6 +24,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); height: 100%; overflow: hidden; }
 body { font-family: var(--font); min-height: 100vh; min-height: 100dvh; -webkit-text-size-adjust: 100%; }
+button, a, .tile, .lb-row, [role="switch"] { touch-action: manipulation; }   /* no double-tap zoom when pressing buttons quickly on mobile */
 button { font: inherit; color: inherit; cursor: pointer; }
 .btn, .link, .seg button, .modal h2 { text-transform: uppercase; letter-spacing: .06em; }
 [hidden] { display: none !important; }
