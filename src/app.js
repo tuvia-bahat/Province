@@ -526,16 +526,15 @@
       const wg = document.createElementNS(NS, 'g');
       wg.setAttribute('pointer-events', 'none');
       svg.insertBefore(wg, svg.firstChild);
-      const tintLight = (document.documentElement.getAttribute('data-theme') === 'dark' ? ['#1a3a2d', '#1a3248'] : ['#e7f9f1', '#e7f3fe'])[wp];
       const rv = (j) => M + 2 * j * P + (j - 1) * G + G / 2, edges = Array.from({ length: R.PR + 1 }, (_, j) => (j === 0 ? 0 : j === R.PR ? W : rv(j)));   // province borders (every board size, not only 6x6)
       for (const k of group) {
         const pxk = FLIP ? R.PR - 1 - (k % R.PR) : k % R.PR, pyk = Math.floor(k / R.PR), top = FLIP ? pyk : R.PR - 1 - pyk;   // שורה מלמעלה
         const r0 = document.createElementNS(NS, 'rect');
         r0.setAttribute('x', edges[pxk]); r0.setAttribute('y', edges[top]);
         r0.setAttribute('width', edges[pxk + 1] - edges[pxk]); r0.setAttribute('height', edges[top + 1] - edges[top]);
-        r0.setAttribute('fill', BETA_FLAG ? COLORS[wp] : tintLight); r0.setAttribute('opacity', 0);   // beta: a stronger colour (the player's own, 40%)
+        r0.setAttribute('fill', COLORS[wp]); r0.setAttribute('opacity', 0);   // the winner's own colour, 40% at the peak of the pulse
         wg.appendChild(r0);
-        try { r0.animate([{ opacity: 0 }, { opacity: BETA_FLAG ? .4 : 1, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
+        try { r0.animate([{ opacity: 0 }, { opacity: .4, offset: .5 }, { opacity: 0 }], { duration: PULSE, iterations: 3, delay: startMs, easing: 'ease-in-out' }); } catch (e) { /* ignore */ }
       }
       releaseWin(startMs + 3 * PULSE + 350);
     }
@@ -1300,8 +1299,7 @@
       $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
-      $('winCommunity').hidden = true;
-      $('winFeedback').hidden = false;
+      $('winCommunity').hidden = false; communityText();   // the Discord invite at the end of every game
       o.hidden = false;
     } else o.hidden = true;
     scheduleAi();
@@ -1778,12 +1776,12 @@
   const showCommunity = () => true;
   function communityText() {
     const il = isIL();
-    for (const a of [$('lbCommunity'), $('winCommunity')]) {
+    for (const a of [$('winCommunity')]) {
       a.dir = il ? 'rtl' : 'ltr'; a.lang = il ? 'he' : 'en';
       const t = a.lastChild; if (t && t.nodeType === 3) t.textContent = il ? 'הצטרפו לקהילת הדיסקורד של המשחק' : 'Join the Province Discord community';
     }
   }
-  function applyCommunity() { $('lbCommunity').hidden = !showCommunity(); communityText(); }
+  function applyCommunity() { communityText(); }
   function setCountry(cc) {
     if (!cc) return;
     userCountry = cc;
@@ -1791,18 +1789,17 @@
     applyCommunity();
   }
   const communityDone = () => { try { return localStorage.getItem('province.community') === '1'; } catch (e) { return false; } };
-  const markCommunity = (where) => { O.track('community_click', { from: where }); try { localStorage.setItem('province.community', '1'); } catch (e) { /* ignore */ } $('winCommunity').hidden = true; };
-  $('lbCommunity').addEventListener('click', () => markCommunity('lobby'));
+  const markCommunity = (where) => { O.track('community_click', { from: where }); try { localStorage.setItem('province.community', '1'); } catch (e) { /* ignore */ } };
   applyCommunity();
   $('winCommunity').addEventListener('click', () => markCommunity('win'));
   // feedback after a game (beta): stored on the server, read in the dashboard
   const feedbackDone = () => { try { return localStorage.getItem('province.feedback') === '1'; } catch (e) { return false; } };
   const fbShow = (on) => { $('fbModal').hidden = !on; if (on) { $('fbThanks').hidden = true; $('fbSend').hidden = false; $('fbIn').hidden = false; $('fbIn').value = ''; setTimeout(() => $('fbIn').focus(), 50); } };
-  $('winFeedback').onclick = () => { O.track('feedback_open'); fbShow(true); };
+  $('lbFeedback').onclick = () => { O.track('feedback_open'); fbShow(true); };   // always at the bottom of the lobby
   $('fbCancel').onclick = () => fbShow(false);
   $('fbSend').onclick = () => {
     const t = $('fbIn').value.trim(); if (t.length < 2) return;
-    O.sendFeedback(t, { board: settings.board, mode: settings.mode, name: O.getName() || '', won: state.winner === settings.human, tutorial: !!tut.active, beta: !!BETA_FLAG }).catch(() => {});
+    O.sendFeedback(t, $('lobby').hidden ? { board: settings.board, mode: settings.mode, name: O.getName() || '', won: state.winner === settings.human, tutorial: !!tut.active, beta: !!BETA_FLAG } : { lobby: true, name: O.getName() || '', beta: !!BETA_FLAG }).catch(() => {});
     O.track('feedback_sent'); try { localStorage.setItem('province.feedback', '1'); } catch (e) { /* ignore */ }
     $('fbIn').hidden = true; $('fbSend').hidden = true; $('fbThanks').hidden = false; setTimeout(() => fbShow(false), 1600);
   };

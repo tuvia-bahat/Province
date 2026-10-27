@@ -377,3 +377,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes eyebump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
 .watch-float { position: absolute; z-index: 7; top: calc(max(5vw, env(safe-area-inset-top)) + 4px); right: calc(5vw + 54px); color: var(--p1); pointer-events: none; animation: eyefloat 1.8s ease-out forwards; }
 @keyframes eyefloat { 0% { opacity: 0; transform: translateY(8px) scale(.7); } 15% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-46px) scale(1); } }
+
+button.lb-community { border: 0; cursor: pointer; font-family: inherit; }
+#lbFeedback svg { color: var(--muted); }
