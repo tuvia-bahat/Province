@@ -209,14 +209,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-mid > .lb-list { margin: auto 0; }   /* מרכוז אנכי כשהרשימה קצרה, גלילה כשהיא ארוכה */
 .lb-more { align-self: center; margin-top: 6px; border: 0; background: none; color: var(--muted); font-size: 13px; font-weight: 500; padding: 10px 18px; }
 .lb-list { display: flex; flex-direction: column; gap: 8px; }
-.lb-row { display: flex; align-items: center; gap: 14px; padding: 0 12px 0 18px; min-height: 64px; border-radius: 20px; background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 8px 22px -14px rgba(20,25,40,.22); cursor: pointer; transition: transform .12s, box-shadow .2s; }
+.lb-row { display: flex; align-items: center; gap: 14px; padding: 9px 12px 9px 18px; min-height: 64px; border-radius: 20px; background: var(--surface); box-shadow: 0 0 0 1px var(--line), 0 8px 22px -14px rgba(20,25,40,.22); cursor: pointer; transition: transform .12s, box-shadow .2s; }
 .lb-row:active { transform: scale(.985); }
 .lb-row.sep { margin-top: 12px; }
 .lb-txt { flex: 1; min-width: 0; font-size: 16px; overflow-wrap: anywhere; display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; }
 .lb-txt b { font-weight: 600; letter-spacing: .005em; }
 .lb-txt .dim { color: var(--faint); font-weight: 400; font-size: 14px; }
 .lb-txt .sz { padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-left: 4px; }
-.lb-win { font-size: 14px; font-weight: 600; margin-left: 38px; white-space: nowrap; }
+.lb-win { flex-basis: 100%; font-size: 14px; font-weight: 600; margin: 3px 0 0; }   /* the result always sits on its own line under the names */
 .lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
 .lb-dot.open { background: var(--p0); animation: lbpulse 1.6s ease-out infinite; }
 .lb-dot.live { background: var(--p1); }

@@ -1663,7 +1663,7 @@
       });
       const s1 = sep(d.finished.length);
       d.finished.forEach((g, k) => {
-        const win = g.winner === null ? '' : `<span class="lb-win">${esc(g.winner === 0 ? g.name0 : g.name1)} wins</span>${g.quit ? ' <span class="dim">(resigned)</span>' : ''}`;
+        const win = g.winner === null ? '' : `<span class="lb-win">${esc(g.winner === 0 ? g.name0 : g.name1)} wins${g.quit ? ' <span class="dim">(resigned)</span>' : ''}</span>`;
         let r = row(g, 'done', `<b>${esc(g.name0)}</b> <span class="dim">vs</span> <b>${esc(g.name1)}</b>${sz(g)}${win}`, '', 'replay');
         if (k === 0 && s1) r = r.replace('class="lb-row"', 'class="lb-row sep"');
         h += r;
