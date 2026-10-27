@@ -568,7 +568,7 @@
     if (!VNET_ON(snap.turn)) return false;
     try {
       if (!vnetWorker) {
-        vnetWorker = new Worker('src/vnet_worker.js');
+        vnetWorker = new Worker('src/vnet_worker.js?v=' + (window.BUILD || ''));   // the build id in the URL: never a stale cached copy
         vnetWorker.onerror = (e) => { console.error('vnet worker', e); vnetWorker = null; };
       }
       const tok = ++vnetTok, w = vnetWorker; vnetPending = true;
