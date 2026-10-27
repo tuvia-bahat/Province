@@ -216,10 +216,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .lb-txt b { font-weight: 600; letter-spacing: .005em; }
 .lb-txt .dim { color: var(--faint); font-weight: 400; font-size: 14px; }
 .lb-txt .sz { padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; margin-left: 4px; }
-.lb-fin { display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0; white-space: nowrap; }
+.lb-fin { display: grid; grid-template-columns: minmax(0, 1fr) 34%; column-gap: 8px; align-items: center; width: 100%; min-width: 0; white-space: nowrap; }   /* the winner column starts at the same line in every row */
+.lb-fin .lb-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .lb-fin .lb-names { min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .lb-fin .sz { flex: none; margin-left: 0; }
-.lb-win { margin-left: auto; flex: 0 1 auto; max-width: 42%; min-width: 0; display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }   /* the winner: a trophy (no colour) and his name */
+.lb-win { min-width: 0; display: flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; }   /* the winner: a trophy (no colour) and his name */
 .lb-win .lb-wd { flex: none; color: var(--muted); }
 .lb-win .lb-wn { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .lb-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); }
