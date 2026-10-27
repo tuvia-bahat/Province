@@ -16,6 +16,7 @@
     { title: 'The goal', body: `Rivers split the board into <b>9 provinces</b>.` },
     { title: 'You are Green', body: `Control <b>5 provinces</b> to win.` },
     { title: 'Stay connected', body: `Your 5 provinces must be <b>connected</b> by bridges. Loose ones don't count.`, hl: true },
+    { title: 'Bridges are limited', body: `You have only <b>8 bridges</b> for the whole game. Each one you build is gone for good.`, hl: 'bridges', beta: true },
   ];
 
   const L = (x, y) => [x, y];   // קיצור לקריאות
@@ -32,11 +33,11 @@
 
     // 3. מנדט מכל בסיס + גשר והעברת חיילים לפרובינציה הצמודה
     { who: 0, kind: 'move', dice: [1, 1], act: { type: 'move', R: L(0, 0), from: L(1, 1), to: L(2, 1), count: 1 },
-      title: `Any base`, intro: [`A lit square in your territory lets you play from <b>any</b> of your bases.`, `Moving across a river builds a <b>bridge</b>.`], instr: `Move <b>1</b> soldier across the river.` },
+      title: `Any base`, intro: [`A lit square in your territory lets you play from <b>any</b> of your bases.`, `Moving across a river builds a <b>bridge</b>.`], introBeta: [`Each bridge uses one of your <b>8</b> bridges.`], hlb: true, instr: `Move <b>1</b> soldier across the river.` },
     { who: 1, dice: [1, 5], act: { type: 'land', R: L(0, 4), to: L(0, 4), count: 4 } },
 
     // 4. טריטוריה מאוחדת דרך גשר: כיבוש פרובינציה נוספת
-    { who: 0, kind: 'move', dice: [4, 1], act: { type: 'move', R: L(3, 0), from: L(1, 1), to: L(1, 2), count: 4 },
+    { who: 0, kind: 'move', dice0: [6, 6], rrTitle: `Re-roll`, rrInstr: `These squares are far from the action. Tap <b>Re-roll</b>. You can do it <b>once per turn</b>.`, dice: [4, 1], act: { type: 'move', R: L(3, 0), from: L(1, 1), to: L(1, 2), count: 4 },
       title: `One territory`, intro: [`Provinces joined by a bridge are <b>one territory</b>.`, `Watch the <b>meter</b>: it counts only connected provinces.`], instr: `Move <b>4</b> soldiers to claim a new province.`, hl: true },
     // 5. (המחשב חודר לפרובינציה השלישית)
     { who: 1, dice: [1, 5], act: { type: 'move', R: L(0, 4), from: L(0, 4), to: L(0, 3), count: 2 } },
@@ -57,8 +58,8 @@
     { who: 1, dice: [6, 3], act: { type: 'move', R: L(5, 2), from: L(5, 2), to: L(5, 3), count: 2 } },
 
     // 9. תור בלי מהלך
-    { who: 0, kind: 'skip', dice: [5, 1], act: { type: 'skip' },
-      title: `No move?`, intro: [`Sometimes you cannot play.`, `Both squares are in enemy territory, far from your bases.`], instr: `Nothing to do. Tap <b>Pass</b>.` },
+    { who: 0, kind: 'skip', dice0: [5, 1], rrInstr: `No move here. Tap <b>Re-roll</b>.`, dice: [1, 5], act: { type: 'skip' },
+      title: `No move?`, intro: [`Sometimes you cannot play.`, `Both squares are in enemy territory, far from your bases.`], instr: `Still nothing. Tap <b>Pass</b>.` },
     { who: 1, dice: [3, 5], act: { type: 'move', R: L(2, 4), from: L(2, 4), to: L(3, 4), count: 2 } },
 
     // 10. אי אפשר לחצות בגשר של היריב: זזים למשבצת פנויה
@@ -97,7 +98,11 @@
     'A lit square in your territory lets you move from any of your bases. New soldiers land only on the lit square.',
   ];
 
-  const T = { pages, steps, recap };
+  const recapBeta = [
+    'Once per turn you may <b>re-roll</b> the dice. The new roll replaces the old one.',
+    'You have only <b>8 bridges</b> in the whole game.',
+  ];
+  const T = { pages, steps, recap, recapBeta };
 
   // בדיקת התסריט מול מנוע החוקים: כל פעולה חוקית, המשבצות שהוטלו תואמות, והאדם מנצח בצעד האחרון בלבד.
   // verbose: מחזיר גם תקציר לוח אחרי כל צעד (לניפוי).
@@ -122,6 +127,10 @@
     for (let i = 0; i < T.steps.length; i++) {
       const st = T.steps[i];
       if (s.turn !== st.who) return { ok: false, error: `step ${i + 1}: expected turn ${st.who}, got ${s.turn}`, log };
+      if (st.dice0) {
+        const s0 = R.roll(s, st.dice0[0], st.dice0[1]);
+        if (st.act.type === 'skip' && R.hasAnyMove(s0)) return { ok: false, error: `step ${i + 1}: first roll should have no move`, log };
+      }
       s = R.roll(s, st.dice[0], st.dice[1]);
       if (st.act.type === 'skip') {
         if (R.hasAnyMove(s)) return { ok: false, error: `step ${i + 1}: skip expected but a move exists`, log };

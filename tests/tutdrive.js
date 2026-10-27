@@ -29,6 +29,7 @@
       for (let i = 0; i < 100; i++) { while (btn(/^next$/i)) { btn(/^next$/i).click(); await w(250); } rb = [...document.querySelectorAll('#controls button')].find((b) => /roll/i.test(b.textContent)); if (rb && !document.getElementById('coach').hidden) break; await w(100); }
       const r0 = { k: k + 1, h: Math.round(rect().height), covIntro: [a.from, a.to].filter(Boolean).filter((c) => covers(idx(c))).length };
       rb.click(); await w(600);
+      const rrb = btn(/re-roll/i); if (rrb) { if (rep) r0.reroll = true; if (!rep && stage === 'rr' && k === target - 1) return 'at re-roll ' + (k + 1); rrb.click(); await w(500); }   // beta: lessons with a re-roll
       r0.h2 = Math.round(rect().height); r0.covered = [a.from, a.to].filter(Boolean).filter((c) => covers(idx(c))).length;
       if (k === target - 1 && stage) { if (stage === 'sel' && a.from) await tap(idx(a.from)); return 'stopped at ' + (k + 1); }
       if (a.type === 'skip') { btn(/pass/i).click(); await w(800); }

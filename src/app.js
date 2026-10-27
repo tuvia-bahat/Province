@@ -234,9 +234,10 @@
   // The computer re-rolls only when it has no legal move.
   let rerollTimer = null;
   const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
-  const canReroll = () => BETA_FLAG && !tut.active && !train.active && !online && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
+  const canReroll = () => BETA_FLAG && (tut.active ? tutRR() : !train.active && !online) && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
   function applyReroll() {
-    const ns = rollDice(); ns.roll.rerolled = true;   // the new roll replaces the old one: only its squares are active (the old squares are not an option any more)
+    const stt = tut.active ? tutStepNow() : null;
+    const ns = stt ? R.roll(state, stt.dice[0], stt.dice[1]) : rollDice(); ns.roll.rerolled = true;   // the new roll replaces the old one: only its squares are active (the old squares are not an option any more)
     state = ns; lastRoll = { w: state.roll.w, b: state.roll.b, p: state.turn }; lastMove = null; ui = freshUi(); ui.rolled = true;
     recAi('roll', { w: state.roll.w, b: state.roll.b, re: true }, state.turn, state);
     save(); render();
@@ -264,7 +265,7 @@
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
     const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
-    state = sc ? R.roll(state, sc.dice[0], sc.dice[1]) : fd ? R.roll(state, fd[0], fd[1]) : rollDice();
+    state = sc ? (BETA_FLAG && sc.dice0 ? R.roll(state, sc.dice0[0], sc.dice0[1]) : R.roll(state, sc.dice[0], sc.dice[1])) : fd ? R.roll(state, fd[0], fd[1]) : rollDice();
     finishRoll();
   }
   function passOrSkip(fn) {
@@ -764,9 +765,12 @@
   // ומעל פאנל היריב מופיע כרטיס הסבר שנסגר אחרי כל מהלך.
   const tIdx = (c) => R.idx(c[0], c[1]);
   const tutStepNow = () => (tut.active && tut.phase === 'game' ? TUT.steps[tut.i] || null : null);
+  const tutPages = () => TUT.pages.filter((p) => !p.beta || BETA_FLAG);   // 'beta' pages only with ?beta=1
+  // beta: a step with dice0 starts with that (unwanted) roll; the player taps Re-roll and gets the scripted dice
+  const tutRR = () => { const st = tutStepNow(); return !!(BETA_FLAG && st && st.who === 0 && st.dice0 && state.turn === 0 && state.roll && !state.roll.rerolled && state.winner === null); };
   function tutExpect() {   // הפעולה הצפויה בצעד הנוכחי של האדם (אחרי ההטלה), או null
     const st = tutStepNow();
-    if (!st || st.who !== 0 || state.turn !== 0 || !state.roll || state.winner !== null) return null;
+    if (!st || st.who !== 0 || state.turn !== 0 || !state.roll || state.winner !== null || tutRR()) return null;
     const a = st.act, ex = { kind: st.kind, type: a.type, count: a.count };
     if (a.from) ex.from = tIdx(a.from);
     if (a.to) ex.to = tIdx(a.to);
@@ -835,7 +839,7 @@
     clearTimeout(tut.nudgeTimer);
     tut.nudgeTimer = setTimeout(() => { el.textContent = ''; }, 2800);
   }
-  const tutIntroList = (st) => (st ? [].concat(st.intro) : []);
+  const tutIntroList = (st) => (st ? [].concat(st.intro, BETA_FLAG && st.introBeta ? st.introBeta : []) : []);
   const tutIntroPending = () => {
     if (!TV3 || !tut.active || tut.phase !== 'game') return false;
     const st = tutStepNow();
@@ -843,9 +847,15 @@
     if (tut.subFor !== tut.i) { tut.subFor = tut.i; tut.sub = 0; }
     return tut.sub < tutIntroList(st).length - 1;
   };
+  function tutHighlightsBridges() {   // beta: the bridge counter pulses while the limited-bridges card is shown
+    if (!BETA_FLAG || !TV3 || !tut.active || state.winner !== null) return false;
+    if (tut.phase === 'pages') { const pg = tutPages()[tut.page]; return !!(pg && pg.hl === 'bridges'); }
+    const st = tutStepNow();
+    return !!(st && st.who === 0 && st.hlb && state.turn === 0 && !state.roll && Date.now() >= tut.cardAt);
+  }
   function tutHighlightsMeter() {
     if (!TV3 || !tut.active || state.winner !== null) return false;
-    if (tut.phase === 'pages') return !!(TUT.pages[tut.page] && TUT.pages[tut.page].hl);
+    if (tut.phase === 'pages') return !!(tutPages()[tut.page] && tutPages()[tut.page].hl === true);
     const st = tutStepNow();
     return !!(st && st.who === 0 && st.hl && state.turn === 0 && Date.now() >= tut.cardAt);
   }
@@ -866,19 +876,21 @@
     if (!tut.active || state.winner !== null) { el.hidden = true; return; }
     let title, body, next = '', cells = [];
     if (tut.phase === 'pages') {
-      const pg = TUT.pages[tut.page];
+      const pg = tutPages()[tut.page];
       title = pg.title; body = pg.body;
-      next = tut.page < TUT.pages.length - 1 ? 'Next' : "Let's play";
+      next = tut.page < tutPages().length - 1 ? 'Next' : "Let's play";
     } else {
       const st = tutStepNow();
       if (!st || st.who !== 0 || state.turn !== 0 || Date.now() < tut.cardAt) { el.hidden = true; return; }
       if (tut.subFor !== tut.i) { tut.subFor = tut.i; tut.sub = 0; }
       title = st.title;
-      if (state.roll) body = st.instr;
+      if (state.roll && tutRR()) { title = st.rrTitle || st.title; body = st.rrInstr; }
+      else if (state.roll) body = st.instr;
       else { const ip = tutIntroList(st); body = ip[Math.min(tut.sub, ip.length - 1)]; if (tut.sub < ip.length - 1) next = 'Next'; }
       const add = (c, w) => { if (c) cells.push({ i: tIdx(c), w }); };
       add(st.act.from, 10); add(st.act.to, 10); add(st.act.R, 4);
-      cells.push({ i: R.idx(st.dice[0] - 1, st.dice[1] - 1), w: 4 }, { i: R.idx(R.SIZE - st.dice[0], R.SIZE - st.dice[1]), w: 4 });
+      const dd = tutRR() ? st.dice0 : st.dice;
+      cells.push({ i: R.idx(dd[0] - 1, dd[1] - 1), w: 4 }, { i: R.idx(R.SIZE - dd[0], R.SIZE - dd[1]), w: 4 });
     }
     el.classList.add('v3');
     $('coachStep').textContent = '';
@@ -887,7 +899,7 @@
     $('coachFoot').innerHTML = '';
     const nb = $('coachNext');
     if (nb) nb.onclick = () => {
-      if (tut.phase === 'pages') { if (tut.page < TUT.pages.length - 1) tut.page++; else { tut.phase = 'game'; tut.i = 0; tut.cardAt = 0; } }
+      if (tut.phase === 'pages') { if (tut.page < tutPages().length - 1) tut.page++; else { tut.phase = 'game'; tut.i = 0; tut.cardAt = 0; } }
       else tut.sub++;
       render();
     };
@@ -1101,7 +1113,7 @@
     for (const p of [0, 1]) {
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
-      el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '') + (p === 0 && tutHighlightsMeter() ? ' hlprov' : '');
+      el.className = 'pl' + (state.turn === p && state.winner === null ? ' active' : '') + (p === 0 && tutHighlightsMeter() ? ' hlprov' : '') + (p === 0 && tutHighlightsBridges() ? ' hlbr' : '');
       const tag = settings.mode === 'train' ? (p === 0 ? 'You' : '') : settings.mode === 'watch' ? (settings.watch === 'nnold' ? (p === 0 ? 'NEW AI' : 'OLD AI') : 'AI') : settings.mode === 'tutorial' ? (p === 0 ? 'You' : 'CPU') : settings.mode === 'online' ? (online && p === online.seat ? 'You' : '') : settings.mode === 'ai' ? (p === settings.human ? 'You' : 'CPU') : '';
       const held = R.winProgress(state, p);
       let prov = '';
@@ -1122,7 +1134,7 @@
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${esc(pname(p))}</span><span class="tag">${tag}</span>${diceHtml}</div>
         <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num" data-k="sold" data-p="${p}">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
         <div class="line provline">${IC.prov}<span class="num" data-k="prov" data-p="${p}">${held}</span><div class="prov${R.WIN_PROVINCES > 5 ? ' many' : ''}">${prov}</div></div>
-        <div class="line">${IC.brid}<span class="num" data-k="brid" data-p="${p}">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
+        <div class="line brline">${IC.brid}<span class="num" data-k="brid" data-p="${p}">${state.bridgesLeft[p]}</span><div class="ticks">${ticks}</div></div>
         <div class="line">${IC.dead}<span class="num" data-k="dead" data-p="${p}">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
     }
   }
@@ -1183,7 +1195,7 @@
     }
     if (ph === 'skip') {
       msg.innerHTML = '';
-      if (canReroll()) { addBtn(row(), 'Re-roll', 'wide', doReroll); return; }   // no legal move: the only sensible choice is to try again
+      if (canReroll()) { addBtn(row(), 'Re-roll', 'wide' + (tut.active ? ' guide' : ''), doReroll); return; }   // no legal move: the only sensible choice is to try again
       addBtn(row(), 'Pass', tut.active ? 'guide' : '', doSkip);
       return;
     }
@@ -1233,7 +1245,8 @@
     }
 
     msg.innerHTML = '';
-    if (tut.active || (train.active && ui.sel === null)) return;
+    if (tut.active) { if (canReroll()) addBtn(row(), 'Re-roll', 'guide', doReroll); return; }
+    if (train.active && ui.sel === null) return;
     if (betaOn() && ui.sel !== null) {
       const n = optionsFrom(ui.sel).size;
       msg.innerHTML = n ? 'Tap a lit square to move soldiers' : 'This base can\'t move with this roll';
@@ -1283,7 +1296,7 @@
           ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
           : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
       $('winText').hidden = !tut.active;
-      $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
+      $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.concat(BETA_FLAG && TUT.recapBeta ? TUT.recapBeta : []).map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
       $('winCommunity').hidden = true;
