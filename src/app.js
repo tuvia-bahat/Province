@@ -94,7 +94,7 @@
     } catch (e) { /* ignore */ }
     state = window.Rules.forSize(settings.board).newGame(); history = [];
   }
-  function afterLoad() { if (settings.mode !== 'ai') { settings.mode = 'ai'; settings.human = 0; state = window.Rules.forSize(settings.board).newGame(); history = []; } }
+  function afterLoad() { if (settings.mode !== 'ai' && !(settings.mode === 'two' && BETA_FLAG)) { settings.mode = 'ai'; settings.human = 0; state = window.Rules.forSize(settings.board).newGame(); history = []; } }
   // כללי גרסה 2 בכל המצבים (פרובינציה בשליטה = טריטוריה; ניצחון ב-5 פרובינציות מחוברות). המחשב אומן עליהם.
   function applyRules() { R.OPTIONS.provinceTerritory = true; R.OPTIONS.winConnected = true; }
   function save() {
@@ -999,7 +999,7 @@
   function startNew() {
     clearTimeout(aiTimer); aiTimer = null; paused = false; clearTimeout(winTimer); winShowAt = 0;
     tut.active = false; tut.backup = null; clearTimeout(tut.cardTimer); $('coach').hidden = true;
-    settings = Object.assign({}, pending, { mode: pending.mode === 'watch' ? 'watch' : 'ai' }); closeLobby(); settings.human = +settings.human; settings.board = +settings.board;
+    settings = Object.assign({}, pending, { mode: pending.mode === 'watch' ? 'watch' : pending.mode === 'two' ? 'two' : 'ai' }); closeLobby(); settings.human = +settings.human; settings.board = +settings.board;
     useBoard(settings.board); applyRules();
     state = R.newGame(); history = []; lastMove = lastRoll = null; ui = freshUi();
     $('overlay').dataset.dismissed = '';
@@ -1689,6 +1689,7 @@
     const size = +b.dataset.size;
     $('startModal').hidden = true;
     if (startMode === 'ai') { const n = await askName(); if (!n) return; pending = { mode: 'ai', board: size, human: 0, level: 'strong', speed: 'normal', name: n }; startNew(); return; }
+    if (startMode === 'two') { pending = { mode: 'two', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
     if (startMode === 'watch' || startMode === 'watchold') { pending = { mode: 'watch', watch: startMode === 'watch' ? 'nn' : 'nnold', board: size, human: 0, level: 'strong', speed: 'normal' }; startNew(); return; }
     const n = await askName(); if (!n) return;
     try { const id = await O.createGame(size, n); O.track('online_create', { board: size }); await openOnline(id); } catch (er) { netErr(er); }
@@ -1713,10 +1714,10 @@
   $('trainModal').addEventListener('click', (e) => { if (e.target === $('trainModal')) $('trainModal').hidden = true; });
   $('winTrain').onclick = () => { $('overlay').hidden = true; openTrainMenu(); };
   // beta: watch the computer play itself
-  if (BETA_FLAG) { $('lbWatch').hidden = false; $('lbWatchOld').hidden = false; }
+  if (BETA_FLAG) { $('lbWatch').hidden = false; $('lbTwo').hidden = false; }
   const openWatch = (m) => { startMode = m; $('lbCont').hidden = true; $('startMain').hidden = true; $('startSize').hidden = false; };
   $('lbWatch').onclick = () => openWatch('watch');
-  $('lbWatchOld').onclick = () => openWatch('watchold');
+  $('lbTwo').onclick = () => openWatch('two');   // beta: two people on one device
   $('lbCont').onclick = closeLobby;
   $('lbTut').onclick = startTutorial;
 
