@@ -380,3 +380,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 button.lb-community { border: 0; cursor: pointer; font-family: inherit; }
 #lbFeedback svg { color: var(--muted); }
+
+/* small Discord icon in the corner of the lobby */
+.lb-dc { position: absolute; top: calc(max(5vw, env(safe-area-inset-top)) + 3px); left: 5vw; z-index: 2; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #5865f2; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
+.lb-dc:active { background: var(--press); }

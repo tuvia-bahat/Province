@@ -1792,6 +1792,7 @@
   const markCommunity = (where) => { O.track('community_click', { from: where }); try { localStorage.setItem('province.community', '1'); } catch (e) { /* ignore */ } };
   applyCommunity();
   $('winCommunity').addEventListener('click', () => markCommunity('win'));
+  $('lbDiscord').addEventListener('click', () => markCommunity('lobby'));
   // feedback after a game (beta): stored on the server, read in the dashboard
   const feedbackDone = () => { try { return localStorage.getItem('province.feedback') === '1'; } catch (e) { return false; } };
   const fbShow = (on) => { $('fbModal').hidden = !on; if (on) { $('fbThanks').hidden = true; $('fbSend').hidden = false; $('fbIn').hidden = false; $('fbIn').value = ''; setTimeout(() => $('fbIn').focus(), 50); } };
