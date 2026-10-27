@@ -174,7 +174,7 @@
     if (tut.active && !tutMatches(a)) { tutNudge('Follow the highlighted move'); return false; }
     try { ns = R.apply(state, a); } catch (e) { console.error(e); return false; }
     const prev = state;
-    if (tut.active) { const st0 = tutStepNow(); if (BETA_FLAG && st0 && st0.bridgeNote) tut.notice = st0.bridgeNote; tut.i++; tut.cardAt = Infinity; trackLesson(); }
+    if (tut.active) { const st0 = tutStepNow(); if (st0 && st0.bridgeNote) tut.notice = st0.bridgeNote; tut.i++; tut.cardAt = Infinity; trackLesson(); }
     winShowAt = ns.winner !== null ? Infinity : 0;
     history.push(state); lastMove = { p: state.turn, a }; const actor = state.turn; state = ns;
     ui = freshUi();
@@ -230,11 +230,11 @@
     if (ended === 'win') { O.aiLive(aiRec.gid, { end: true }); setTimeout(aiWatchSync, 0); }
     O.logAiGame({ gid: aiRec.gid, size: aiRec.size, name: aiRec.name, events: aiRec.events, winner: ended === 'win' ? state.winner : null, ended, nn: aiRec.nn, beta: !!BETA_FLAG });
   }
-  // beta rule: once per turn the player may re-roll the dice; the new roll replaces the old one, so there is no going back to the first squares.
+  // rule: once per turn the player may re-roll the dice; the new roll replaces the old one, so there is no going back to the first squares.
   // The computer re-rolls only when it has no legal move.
   let rerollTimer = null;
   const rollDice = () => R.roll(state, 1 + Math.floor(Math.random() * R.SIZE), 1 + Math.floor(Math.random() * R.SIZE));
-  const canReroll = () => BETA_FLAG && (tut.active ? tutRR() : !train.active && !online) && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
+  const canReroll = () => (tut.active ? tutRR() : !train.active && !online) && !!state.roll && !state.roll.rerolled && state.winner === null && !rerollTimer;
   function applyReroll() {
     const stt = tut.active ? tutStepNow() : null;
     const ns = stt ? R.roll(state, stt.dice[0], stt.dice[1]) : rollDice(); ns.roll.rerolled = true;   // the new roll replaces the old one: only its squares are active (the old squares are not an option any more)
@@ -265,7 +265,7 @@
   function doRoll() {
     const sc = tut.active ? tutStepNow() : null;
     const fd = window.__forceDice && window.__forceDice.length ? window.__forceDice.shift() : null;   // dev hook for recording demo footage; never set in normal play
-    state = sc ? (BETA_FLAG && sc.dice0 ? R.roll(state, sc.dice0[0], sc.dice0[1]) : R.roll(state, sc.dice[0], sc.dice[1])) : fd ? R.roll(state, fd[0], fd[1]) : rollDice();
+    state = sc ? (sc.dice0 ? R.roll(state, sc.dice0[0], sc.dice0[1]) : R.roll(state, sc.dice[0], sc.dice[1])) : fd ? R.roll(state, fd[0], fd[1]) : rollDice();
     finishRoll();
   }
   function passOrSkip(fn) {
@@ -589,7 +589,7 @@
         if (e.data.reroll) { aiRerollSoon(); return; }   // the net decided a fresh roll is worth more than its best move (beta re-roll rule)
         apply(e.data.act);
       };
-      w.postMessage({ id: tok, size: settings.board, state: snap, canReroll: canReroll(), rr: !!BETA_FLAG });
+      w.postMessage({ id: tok, size: settings.board, state: snap, canReroll: canReroll(), rr: true });
       return true;
     } catch (e) { console.error(e); return false; }
   }
@@ -766,8 +766,8 @@
   const tIdx = (c) => R.idx(c[0], c[1]);
   const tutStepNow = () => (tut.active && tut.phase === 'game' ? TUT.steps[tut.i] || null : null);
   const tutPages = () => TUT.pages.filter((p) => !p.beta || BETA_FLAG);   // 'beta' pages only with ?beta=1
-  // beta: a step with dice0 starts with that (unwanted) roll; the player taps Re-roll and gets the scripted dice
-  const tutRR = () => { const st = tutStepNow(); return !!(BETA_FLAG && st && st.who === 0 && st.dice0 && state.turn === 0 && state.roll && !state.roll.rerolled && state.winner === null); };
+  // a step with dice0 starts with that (unwanted) roll; the player taps Re-roll and gets the scripted dice
+  const tutRR = () => { const st = tutStepNow(); return !!(st && st.who === 0 && st.dice0 && state.turn === 0 && state.roll && !state.roll.rerolled && state.winner === null); };
   function tutExpect() {   // הפעולה הצפויה בצעד הנוכחי של האדם (אחרי ההטלה), או null
     const st = tutStepNow();
     if (!st || st.who !== 0 || state.turn !== 0 || !state.roll || state.winner !== null || tutRR()) return null;
@@ -848,7 +848,7 @@
     return tut.sub < tutIntroList(st).length - 1;
   };
   function tutHighlightsBridges() {   // beta: the bridge counter pulses while the limited-bridges card is shown
-    return !!(BETA_FLAG && TV3 && tut.active && state.winner === null && tut.notice);
+    return !!(TV3 && tut.active && state.winner === null && tut.notice);
   }
   function tutHighlightsMeter() {
     if (!TV3 || !tut.active || state.winner !== null) return false;
