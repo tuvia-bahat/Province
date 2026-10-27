@@ -1296,7 +1296,7 @@
           ? `<span style="color:${COLORS[w]}">${w === settings.human ? 'You win' : 'Computer wins'}</span>`
           : `<span style="color:${COLORS[w]}">${NAME[w]}</span> wins`;
       $('winText').hidden = !tut.active;
-      $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.concat(BETA_FLAG && TUT.recapBeta ? TUT.recapBeta : []).map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
+      $('winText').innerHTML = tut.active ? '<b>Remember</b><ul>' + TUT.recap.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '';
       $('winTrain').hidden = !(BETA_FLAG && tut.active);
       $('winNew').textContent = tut.active ? 'Play vs computer' : online ? 'Lobby' : 'New game';
       $('winCommunity').hidden = true;

@@ -97,11 +97,7 @@
     'A lit square in your territory lets you move from any of your bases. New soldiers land only on the lit square.',
   ];
 
-  const recapBeta = [
-    'Once per turn you may <b>re-roll</b> the dice. The new roll replaces the old one.',
-    'You have only <b>8 bridges</b> in the whole game.',
-  ];
-  const T = { pages, steps, recap, recapBeta };
+  const T = { pages, steps, recap };
 
   // בדיקת התסריט מול מנוע החוקים: כל פעולה חוקית, המשבצות שהוטלו תואמות, והאדם מנצח בצעד האחרון בלבד.
   // verbose: מחזיר גם תקציר לוח אחרי כל צעד (לניפוי).
