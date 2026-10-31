@@ -406,3 +406,6 @@ button.lb-community { border: 0; cursor: pointer; font-family: inherit; }
 .mv-bar a { padding: 7px 14px; border-radius: 999px; background: var(--surface-2); color: var(--ink); font-size: 13px; font-weight: 600; letter-spacing: .06em; text-decoration: none; }
 .mv-bar button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink); font-size: 15px; cursor: pointer; }
 #manualFrame { flex: 1; width: 100%; border: 0; background: #fff; }
+
+/* Feedback sits at the bottom right of the lobby, the how-to-play book at the bottom left */
+#lbFeedback { position: absolute; right: 5vw; bottom: calc(max(5vw, env(safe-area-inset-bottom)) + 12px); margin: 0; z-index: 2; padding: 9px 14px; }
