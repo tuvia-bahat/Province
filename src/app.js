@@ -1820,6 +1820,14 @@
   applyCommunity();
   $('winCommunity').addEventListener('click', () => markCommunity('win'));
   $('lbDiscord').addEventListener('click', () => markCommunity('lobby'));
+  // how-to-play booklet (manual.html, also available as a PDF)
+  const manualShow = (on) => {
+    if (on && !$('manualFrame').getAttribute('src')) $('manualFrame').setAttribute('src', 'manual.html?embed=1&v=' + (window.BUILD || ''));
+    $('manualView').hidden = !on;
+  };
+  $('lbManual').onclick = () => { O.track('manual_open'); manualShow(true); };
+  $('manualClose').onclick = () => manualShow(false);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('manualView').hidden) manualShow(false); });
   // feedback after a game (beta): stored on the server, read in the dashboard
   const feedbackDone = () => { try { return localStorage.getItem('province.feedback') === '1'; } catch (e) { return false; } };
   const fbShow = (on) => { $('fbModal').hidden = !on; if (on) { $('fbThanks').hidden = true; $('fbSend').hidden = false; $('fbIn').hidden = false; $('fbIn').value = ''; setTimeout(() => $('fbIn').focus(), 50); } };

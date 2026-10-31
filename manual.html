@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Province – How to play</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap">
+<style>
+  :root { --ink: #1b1e24; --muted: #5d6471; --faint: #a8aeb9; --line: #e4e6eb; --bg: #fff; --soft: #f3f4f7; --green: #34c98a; --green-t: #d6f4e8; --blue: #3a9cf5; --blue-t: #d8ebfd; --amber: #fff3bf; --amber-i: #8a6d00; }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--soft); color: var(--ink); font-family: "Heebo", "Segoe UI", system-ui, -apple-system, Arial, sans-serif; font-size: 16px; line-height: 1.55; }
+  .page { max-width: 760px; margin: 0 auto; padding: 28px 22px 60px; background: var(--bg); }
+  .cover { text-align: center; padding: 56px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 30px; }
+  .cover img { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 8px 28px -10px rgba(20,25,40,.35); }
+  .cover h1 { font-size: 52px; line-height: 1.05; margin: 22px 0 6px; font-weight: 800; letter-spacing: -.01em; }
+  .cover .sub { font-size: 19px; color: var(--muted); margin: 0 0 22px; }
+  .cover .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .chip { display: inline-block; padding: 5px 13px; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: 13px; font-weight: 600; }
+  .cover .hero { margin: 30px auto 0; max-width: 360px; }
+  h2 { font-size: 24px; margin: 38px 0 10px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  h2 .n { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 15px; display: inline-grid; place-items: center; font-weight: 700; }
+  h3 { font-size: 17px; margin: 20px 0 6px; font-weight: 700; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 8px 0; padding-left: 22px; }
+  li { margin: 4px 0; }
+  b { font-weight: 700; }
+  .lead { font-size: 18px; color: var(--ink); }
+  .box { border-radius: 16px; padding: 14px 18px; margin: 16px 0; background: var(--soft); }
+  .box.tip { background: var(--green-t); }
+  .box.warn { background: var(--amber); color: #5b4800; }
+  .box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
+  .fig { margin: 18px 0; text-align: center; }
+  .fig svg { max-width: 100%; height: auto; }
+  .fig .cap { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--soft); font-weight: 700; font-size: 13.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  .act { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .act:last-child { border-bottom: 0; }
+  .act .ic { width: 38px; height: 38px; border-radius: 12px; background: var(--soft); display: grid; place-items: center; font-size: 19px; }
+  .act .t { display: block; font-weight: 700; }
+  .foot { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 14px; }
+  .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin: 0 2px; }
+  @media (max-width: 520px) { .cover h1 { font-size: 40px; } .two { grid-template-columns: 1fr; } .page { padding: 18px 16px 50px; } th, td { padding: 8px 8px; } td:first-child { white-space: normal; } }
+  /* embedded in the app (iframe): no outer margin */
+  body.embed { background: var(--bg); } body.embed .page { padding-top: 0; } body.embed .cover { padding: 22px 0 26px; margin-bottom: 18px; } body.embed .cover img { width: 72px; height: 72px; } body.embed .cover h1 { font-size: 40px; margin-top: 14px; }
+  /* print / PDF: A4 pages */
+  @page { size: A4; margin: 15mm 14mm; }
+  @media print {
+    body { background: #fff; font-size: 11.5pt; }
+    .page { max-width: none; padding: 0; }
+    .cover { page-break-after: always; break-after: page; padding: 40mm 0 10mm; border: 0; margin: 0; }
+    h2 { break-after: avoid; } .fig, .box, .act, table, .two { break-inside: avoid; }
+    section { break-inside: auto; }
+    section.pb { break-before: page; page-break-before: always; }
+    td, th { padding: 6px 10px; } .fig { margin: 10px 0; } h2 { margin-top: 24px; } .box { margin: 10px 0; }
+    a { color: inherit; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="cover">
+    <img src="icons/apple-touch-icon.png" alt="">
+    <h1>Province</h1>
+    <p class="sub">A strategy game of bridges and borders</p>
+    <div class="chips"><span class="chip">How to play</span><span class="chip">2 players</span><span class="chip">6×6 and 8×8 boards</span><span class="chip">free, in your browser</span></div>
+    <div class="hero fig" id="hero"></div>
+    <p class="sub" style="margin-top:26px;font-size:15px">province-game.com</p>
+  </header>
+
+  <section>
+    <h2><span class="n">1</span>The goal</h2>
+    <p class="lead">Be the first to control <b>5 connected provinces</b> (<b>8</b> on the big board).</p>
+    <p>Rivers split the board into <b>provinces</b>, blocks of 2×2 squares (9 provinces on the 6×6 board, 16 on the 8×8 board). You <b>control</b> a province when <b>only you</b> have soldiers in it. If both colours are inside, nobody controls it.</p>
+    <p>The provinces you control must be <b>connected</b>: the only way across a river is a bridge, so your provinces are joined by <b>your bridges</b>. Loose provinces do not count.</p>
+    <div class="fig" id="fig-goal"></div>
+    <p>The win is checked at the <b>end of every turn</b>. Whoever has the connected provinces at the end of their turn wins.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">2</span>What you have</h2>
+    <table>
+      <tr><th></th><th>6×6 board</th><th>8×8 board</th></tr>
+      <tr><td>Provinces</td><td>9</td><td>16</td></tr>
+      <tr><td>Soldiers each</td><td>36</td><td>54</td></tr>
+      <tr><td>Bridges each</td><td>8</td><td>14</td></tr>
+      <tr><td>Dice</td><td>1 to 6</td><td>1 to 8</td></tr>
+      <tr><td>To win</td><td>5 connected provinces</td><td>8 connected provinces</td></tr>
+    </table>
+    <p>Soldiers that are not on the board wait in your <b>camp</b>. Soldiers that die are gone for good (the <b>graveyard</b>).</p>
+    <div class="box warn"><p><b>Bridges are limited.</b> You get a fixed number for the <b>whole game</b>, and every bridge you build is gone for good. The counter next to the arch icon shows how many you have left.</p></div>
+  </section>
+
+  <section class="pb">
+    <h2><span class="n">3</span>Your turn</h2>
+    <ol>
+      <li><b>Roll the dice.</b> The two numbers light up <b>two squares</b>, on opposite sides of the board.</li>
+      <li><b>Re-roll if you want.</b> Once per turn you may throw the dice again. The new roll <b>replaces</b> the old one, so you cannot go back to the first squares.</li>
+      <li><b>Make one move</b> on a lit square (see section 4).</li>
+      <li>The turn passes to your opponent.</li>
+    </ol>
+    <div class="fig" id="fig-dice"></div>
+    <div class="box tip"><p><b>No legal move?</b> If the lit squares give you nothing to do, tap <b>Re-roll</b>. If the new roll gives nothing either, you tap <b>Pass</b> and the turn goes to your opponent. Pass only appears after you have used your re-roll.</p></div>
+  </section>
+
+  <section class="pb">
+    <h2><span class="n">4</span>What a lit square lets you do</h2>
+    <div class="act"><div class="ic">⬇</div><div><span class="t">Land</span>New soldiers from your camp come down on a lit square that is empty or already yours. They land <b>only on the lit square</b>, never in enemy territory.</div></div>
+    <div class="act"><div class="ic">➜</div><div><span class="t">Move</span>Take any number of soldiers from a base to a square next to it. Moving across a river builds a bridge (see section 5).</div></div>
+    <div class="act"><div class="ic">⚔</div><div><span class="t">Attack</span>Move onto a square held by the enemy. Each attacker kills one defender (see below).</div></div>
+    <div class="act"><div class="ic">⬆</div><div><span class="t">Withdraw</span>Pull soldiers from a base back to your camp.</div></div>
+    <div class="act"><div class="ic">⇢</div><div><span class="t">Transport</span>Send soldiers from a base in a <b>straight line</b> through your own territory to another of your bases, in one go.</div></div>
+    <div class="act"><div class="ic">⌒</div><div><span class="t">Build a bridge</span>Place a bridge across a river without moving anyone.</div></div>
+    <h3>Which squares can you use?</h3>
+    <ul>
+      <li>A lit square <b>inside your territory</b> lets you play from <b>any</b> of your bases there: it does not have to be the base you move from.</li>
+      <li>A lit square that is <b>next to one of your bases</b> lets you move or attack onto it from that base, even across a river if there is a bridge.</li>
+      <li>A lit square deep in enemy territory with none of your bases next to it: you cannot use it.</li>
+    </ul>
+    <h3>Territory</h3>
+    <p>Your <b>territory</b> is the connected area made of your bases and your controlled provinces (even their empty squares), joined by your bridges. The bigger it is, the more lit squares you can use.</p>
+  </section>
+
+  <section class="pb">
+    <h2><span class="n">5</span>Attacks, rivers and bridges</h2>
+    <h3>Attack</h3>
+    <ul>
+      <li>Each attacking soldier kills <b>one</b> defender.</li>
+      <li>The defenders that die are <b>gone for good</b>.</li>
+      <li>The attackers that killed <b>return to your camp</b>.</li>
+      <li>Extra attackers (more than defenders) <b>stay</b> on the captured square. Equal numbers leave the square empty.</li>
+    </ul>
+    <div class="fig" id="fig-attack"></div>
+    <h3>Rivers and bridges</h3>
+    <ul>
+      <li>You can only cross a river on a <b>bridge</b>. Moving across a river with no bridge <b>builds yours</b>, as part of the move.</li>
+      <li>A bridge belongs to the player who built it. Only they can cross it, and it can never be removed.</li>
+      <li>You <b>can replace an enemy bridge</b> with yours if you hold the squares at <b>both ends</b>.</li>
+    </ul>
+    <div class="fig" id="fig-bridge"></div>
+  </section>
+
+  <section class="pb">
+    <h2><span class="n">6</span>Playing the game</h2>
+    <table>
+      <tr><td>Vs computer</td><td>Tap <b>+</b> in the lobby, then <b>Vs computer</b>, and pick 6×6 or 8×8. Every game is saved, and the finished ones appear in the lobby list where anyone can watch the replay.</td></tr>
+      <tr><td>Online</td><td>Tap <b>+</b> and <b>Online</b> to create a game, then use <b>Invite a friend</b> or wait for an opponent. Open games and live games are listed in the lobby: tap one to join or to watch.</td></tr>
+      <tr><td>Watching</td><td>Anyone can watch a live game. The players see a small eye with the number of viewers.</td></tr>
+      <tr><td>Tutorial</td><td>A short guided game that teaches every rule. Open it from the menu or from the <b>+</b> screen.</td></tr>
+      <tr><td>Replay</td><td>Finished games in the lobby can be replayed move by move.</td></tr>
+    </table>
+    <h3>Good to know</h3>
+    <ul>
+      <li>The dice decide <b>where</b> you can play, not <b>what</b> you do there. You choose the move, the number of soldiers, and when to re-roll.</li>
+      <li>Attackers come home and defenders die for good, so <b>striking first</b> matters.</li>
+      <li>Watch the meter next to the trophy: it counts only <b>connected</b> provinces.</li>
+      <li>Do not waste bridges. Every river crossing uses one of your few.</li>
+    </ul>
+  </section>
+
+  <div class="foot">Province · province-game.com · feedback and community: the Discord link and the Feedback button are in the lobby.</div>
+</div>
+
+<script>
+// ---------- diagrams (inline SVG, same colours as the game) ----------
+(function () {
+  const C = { g: '#34c98a', b: '#3a9cf5', gt: '#d6f4e8', bt: '#d8ebfd', river: '#a8aeb9', dot: '#a8aeb9', ink: '#1b1e24' };
+  const el = (id) => document.getElementById(id);
+  // board(size, opts): soldiers [{x,y,o,n}], bridges [{x1,y1,x2,y2,o}], tints [{px,py,o}], lit [{x,y}], notes
+  function board(size, o) {
+    o = o || {}; const P = 34, G = 10, M = 14, np = size / 2, W = 2 * M + size * P + (np - 1) * G;
+    const X = (x) => M + x * P + Math.floor(x / 2) * G + P / 2, Y = (y) => M + y * P + Math.floor(y / 2) * G + P / 2;
+    let s = `<svg viewBox="0 0 ${W} ${W}" width="${o.w || 300}" xmlns="http://www.w3.org/2000/svg" font-family="Heebo, Segoe UI, Arial, sans-serif">`;
+    for (const t of o.tints || []) {
+      const x0 = M + t.px * (2 * P + G) - G / 2 + (t.px === 0 ? G / 2 : 0), y0 = M + t.py * (2 * P + G) - G / 2 + (t.py === 0 ? G / 2 : 0);
+      const x1 = M + (t.px + 1) * (2 * P + G) - G / 2 - (t.px === np - 1 ? G / 2 : 0), y1 = M + (t.py + 1) * (2 * P + G) - G / 2 - (t.py === np - 1 ? G / 2 : 0);
+      s += `<rect x="${x0}" y="${y0}" width="${x1 - x0}" height="${y1 - y0}" rx="6" fill="${t.o === 0 ? C.gt : C.bt}"/>`;
+    }
+    for (let k = 1; k < np; k++) {   // rivers
+      const r = M + k * (2 * P) + (k - 1) * G + G / 2;
+      s += `<line x1="${M - 6}" y1="${r}" x2="${W - M + 6}" y2="${r}" stroke="${C.river}" stroke-width="5" stroke-linecap="round"/><line x1="${r}" y1="${M - 6}" x2="${r}" y2="${W - M + 6}" stroke="${C.river}" stroke-width="5" stroke-linecap="round"/>`;
+    }
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) s += `<circle cx="${X(x)}" cy="${Y(y)}" r="4" fill="${C.dot}"/>`;
+    for (const b of o.bridges || []) {
+      const x1 = X(b.x1), y1 = Y(b.y1), x2 = X(b.x2), y2 = Y(b.y2), col = b.o === 0 ? C.g : C.b;
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="6" stroke-linecap="round"/>`;
+    }
+    for (const l of o.lit || []) s += `<circle cx="${X(l.x)}" cy="${Y(l.y)}" r="${l.r || 15}" fill="none" stroke="${l.c || C.ink}" stroke-width="2.4" stroke-dasharray="4 4"/>`;
+    for (const t of o.soldiers || []) {
+      const col = t.o === 0 ? C.g : C.b;
+      s += `<circle cx="${X(t.x)}" cy="${Y(t.y)}" r="13" fill="${col}"/><text x="${X(t.x)}" y="${Y(t.y) + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">${t.n}</text>`;
+    }
+    for (const n of o.notes || []) s += `<text x="${n.x}" y="${n.y}" text-anchor="${n.a || 'middle'}" font-size="${n.s || 13}" font-weight="700" fill="${n.c || C.ink}">${n.t}</text>`;
+    return s + '</svg>';
+  }
+  const die = (v, c) => `<svg width="54" height="54" viewBox="0 0 54 54"><rect x="2" y="2" width="50" height="50" rx="12" fill="${c}"/><text x="27" y="36" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="Heebo, Arial">${v}</text></svg>`;
+
+  // hero + goal: five connected green provinces (L shape) joined by bridges
+  const goal = {
+    tints: [{ px: 0, py: 1, o: 0 }, { px: 0, py: 2, o: 0 }, { px: 1, py: 1, o: 0 }, { px: 1, py: 2, o: 0 }, { px: 2, py: 2, o: 0 }, { px: 2, py: 0, o: 1 }, { px: 1, py: 0, o: 1 }],
+    soldiers: [{ x: 1, y: 3, o: 0, n: 3 }, { x: 1, y: 4, o: 0, n: 2 }, { x: 2, y: 4, o: 0, n: 2 }, { x: 2, y: 3, o: 0, n: 4 }, { x: 3, y: 4, o: 0, n: 2 }, { x: 4, y: 4, o: 0, n: 5 }, { x: 3, y: 1, o: 1, n: 4 }, { x: 4, y: 1, o: 1, n: 3 }, { x: 5, y: 1, o: 1, n: 2 }],
+    bridges: [{ x1: 1, y1: 3, x2: 1, y2: 4, o: 0 }, { x1: 1, y1: 4, x2: 2, y2: 4, o: 0 }, { x1: 2, y1: 3, x2: 2, y2: 4, o: 0 }, { x1: 3, y1: 4, x2: 4, y2: 4, o: 0 }, { x1: 3, y1: 1, x2: 4, y2: 1, o: 1 }],
+  };
+  el('hero').innerHTML = board(6, Object.assign({ w: 330 }, goal));
+  el('fig-goal').innerHTML = `<div style="display:flex;justify-content:center;gap:22px;flex-wrap:wrap;align-items:center">${board(6, Object.assign({ w: 240 }, goal))}<div style="text-align:left;max-width:250px;font-size:14.5px;color:#5d6471"><p><span class="dot" style="background:#34c98a"></span><b>Green</b> controls the 5 shaded provinces on the left and bottom, joined by green bridges: that is a win.</p><p><span class="dot" style="background:#3a9cf5"></span><b>Blue</b> holds only a few provinces in the top corner.</p></div></div>`;
+
+  // dice -> two lit squares
+  el('fig-dice').innerHTML = `<div style="display:flex;justify-content:center;gap:26px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;gap:10px;align-items:center">${die(3, '#5a606c')}${die(5, '#5a606c')}<span style="font-size:30px;color:#a8aeb9">→</span></div>
+    ${board(6, { w: 250, lit: [{ x: 2, y: 4, c: '#34c98a' }, { x: 3, y: 1, c: '#34c98a' }], soldiers: [{ x: 1, y: 4, o: 0, n: 3 }, { x: 4, y: 1, o: 1, n: 3 }] })}
+    <div style="text-align:left;max-width:210px;font-size:14.5px;color:#5d6471">The numbers on the dice point to <b>two squares</b>, one on each side of the board. You pick one of them.</div></div>`;
+
+  // attack: 5 attackers vs 3 defenders
+  const circ = (n, c) => `<svg width="50" height="50"><circle cx="25" cy="25" r="22" fill="${c}"/><text x="25" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#fff" font-family="Heebo, Arial">${n}</text></svg>`;
+  el('fig-attack').innerHTML = `<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;align-items:center;font-size:14.5px;color:#5d6471">
+    <div>${circ(5, '#34c98a')}<div>attack</div></div><span style="font-size:26px">⚔</span><div>${circ(3, '#3a9cf5')}<div>defend</div></div><span style="font-size:28px;color:#a8aeb9">→</span>
+    <div>${circ(2, '#34c98a')}<div>stay on the square</div></div><div style="text-align:left;max-width:230px">3 attackers <b>return to camp</b>.<br>3 defenders are <b>dead for good</b>.</div></div>
+    <div class="cap">Example: 5 attackers against 3 defenders. Equal numbers would leave the square empty.</div>`;
+
+  // bridge across a river
+  el('fig-bridge').innerHTML = `<div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;align-items:center">${board(6, { w: 240, soldiers: [{ x: 1, y: 3, o: 0, n: 4 }, { x: 1, y: 4, o: 0, n: 2 }], bridges: [{ x1: 1, y1: 3, x2: 1, y2: 4, o: 0 }] })}
+    <div style="text-align:left;max-width:260px;font-size:14.5px;color:#5d6471">Moving from the top square to the one below crosses a river, so the move <b>builds a bridge</b> and uses one of your limited bridges.</div></div>`;
+
+  if (/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');
+})();
+</script>
+</body>
+</html>
