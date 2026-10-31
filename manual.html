@@ -6,82 +6,49 @@
 <title>Province – How to play</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap">
 <style>
-  :root { --ink: #1b1e24; --muted: #5d6471; --faint: #a8aeb9; --line: #e4e6eb; --bg: #fff; --soft: #f3f4f7; --green: #34c98a; --green-t: #d6f4e8; --green-d: #1f8a5d; --blue: #3a9cf5; --blue-t: #d8ebfd; --red: #e24646; --red-t: #fde3e3; --amber: #fff3bf; }
+  :root { --ink: #1b1e24; --muted: #5d6471; --line: #e4e6eb; --bg: #fff; --soft: #f3f4f7; --green-t: #d6f4e8; --green-d: #1f8a5d; --red: #e24646; --red-t: #fde3e3; --amber: #fff3bf; }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-  body { margin: 0; background: var(--soft); color: var(--ink); font-family: "Heebo", "Segoe UI", system-ui, -apple-system, Arial, sans-serif; font-size: 16px; line-height: 1.55; }
-  .page { max-width: 780px; margin: 0 auto; padding: 28px 22px 60px; background: var(--bg); }
-  .cover { text-align: center; padding: 56px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 26px; }
-  .cover img { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 8px 28px -10px rgba(20,25,40,.35); }
-  .cover h1 { font-size: 52px; line-height: 1.05; margin: 22px 0 6px; font-weight: 800; letter-spacing: -.01em; }
-  .cover .sub { font-size: 19px; color: var(--muted); margin: 0 0 22px; }
-  .cover .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-  .chip { display: inline-block; padding: 5px 13px; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: 13px; font-weight: 600; }
-  .cover .hero { margin: 30px auto 0; max-width: 360px; }
-  h2 { font-size: 25px; margin: 44px 0 10px; font-weight: 700; display: flex; align-items: center; gap: 10px; scroll-margin-top: 70px; }
-  h2 .n { flex: none; min-width: 32px; height: 32px; padding: 0 6px; border-radius: 16px; background: var(--ink); color: #fff; font-size: 15px; display: inline-grid; place-items: center; font-weight: 700; }
-  h3 { font-size: 17px; margin: 22px 0 6px; font-weight: 700; }
-  h3.ok { color: var(--green-d); } h3.no { color: var(--red); }
-  p { margin: 8px 0; }
-  ul, ol { margin: 8px 0; padding-left: 22px; }
-  li { margin: 4px 0; }
+  body { margin: 0; background: var(--soft); color: var(--ink); font-family: "Heebo", "Segoe UI", system-ui, -apple-system, Arial, sans-serif; font-size: 17px; line-height: 1.5; }
+  .page { max-width: 760px; margin: 0 auto; padding: 24px 20px 56px; background: var(--bg); }
+  .cover { text-align: center; padding: 44px 0 26px; }
+  .cover img { width: 88px; height: 88px; border-radius: 20px; box-shadow: 0 8px 28px -10px rgba(20,25,40,.35); }
+  .cover h1 { font-size: 48px; line-height: 1.05; margin: 18px 0 4px; font-weight: 800; }
+  .cover .sub { font-size: 18px; color: var(--muted); margin: 0 0 18px; }
+  .cover .hero { display: none; max-width: 330px; margin: 18px auto 0; }
+  .toc { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 4px 0 8px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+  .toc a { padding: 8px 14px; border-radius: 999px; background: var(--soft); color: var(--ink); text-decoration: none; font-weight: 600; font-size: 14.5px; }
+  .toc a:active, .toc a:hover { background: var(--green-t); }
+  h2 { font-size: 26px; margin: 38px 0 6px; font-weight: 800; scroll-margin-top: 16px; }
+  p { margin: 6px 0; }
   b { font-weight: 700; }
-  .lead { font-size: 18px; }
-  .box { border-radius: 16px; padding: 14px 18px; margin: 16px 0; background: var(--soft); }
-  .box.tip { background: var(--green-t); }
-  .box.warn { background: var(--amber); color: #5b4800; }
-  .box.key { background: var(--ink); color: #fff; }
-  .box p:first-child { margin-top: 0; } .box p:last-child { margin-bottom: 0; }
-  .fig { margin: 18px 0; text-align: center; }
+  .rule { font-size: 18px; margin: 4px 0 12px; }
+  .fig { margin: 14px 0; text-align: center; }
   .fig svg { max-width: 100%; height: auto; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 15px; }
-  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { background: var(--soft); font-weight: 700; font-size: 13.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  td:first-child { font-weight: 600; }
+  .note { padding: 10px 16px; border-radius: 14px; background: var(--amber); color: #5b4800; margin: 12px 0; font-size: 15.5px; }
   .dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: -1px; margin: 0 2px; }
-  .foot { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 14px; }
-  .toc { margin: 8px 0 6px; padding: 16px 20px; border-radius: 18px; background: var(--soft); }
-  .toc h2 { margin: 0 0 6px; font-size: 20px; }
-  .toc ol { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 28px; }
-  .toc li { break-inside: avoid; margin: 0; }
-  .toc a { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; color: var(--ink); text-decoration: none; font-weight: 500; border-bottom: 1px solid var(--line); }
-  .toc a b { flex: none; width: 24px; color: var(--muted); font-weight: 700; }
-  .toc a:active, .toc a:hover { color: var(--green-d); }
-  .toc .hint { font-size: 13.5px; color: var(--muted); margin: 0 0 8px; }
-  .totop { display: block; margin: 18px 0 0; text-align: right; font-size: 13px; }
-  .totop a { color: var(--muted); text-decoration: none; font-weight: 600; }
-  .facts { display: grid; grid-template-columns: 110px 1fr; gap: 0; margin: 10px 0 4px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
-  .facts > div { padding: 9px 13px; border-bottom: 1px solid var(--line); }
-  .facts > div:nth-last-child(-n+2) { border-bottom: 0; }
-  .facts > div:nth-child(odd) { background: var(--soft); font-weight: 700; font-size: 13.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  .exs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 12px 0; }
+  .totop { display: block; margin: 12px 0 0; text-align: right; font-size: 13px; } .totop a { color: var(--muted); text-decoration: none; font-weight: 600; }
+  .exs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 10px 0; }
   .ex { border: 2px solid var(--line); border-radius: 18px; padding: 10px 10px 12px; text-align: center; break-inside: avoid; background: #fff; }
   .ex.ok { border-color: #b8ecd3; } .ex.no { border-color: #f7c4c4; }
   .ex .tag { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
   .ex.ok .tag { background: var(--green-t); color: var(--green-d); } .ex.no .tag { background: var(--red-t); color: var(--red); }
-  .ex .tt { font-weight: 700; font-size: 15px; margin: 6px 0 2px; }
+  .ex .tt { font-weight: 700; font-size: 16px; margin: 6px 0 0; }
   .ex svg { display: block; margin: 4px auto; max-width: 100%; height: auto; }
-  .ex .cp { font-size: 13.5px; color: var(--muted); line-height: 1.4; text-align: left; margin-top: 4px; }
-  @media (max-width: 560px) { .cover h1 { font-size: 40px; } .exs { grid-template-columns: 1fr; } .toc ol { columns: 1; } .page { padding: 18px 16px 50px; } th, td { padding: 8px 8px; } .facts { grid-template-columns: 1fr; } .facts > div:nth-child(odd) { border-bottom: 0; padding-bottom: 2px; } }
-  body.embed { background: var(--bg); } body.embed .page { padding-top: 0; } body.embed .cover { padding: 22px 0 26px; margin-bottom: 18px; } body.embed .cover img { width: 72px; height: 72px; } body.embed .cover h1 { font-size: 40px; margin-top: 14px; }
-  @page { size: A4; margin: 14mm 13mm; }
+  .ex .cp { font-size: 14.5px; color: var(--muted); line-height: 1.35; }
+  .foot { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); text-align: center; color: var(--muted); font-size: 13.5px; }
+  @media (max-width: 560px) { .cover h1 { font-size: 40px; } .page { padding: 16px 14px 48px; } .exs { gap: 8px; } .ex { padding: 8px 6px 10px; } .ex .tt { font-size: 14.5px; } .ex .cp { font-size: 13px; } }
+  body.embed { background: var(--bg); } body.embed .page { padding-top: 0; } body.embed .cover { padding: 18px 0 14px; } body.embed .cover img { width: 64px; height: 64px; } body.embed .cover h1 { font-size: 38px; margin-top: 12px; }
+  @page { size: A4; margin: 13mm 12mm; }
   @media print {
     body { background: #fff; font-size: 11pt; }
     .page { max-width: none; padding: 0; }
-    .cover { page-break-after: always; break-after: page; padding: 40mm 0 10mm; border: 0; margin: 0; }
-    .totop { display: none; }
-    h2 { break-after: avoid; margin-top: 22px; } h3 { break-after: avoid; }
-    .fig, .box, table, .facts, .ex, tr { break-inside: avoid; }
-    .exs { display: flex; flex-wrap: wrap; gap: 9px; }
-    .ex { width: calc(33.333% - 6px); }
-    .grp { break-inside: auto; }
-    .head { break-inside: avoid; }
-    .ex { padding: 7px 7px 9px; } .ex .cp { font-size: 9.5pt; } .ex .tt { font-size: 10.5pt; }
-    section.pb { break-before: auto; }
-    h2 + p, h3 + p, h2 + .facts, h3 + .exs { break-before: avoid; }
-    p { orphans: 3; widows: 3; }
-    .ex svg { width: 80%; }
-    td, th { padding: 6px 10px; }
+    .cover { page-break-after: always; break-after: page; padding: 36mm 0 0; }
+    .toc, .totop { display: none; }
+    .cover .hero { display: block; }
+    h2 { break-after: avoid; margin-top: 18px; } .head { break-inside: avoid; }
+    .exs { display: flex; flex-wrap: wrap; gap: 8px; } .ex { width: calc(33.333% - 6px); padding: 6px 6px 8px; } .ex .tt { font-size: 10.5pt; } .ex .cp { font-size: 9.5pt; } .ex svg { width: 84%; }
+    section { break-inside: avoid; }
     a { color: inherit; text-decoration: none; }
   }
 </style>
@@ -92,285 +59,95 @@
   <header class="cover">
     <img src="icons/apple-touch-icon.png" alt="">
     <h1>Province</h1>
-    <p class="sub">A strategy game of bridges and borders</p>
-    <div class="chips"><span class="chip">How to play</span><span class="chip">2 players</span><span class="chip">6×6 and 8×8 boards</span><span class="chip">free, in your browser</span></div>
+    <p class="sub">How to play</p>
     <div class="hero fig" id="hero"></div>
-    <p class="sub" style="margin-top:26px;font-size:15px">province-game.com</p>
   </header>
 
   <nav class="toc">
-    <h2>Contents</h2>
-    <p class="hint">Got a specific question? Tap a title to jump straight to it. Every move has its own section with examples of what is allowed and what is not.</p>
-    <ol>
-      <li><a href="#s1"><b>1</b>The goal</a></li>
-      <li><a href="#s2"><b>2</b>What you have</a></li>
-      <li><a href="#s3"><b>3</b>Your turn: roll, re-roll, pass</a></li>
-      <li><a href="#s4"><b>4</b>The lit squares: what can I do?</a></li>
-      <li><a href="#s5"><b>5</b>Land: new soldiers</a></li>
-      <li><a href="#s6"><b>6</b>Move</a></li>
-      <li><a href="#s7"><b>7</b>Attack</a></li>
-      <li><a href="#s8"><b>8</b>Withdraw</a></li>
-      <li><a href="#s9"><b>9</b>Transport</a></li>
-      <li><a href="#s10"><b>10</b>Build a bridge</a></li>
-      <li><a href="#s11"><b>11</b>Rivers and bridges: the rules</a></li>
-      <li><a href="#s12"><b>12</b>Provinces and territory</a></li>
-      <li><a href="#s13"><b>13</b>Winning, and common questions</a></li>
-    </ol>
+    <a href="#goal">Goal</a><a href="#turn">Your turn</a><a href="#land">Land</a><a href="#move">Move</a><a href="#attack">Attack</a><a href="#withdraw">Withdraw</a><a href="#transport">Transport</a><a href="#bridge">Bridges</a><a href="#territory">Territory</a>
   </nav>
 
-  <section id="s1">
-    <h2><span class="n">1</span>The goal</h2>
-    <p class="lead">Be the first to control <b>5 connected provinces</b> (<b>8</b> on the big board).</p>
-    <p>Rivers split the board into <b>provinces</b>: blocks of 2×2 squares (9 provinces on the 6×6 board, 16 on the 8×8 board). You <b>control</b> a province when <b>only you</b> have soldiers in it. If both colours are inside, <b>nobody</b> controls it.</p>
-    <p>The provinces you control must be <b>connected</b>. Every province is separated from the next by a river, and a river can only be crossed on a bridge, so your provinces are joined by <b>your bridges</b>. Loose provinces do not count.</p>
+  <section id="goal">
+    <h2>Goal</h2>
+    <p class="rule">Control <b>5 connected provinces</b> first (<b>8</b> on the big board).</p>
+    <p>Rivers split the board into provinces of 2×2 squares. A province is yours when <b>only your soldiers</b> are in it. Connected means joined by <b>your bridges</b>.</p>
     <div class="fig" id="fig-goal"></div>
-    <p>The win is checked at the <b>end of every turn</b>: whoever has the connected provinces at the end of <b>their own</b> turn wins.</p>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+    <p>You have <b>36 soldiers</b> and <b>8 bridges</b> for the whole game (big board: 54 and 14).</p>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s2">
-    <h2><span class="n">2</span>What you have</h2>
-    <table>
-      <tr><th></th><th>6×6 board</th><th>8×8 board</th></tr>
-      <tr><td>Provinces</td><td>9</td><td>16</td></tr>
-      <tr><td>Soldiers each</td><td>36</td><td>54</td></tr>
-      <tr><td>Bridges each</td><td>8</td><td>14</td></tr>
-      <tr><td>Dice</td><td>1 to 6</td><td>1 to 8</td></tr>
-      <tr><td>To win</td><td>5 connected provinces</td><td>8 connected provinces</td></tr>
-    </table>
-    <ul>
-      <li>A <b>base</b> is a square with your soldiers on it.</li>
-      <li>Your <b>camp</b> holds the soldiers that are not on the board. New soldiers come from the camp.</li>
-      <li>Soldiers that die are gone for good (the <b>graveyard</b>). They never come back.</li>
-    </ul>
-    <div class="box warn"><p><b>Bridges are limited.</b> You get a fixed number for the <b>whole game</b>, and every bridge you build uses one of them for good. The counter next to the arch icon shows how many you have left.</p></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
-  </section>
-
-  <section id="s3">
-    <h2><span class="n">3</span>Your turn: roll, re-roll, pass</h2>
-    <ol>
-      <li><b>Roll the dice.</b> The two numbers light up <b>two squares</b>, on opposite sides of the board. You will play on <b>one</b> of them.</li>
-      <li><b>Re-roll if you want.</b> Once per turn you may throw the dice again. The new roll <b>replaces</b> the old one, so you cannot go back to the first squares.</li>
-      <li><b>Make one move</b> on a lit square (sections 5 to 10).</li>
-      <li>The turn passes to your opponent.</li>
-    </ol>
+  <section id="turn">
+    <h2>Your turn</h2>
     <div class="fig" id="fig-dice"></div>
-    <div class="box tip"><p><b>No legal move?</b> If the lit squares give you nothing to do, tap <b>Re-roll</b>. If the new roll gives nothing either, tap <b>Pass</b> and the turn goes to your opponent. The Pass button appears only after you have used your re-roll.</p></div>
-    <p>One turn is <b>one move</b>: one action, on one lit square. You never get two actions in a turn.</p>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+    <p><b>1.</b> Roll the dice: two squares light up. Pick <b>one</b>.</p>
+    <p><b>2.</b> Not happy? <b>Re-roll</b> once. The new roll replaces the old one.</p>
+    <p><b>3.</b> Make <b>one move</b> on the lit square.</p>
+    <p class="note">No move possible? Re-roll. Still nothing? Tap <b>Pass</b>.</p>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s4" class="pb">
-    <h2><span class="n">4</span>The lit squares: what can I do?</h2>
-    <p>What you may do depends on <b>where the lit square is</b>. Look at it first.</p>
-    <table>
-      <tr><th>Where the lit square is</th><th>What you may do</th></tr>
-      <tr><td>Inside <b>your territory</b>: your own base, an empty square of a province you control, or any square joined to them by your bridges</td><td>
-        <b>Land</b> on it (it is yours or empty).<br>
-        <b>Move</b> or <b>attack</b> from <b>any base</b> of that territory.<br>
-        <b>Withdraw</b> from any base of that territory.<br>
-        <b>Transport</b> from any base of that territory.<br>
-        <b>Build a bridge</b> from any base of that territory.</td></tr>
-      <tr><td>Outside your territory, but <b>touching one of your bases</b></td><td>
-        <b>Land</b> on it, only if it is empty and not enemy territory.<br>
-        <b>Move</b> or <b>attack</b> onto it, from a base that touches it.<br>
-        <b>Build a bridge</b> onto it, from a base that touches it.<br>
-        No withdraw, no transport.</td></tr>
-      <tr><td>Anywhere else (not yours, and none of your bases touches it)</td><td><b>Land</b> on it, only if it is empty and not enemy territory. Nothing else.</td></tr>
-      <tr><td>An enemy base, or an empty square inside enemy territory, and none of your bases touches it</td><td><b>Nothing.</b> If both lit squares are like this you have no legal move: re-roll.</td></tr>
-    </table>
-    <div class="box key"><p><b>The one rule people forget:</b> new soldiers (landing and reinforcing) go <b>only on the lit square</b>. Having a big territory does <b>not</b> let you reinforce any base you like. Section 5 shows exactly what is allowed.</p></div>
-    <p>"Your territory" is explained in section 12. In short: your bases plus the squares of provinces you control, joined by your bridges.</p>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+  <section id="land" class="pb">
+    <div class="head"><h2>Land</h2>
+    <p class="rule">New soldiers from your camp land <b>only on the lit square</b>: empty, or your own base.</p></div>
+    <div class="exs" id="ex-land"></div>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s5" class="pb">
-    <div class="head">
-    <h2><span class="n">5</span>Land: new soldiers</h2>
-    <p>Bring soldiers from your camp onto the board. Landing on one of your own bases is also how you <b>reinforce</b> it.</p>
-    <div class="facts">
-      <div>When</div><div>The lit square is <b>empty</b> (and not enemy territory), or it is <b>one of your bases</b>.</div>
-      <div>Where</div><div><b>Only on the lit square.</b> Never on another base of yours, never next to it.</div>
-      <div>How many</div><div>Any number from 1 up to everything in your camp.</div>
-      <div>Result</div><div>The soldiers stand on the lit square. If it was empty, a new base appears.</div>
-    </div>
-    </div>
-    <div class="grp"><h3 class="ok">Allowed</h3>
-    <div class="exs" id="ex-land-ok"></div></div>
-    <div class="grp"><h3 class="no">Not allowed</h3>
-    <div class="exs" id="ex-land-no"></div></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+  <section id="move">
+    <div class="head"><h2>Move</h2>
+    <p class="rule">Move any number of soldiers to a <b>neighbouring square</b> (not diagonal).</p>
+    <p>Lit square in <b>your territory</b>: use <b>any</b> of your bases. Otherwise: only a base touching the lit square.</p></div>
+    <div class="exs" id="ex-move"></div>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s6" class="pb">
-    <div class="head">
-    <h2><span class="n">6</span>Move</h2>
-    <p>Take soldiers from one of your bases and put them on a square next to it.</p>
-    <div class="facts">
-      <div>When</div><div>Any lit square from which you can reach a start base (section 4): a lit square in your territory, or a lit square touching one of your bases.</div>
-      <div>From</div><div>Lit square in your territory: <b>any base</b> of that territory (and any base touching the lit square).<br>Lit square outside your territory: only the bases that <b>touch</b> it.</div>
-      <div>To</div><div>A square that <b>shares a side</b> with the start base (up, down, left or right). From a base of your territory this can be <b>any</b> neighbouring square. From a base outside your territory it can only be the lit square.</div>
-      <div>How many</div><div>Any number from 1 up to all the soldiers of that base. Moving all of them leaves the square empty.</div>
-      <div>Rivers</div><div>Across a river you need a bridge. One of yours is free to use. With no bridge, the move builds yours (it uses one from your supply). You cannot use an enemy bridge.</div>
-      <div>Result</div><div>The soldiers join the target square (an empty square, or one of your bases). If it holds enemy soldiers, the move is an <b>attack</b> (section 7).</div>
-    </div>
-    </div>
-    <div class="grp"><h3 class="ok">Allowed</h3>
-    <div class="exs" id="ex-move-ok"></div></div>
-    <div class="grp"><h3 class="no">Not allowed</h3>
-    <div class="exs" id="ex-move-no"></div></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+  <section id="attack" class="pb">
+    <div class="head"><h2>Attack</h2>
+    <p class="rule">A move onto enemy soldiers. Each attacker kills <b>one</b> defender.</p>
+    <div class="fig" id="fig-attack"></div></div>
+    <div class="exs" id="ex-attack"></div>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s7" class="pb">
-    <div class="head">
-    <h2><span class="n">7</span>Attack</h2>
-    <p>An attack is a move onto a square that holds <b>enemy soldiers</b>. It follows every rule of Move (section 6): same start bases, same neighbouring squares, same river rules.</p>
-    <div class="facts">
-      <div>How it ends</div><div>Each attacker kills <b>one</b> defender.</div>
-      <div>Defenders</div><div>The ones that are killed are <b>gone for good</b>.</div>
-      <div>Attackers</div><div>All the attackers leave their base. Those that killed are <b>worn out</b> and go back to your camp. Attackers beyond the number of defenders <b>stay</b> on the captured square.</div>
-    </div>
-    <table>
-      <tr><th>Attackers vs defenders</th><th>Result</th></tr>
-      <tr><td>5 vs 3</td><td>3 defenders die. 2 attackers stay and the square is yours (3 return to camp).</td></tr>
-      <tr><td>3 vs 3</td><td>All 3 defenders die. The square is left <b>empty</b>. Your 3 attackers return to camp.</td></tr>
-      <tr><td>2 vs 5</td><td>2 defenders die, 3 defenders remain. Your 2 attackers return to camp.</td></tr>
-    </table>
-    <p>Across a river the attack also uses a bridge, exactly like a move: one of yours is free, with no bridge it builds yours.</p>
-    <div class="fig" id="fig-attack"></div>
-    </div>
-    <div class="grp"><h3 class="ok">Allowed</h3>
-    <div class="exs" id="ex-attack-ok"></div></div>
-    <div class="grp"><h3 class="no">Not allowed</h3>
-    <div class="exs" id="ex-attack-no"></div></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+  <section id="withdraw">
+    <div class="head"><h2>Withdraw</h2>
+    <p class="rule">Take soldiers back to camp, from <b>any base</b> of your territory.</p></div>
+    <div class="exs" id="ex-withdraw"></div>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s8" class="pb">
-    <div class="head">
-    <h2><span class="n">8</span>Withdraw</h2>
-    <p>Pull soldiers off the board and back into your camp.</p>
-    <div class="facts">
-      <div>When</div><div>Only when the lit square is <b>inside your territory</b>.</div>
-      <div>From</div><div><b>Any base</b> of that territory.</div>
-      <div>How many</div><div>Any number from 1 up to all the soldiers of that base. If you take them all, the base disappears.</div>
-      <div>Why</div><div>To save soldiers from a position you cannot defend, or to have more soldiers in camp to land later.</div>
-    </div>
-    </div>
-    <div class="grp"><h3 class="ok">Allowed</h3>
-    <div class="exs" id="ex-withdraw-ok"></div></div>
-    <div class="grp"><h3 class="no">Not allowed</h3>
-    <div class="exs" id="ex-withdraw-no"></div></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+  <section id="transport" class="pb">
+    <div class="head"><h2>Transport</h2>
+    <p class="rule">Send soldiers along a <b>straight line</b> through your territory, in one move.</p></div>
+    <div class="exs" id="ex-transport"></div>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s9" class="pb">
-    <div class="head">
-    <h2><span class="n">9</span>Transport</h2>
-    <p>Send soldiers from one of your bases far along a straight line, inside your territory, in a single move.</p>
-    <div class="facts">
-      <div>When</div><div>Only when the lit square is <b>inside your territory</b>.</div>
-      <div>From</div><div><b>Any base</b> of that territory.</div>
-      <div>The line</div><div>Straight along a row or a column, <b>any distance</b>. It may only pass through your own territory: your bases and the empty squares of provinces you control. An enemy base or a square outside your territory stops it. A river can be crossed only on <b>your own bridge</b>.</div>
-      <div>To</div><div>Any square of your territory along the line: one of your bases, or an empty square of a province you control (a new base appears).</div>
-      <div>How many</div><div>Any number from 1 up to all the soldiers of the start base. They <b>all</b> go to the <b>same</b> destination: no splitting.</div>
-    </div>
-    </div>
-    <div class="grp"><h3 class="ok">Allowed</h3>
-    <div class="exs" id="ex-transport-ok"></div></div>
-    <div class="grp"><h3 class="no">Not allowed</h3>
-    <div class="exs" id="ex-transport-no"></div></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
+  <section id="bridge">
+    <div class="head"><h2>Bridges</h2>
+    <p class="rule">A river can only be crossed on a <b>bridge</b>. Only its owner can cross it.</p>
+    <p>Crossing with no bridge <b>builds yours</b>. Your supply is limited.</p>
+    <div class="note">Building a bridge and moving over it is <b>one move</b>.</div></div>
+    <div class="exs" id="ex-bridge"></div>
+    <span class="totop"><a href="#top">↑ Top</a></span>
   </section>
 
-  <section id="s10" class="pb">
-    <div class="head">
-    <h2><span class="n">10</span>Build a bridge</h2>
-    <p>Place one of your bridges across a river. You can do it <b>on its own</b>, or <b>together with a move</b>: building a bridge and moving soldiers over it is <b>one move</b>, never two turns.</p>
-    <div class="facts">
-      <div>When</div><div>Like Move: the lit square is in your territory, or touches one of your bases.</div>
-      <div>Where</div><div>Between one of your bases and the <b>square across the river</b> from it (the square can be empty, yours, or the enemy's).</div>
-      <div>Cost</div><div>One bridge from your supply, for good.</div>
-      <div>Soldiers</div><div><b>None</b> (a bridge only), or any number from 1 up to all of them (a move or attack across the new bridge).</div>
-      <div>Replace</div><div>If an <b>enemy bridge</b> already connects the two squares and you hold <b>both ends</b> with your soldiers, you may replace it with yours. The enemy bridge disappears.</div>
-    </div>
-    </div>
-    <div class="grp"><h3 class="ok">Allowed</h3>
-    <div class="exs" id="ex-bridge-ok"></div></div>
-    <div class="grp"><h3 class="no">Not allowed</h3>
-    <div class="exs" id="ex-bridge-no"></div></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
-  </section>
-
-  <section id="s11" class="pb">
-    <h2><span class="n">11</span>Rivers and bridges: the rules</h2>
-    <ul>
-      <li>A square next to a river is separated from the square across it. To go across (move, attack, bridge, transport) you need a <b>bridge</b>.</li>
-      <li>A bridge belongs to the player who built it. <b>Only its owner can cross it.</b></li>
-      <li><b>Your bridge:</b> you cross it freely and for free.</li>
-      <li><b>No bridge:</b> a move or attack across the river builds yours (it uses one from your supply). Transport cannot build one.</li>
-      <li><b>Enemy bridge:</b> you cannot cross it. The only thing you can do is replace it, when you hold both ends (section 10).</li>
-      <li><b>Out of bridges:</b> with none left in your supply you cannot cross a river unless a bridge of yours is already there.</li>
-      <li>There is at most <b>one</b> bridge between two squares.</li>
-    </ul>
-    <div class="fig" id="fig-bridge"></div>
-    <div class="box tip"><p><b>Why bridges matter:</b> your provinces are connected only through <b>your</b> bridges. A bridge is what turns a few provinces into a winning chain, and replacing the enemy's bridge can cut his chain.</p></div>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
-  </section>
-
-  <section id="s12">
-    <h2><span class="n">12</span>Provinces and territory</h2>
-    <h3>Controlling a province</h3>
-    <p>A province is <b>yours</b> when the soldiers inside it are all yours. It is <b>the enemy's</b> when they are all his. If both colours have soldiers in it, <b>nobody</b> controls it. An empty province belongs to nobody.</p>
-    <h3>Your territory</h3>
-    <p>Your <b>territory</b> is made of:</p>
-    <ul>
-      <li>all your <b>bases</b>, and</li>
-      <li>all the squares of every province <b>you control</b>, even the empty ones,</li>
-    </ul>
-    <p>joined together when squares touch, or when they are on two sides of a river that has <b>your bridge</b>. Two pieces separated by a river with no bridge of yours are two separate territories.</p>
-    <div class="fig" id="fig-terr"></div>
-    <h3>What the territory does for you</h3>
-    <ul>
-      <li>A lit square in your territory lets you <b>move, attack, withdraw, transport and build bridges from any base of it</b>.</li>
-      <li>Transport runs through it.</li>
-      <li>In a province both of you are in, the squares are <b>not</b> territory for either of you. That is why you may land there, but cannot transport through it.</li>
-      <li>You can <b>never land</b> in <b>enemy</b> territory.</li>
-    </ul>
-    <span class="totop"><a href="#top">↑ Contents</a></span>
-  </section>
-
-  <section id="s13">
-    <h2><span class="n">13</span>Winning, and common questions</h2>
-    <p><b>You win</b> at the end of your own turn if you control 5 provinces (8 on the big board) that are connected in one territory.</p>
-    <table>
-      <tr><th>Question</th><th>Answer</th></tr>
-      <tr><td>Can I reinforce any base in my territory?</td><td>No. New soldiers go only on the lit square (section 5).</td></tr>
-      <tr><td>Can I play on both lit squares?</td><td>No. One move per turn, on one of the two squares.</td></tr>
-      <tr><td>Can I land next to enemy soldiers?</td><td>Yes, if the lit square is empty and not inside enemy territory (a province that holds both colours is fine).</td></tr>
-      <tr><td>Can I move soldiers from a base that is not on the lit square?</td><td>Yes, if the lit square is in your territory: any base of it (section 4).</td></tr>
-      <tr><td>Do I have to move all the soldiers of a base?</td><td>No. Any number from 1 to all of them.</td></tr>
-      <tr><td>What happens to a base when all its soldiers leave?</td><td>It disappears: the square becomes empty.</td></tr>
-      <tr><td>Can I skip my turn?</td><td>Only with Pass, which appears after you have used your re-roll.</td></tr>
-      <tr><td>Do attackers die?</td><td>No. They are worn out and go back to your camp. Only defenders die for good.</td></tr>
-      <tr><td>I have no bridges left. Am I stuck?</td><td>Not completely: you can still cross on bridges of yours that are already built, and play inside a river-bounded area.</td></tr>
-      <tr><td>Can the enemy cross my bridge?</td><td>No. Only the owner can. He can only replace it if he holds both ends.</td></tr>
-    </table>
-    <div class="foot">Province · province-game.com · feedback: the Feedback button in the lobby · community: the Discord icon in the lobby.</div>
+  <section id="territory" class="pb">
+    <div class="head"><h2>Territory</h2>
+    <p class="rule">Your bases + the squares of provinces you control, joined by <b>your bridges</b>.</p>
+    <div class="fig" id="fig-terr"></div></div>
+    <p>A lit square in your territory lets you play from <b>any base</b> in it. You can never land in <b>enemy</b> territory. A province with both colours is nobody's.</p>
+    <div class="foot">Province · province-game.com</div>
   </section>
 </div>
 
 <script src="src/manual_scenarios.js"></script>
 <script>
-// ---------- diagrams (inline SVG, same colours as the game) ----------
 (function () {
   const C = { g: '#34c98a', b: '#3a9cf5', gt: '#d6f4e8', bt: '#d8ebfd', river: '#a8aeb9', dot: '#a8aeb9', ink: '#1b1e24', red: '#e24646' };
   const el = (id) => document.getElementById(id);
   const P = 34, G = 10, M = 16;
 
-  // board(size, opts): soldiers [{x,y,o,n}], bridges, tints [{px,py,o}], lit [{x,y}], arrows, plus, marks, notes
   function board(size, o) {
     o = o || {}; const np = size / 2, W = 2 * M + size * P + (np - 1) * G, H = W + ((o.notes || []).length ? 14 : 0);
     const X = (x) => M + x * P + Math.floor(x / 2) * G + P / 2, Y = (y) => M + y * P + Math.floor(y / 2) * G + P / 2;
@@ -399,8 +176,6 @@
     for (const n of o.notes || []) s += `<text x="${n.x}" y="${n.y}" text-anchor="${n.a || 'middle'}" font-size="${n.s || 13}" font-weight="700" fill="${n.c || C.ink}">${n.t}</text>`;
     return s + '</svg>';
   }
-
-  // province tints from the soldiers (a province with soldiers of one colour only is that colour's)
   function autoTints(sc) {
     const owners = {}; const add = (list, o) => (list || []).forEach(([x, y]) => { const k = Math.floor(x / 2) + ',' + Math.floor(y / 2); (owners[k] = owners[k] || new Set()).add(o); });
     add(sc.g, 0); add(sc.b, 1);
@@ -408,26 +183,26 @@
   }
   const sold = (sc) => (sc.g || []).map(([x, y, n]) => ({ x, y, o: 0, n })).concat((sc.b || []).map(([x, y, n]) => ({ x, y, o: 1, n })));
 
-  function card(sc) {
+  // the examples shown in the booklet: id -> [title, one short line]. Every example is checked against the game rules by tests/manual_check.js.
+  const TOPICS = {
+    land: { 'land-empty': ['Empty square', 'Land right on it.'], 'land-own': ['Your own base', 'Add soldiers to it.'], 'land-other-base': ['Another base', 'Only the lit square gets soldiers.'], 'land-enemy-terr': ['Enemy territory', 'Blue controls this province.'], 'land-enemy-base': ['Enemy base', 'Attack it instead.'] },
+    move: { 'move-next': ['Next to the base', 'Any number of soldiers.'], 'move-any-base': ['Any base of yours', 'The lit square is in your territory.'], 'move-diagonal': ['Diagonal', 'Up, down, left, right only.'], 'move-far': ['Too far', 'No base of yours touches it.'], 'move-enemy-bridge': ['Enemy bridge', 'Only its owner can cross.'] },
+    attack: { 'attack-ok': ['Attack', '5 vs 3: 3 die, 2 stay.'], 'attack-far': ['Not a neighbour', 'Attack only next to your base.'] },
+    withdraw: { 'withdraw-ok': ['Any base of yours', 'Back to camp.'], 'withdraw-no': ['Lit square not yours', 'It must be in your territory.'] },
+    transport: { 'transport-base': ['Straight line', 'Any distance, one move.'], 'transport-blocked': ['Blocked', 'An enemy base stops the line.'], 'transport-river': ['River, no bridge', 'Transport cannot build one.'], 'transport-bend': ['Not straight', 'No turns, no diagonals.'] },
+    bridge: { 'bridge-only': ['Bridge only', 'No soldiers move.'], 'bridge-move': ['Bridge and move', 'One move, not two.'], 'bridge-replace': ['Replace enemy bridge', 'You hold both ends.'], 'bridge-have': ['Already there', 'One bridge per crossing.'] },
+  };
+  function card(sc, tc) {
     const a = sc.act, to = a.to || null, from = a.from || null;
-    const o = { id: sc.id, w: 226, tints: autoTints(sc), soldiers: sold(sc), bridges: (sc.br || []).map(([x1, y1, x2, y2, ow]) => ({ x1, y1, x2, y2, o: ow })), lit: [{ x: sc.lit[0], y: sc.lit[1] }], arrows: [], plus: [], marks: [], notes: [] };
-    if (a.type === 'land') {
-      if (sc.ok) o.plus.push({ x: to[0], y: to[1], n: a.count });
-      o.marks.push({ x: to[0], y: to[1], ok: sc.ok });
-    } else if (a.type === 'withdraw') {
-      o.marks.push({ x: from[0], y: from[1], ok: sc.ok });
-      o.notes.push({ x: 128, y: 262, t: `−${a.count} → camp`, c: sc.ok ? '#1f8a5d' : C.red, s: 12 });
-    } else {
-      o.arrows.push({ x1: from[0], y1: from[1], x2: to[0], y2: to[1] });
-      o.marks.push({ x: to[0], y: to[1], ok: sc.ok });
-    }
-    return `<div class="ex ${sc.ok ? 'ok' : 'no'}"><span class="tag">${sc.ok ? '✓ Allowed' : '✕ Not allowed'}</span><div class="tt">${sc.title}</div>${board(6, o)}<div class="cp">${sc.cap}</div></div>`;
+    const o = { id: sc.id, w: 230, tints: autoTints(sc), soldiers: sold(sc), bridges: (sc.br || []).map(([x1, y1, x2, y2, ow]) => ({ x1, y1, x2, y2, o: ow })), lit: [{ x: sc.lit[0], y: sc.lit[1] }], arrows: [], plus: [], marks: [], notes: [] };
+    if (a.type === 'land') { if (sc.ok) o.plus.push({ x: to[0], y: to[1], n: a.count }); o.marks.push({ x: to[0], y: to[1], ok: sc.ok }); }
+    else if (a.type === 'withdraw') { o.marks.push({ x: from[0], y: from[1], ok: sc.ok }); o.notes.push({ x: 128, y: 262, t: `−${a.count} → camp`, c: sc.ok ? '#1f8a5d' : C.red, s: 12 }); }
+    else { o.arrows.push({ x1: from[0], y1: from[1], x2: to[0], y2: to[1] }); o.marks.push({ x: to[0], y: to[1], ok: sc.ok }); }
+    return `<div class="ex ${sc.ok ? 'ok' : 'no'}"><span class="tag">${sc.ok ? '✓ Allowed' : '✕ Not allowed'}</span><div class="tt">${tc[0]}</div>${board(6, o)}<div class="cp">${tc[1]}</div></div>`;
   }
   const S = window.MANUAL_SCENARIOS;
-  for (const topic of ['land', 'move', 'attack', 'withdraw', 'transport', 'bridge']) {
-    for (const ok of [true, false]) {
-      const box = el(`ex-${topic}-${ok ? 'ok' : 'no'}`); if (box) box.innerHTML = S.filter((s) => s.topic === topic && s.ok === ok).map(card).join('');
-    }
+  for (const topic of Object.keys(TOPICS)) {
+    el('ex-' + topic).innerHTML = Object.keys(TOPICS[topic]).map((id) => S.find((s) => s.id === id)).sort((x, y) => (y.ok ? 1 : 0) - (x.ok ? 1 : 0)).map((sc) => card(sc, TOPICS[topic][sc.id])).join('');
   }
 
   const goal = {
@@ -435,27 +210,21 @@
     soldiers: [{ x: 1, y: 3, o: 0, n: 3 }, { x: 1, y: 4, o: 0, n: 2 }, { x: 2, y: 4, o: 0, n: 2 }, { x: 2, y: 3, o: 0, n: 4 }, { x: 3, y: 4, o: 0, n: 2 }, { x: 4, y: 4, o: 0, n: 5 }, { x: 3, y: 1, o: 1, n: 4 }, { x: 4, y: 1, o: 1, n: 3 }, { x: 5, y: 1, o: 1, n: 2 }],
     bridges: [{ x1: 1, y1: 3, x2: 1, y2: 4, o: 0 }, { x1: 1, y1: 4, x2: 2, y2: 4, o: 0 }, { x1: 2, y1: 3, x2: 2, y2: 4, o: 0 }, { x1: 3, y1: 4, x2: 4, y2: 4, o: 0 }, { x1: 3, y1: 1, x2: 4, y2: 1, o: 1 }],
   };
-  el('hero').innerHTML = board(6, Object.assign({ w: 330, id: 'h' }, goal));
-  el('fig-goal').innerHTML = `<div style="display:flex;justify-content:center;gap:22px;flex-wrap:wrap;align-items:center">${board(6, Object.assign({ w: 250, id: 'g' }, goal))}<div style="text-align:left;max-width:260px;font-size:14.5px;color:#5d6471"><p><span class="dot" style="background:#34c98a"></span><b>Green</b> controls the 5 shaded provinces on the left and bottom, joined by green bridges: that is a win.</p><p><span class="dot" style="background:#3a9cf5"></span><b>Blue</b> holds only two provinces in the top corner.</p></div></div>`;
+  el('hero').innerHTML = board(6, Object.assign({ w: 300, id: 'h' }, goal));
+  el('fig-goal').innerHTML = `<div style="display:flex;justify-content:center;gap:18px;flex-wrap:wrap;align-items:center">${board(6, Object.assign({ w: 270, id: 'g' }, goal))}<div style="text-align:left;max-width:230px;font-size:15.5px"><p><span class="dot" style="background:#34c98a"></span><b>Green wins</b>: 5 provinces, joined by green bridges.</p><p><span class="dot" style="background:#3a9cf5"></span><b>Blue</b> has only 2.</p></div></div>`;
 
-  const die = (v) => `<svg width="54" height="54" viewBox="0 0 54 54"><rect x="2" y="2" width="50" height="50" rx="12" fill="#5a606c"/><text x="27" y="36" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="Heebo, Arial">${v}</text></svg>`;
-  el('fig-dice').innerHTML = `<div style="display:flex;justify-content:center;gap:26px;flex-wrap:wrap;align-items:center">
-    <div style="display:flex;gap:10px;align-items:center">${die(3)}${die(5)}<span style="font-size:30px;color:#a8aeb9">→</span></div>
-    ${board(6, { w: 250, id: 'd', lit: [{ x: 2, y: 4 }, { x: 3, y: 1 }], soldiers: [{ x: 1, y: 4, o: 0, n: 3 }, { x: 4, y: 1, o: 1, n: 3 }] })}
-    <div style="text-align:left;max-width:210px;font-size:14.5px;color:#5d6471">The numbers on the dice point to <b>two squares</b> (dashed rings), one on each side of the board. You pick one of them.</div></div>`;
+  const die = (v) => `<svg width="56" height="56" viewBox="0 0 54 54"><rect x="2" y="2" width="50" height="50" rx="12" fill="#5a606c"/><text x="27" y="36" text-anchor="middle" font-size="28" font-weight="800" fill="#fff" font-family="Heebo, Arial">${v}</text></svg>`;
+  el('fig-dice').innerHTML = `<div style="display:flex;justify-content:center;gap:18px;flex-wrap:wrap;align-items:center"><div style="display:flex;gap:8px;align-items:center">${die(3)}${die(5)}<span style="font-size:30px;color:#a8aeb9">→</span></div>
+    ${board(6, { w: 250, id: 'd', lit: [{ x: 2, y: 4 }, { x: 3, y: 1 }], soldiers: [{ x: 1, y: 4, o: 0, n: 3 }, { x: 4, y: 1, o: 1, n: 3 }] })}</div>`;
 
-  const circ = (n, c) => `<svg width="50" height="50"><circle cx="25" cy="25" r="22" fill="${c}"/><text x="25" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#fff" font-family="Heebo, Arial">${n}</text></svg>`;
-  el('fig-attack').innerHTML = `<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;align-items:center;font-size:14px;color:#5d6471;margin:8px 0">
-    <div>${circ(5, '#34c98a')}<div>attack</div></div><span style="font-size:24px">⚔</span><div>${circ(3, '#3a9cf5')}<div>defend</div></div><span style="font-size:26px;color:#a8aeb9">→</span>
-    <div>${circ(2, '#34c98a')}<div>stay on the square</div></div><div style="text-align:left;max-width:230px">3 worn-out attackers <b>go back to camp</b>.<br>3 defenders are <b>dead for good</b>.</div></div>`;
+  const circ = (n, c) => `<svg width="52" height="52"><circle cx="26" cy="26" r="23" fill="${c}"/><text x="26" y="33" text-anchor="middle" font-size="21" font-weight="700" fill="#fff" font-family="Heebo, Arial">${n}</text></svg>`;
+  el('fig-attack').innerHTML = `<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;align-items:center;font-size:14.5px;color:#5d6471">
+    <div>${circ(5, '#34c98a')}<div>attack</div></div><span style="font-size:26px">⚔</span><div>${circ(3, '#3a9cf5')}<div>defend</div></div><span style="font-size:26px;color:#a8aeb9">→</span>
+    <div>${circ(2, '#34c98a')}<div>stay</div></div><div style="text-align:left;max-width:230px;color:#1b1e24">3 defenders <b>die</b>.<br>The other attackers go <b>back to camp</b>.</div></div>`;
 
-  el('fig-bridge').innerHTML = `<div style="display:flex;justify-content:center;gap:26px;flex-wrap:wrap;align-items:center">
-    ${board(6, { w: 230, id: 'b1', tints: [{ px: 0, py: 1, o: 0 }, { px: 0, py: 2, o: 0 }], soldiers: [{ x: 1, y: 3, o: 0, n: 4 }, { x: 1, y: 4, o: 0, n: 2 }], bridges: [{ x1: 1, y1: 3, x2: 1, y2: 4, o: 0 }] })}
-    <div style="text-align:left;max-width:240px;font-size:14.5px;color:#5d6471">A green bridge joins the two squares across the river. Green crosses it freely. Blue cannot.</div></div>`;
-
-  el('fig-terr').innerHTML = `<div style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap;align-items:center">
-    ${board(6, { w: 270, id: 't', tints: [{ px: 0, py: 2, o: 0 }, { px: 1, py: 2, o: 0 }, { px: 1, py: 1, o: 0 }], soldiers: [{ x: 1, y: 4, o: 0, n: 3 }, { x: 3, y: 4, o: 0, n: 2 }, { x: 2, y: 3, o: 0, n: 2 }, { x: 4, y: 3, o: 0, n: 2 }, { x: 5, y: 3, o: 1, n: 3 }], bridges: [{ x1: 1, y1: 4, x2: 2, y2: 4, o: 0 }, { x1: 2, y1: 3, x2: 2, y2: 4, o: 0 }] })}
-    <div style="text-align:left;max-width:270px;font-size:14.5px;color:#5d6471"><p><span class="dot" style="background:#d6f4e8;border:1px solid #34c98a"></span> <b>Shaded</b>: provinces green controls. All their squares, even the empty ones, are green territory.</p><p>The three green provinces are joined by green bridges: one territory.</p><p>The province at the right holds both colours: nobody controls it, so its squares are <b>not</b> territory. Green's base there is a base, but it is cut off from the rest.</p></div></div>`;
+  el('fig-terr').innerHTML = `<div style="display:flex;justify-content:center;gap:18px;flex-wrap:wrap;align-items:center">
+    ${board(6, { w: 260, id: 't', tints: [{ px: 0, py: 2, o: 0 }, { px: 1, py: 2, o: 0 }, { px: 1, py: 1, o: 0 }], soldiers: [{ x: 1, y: 4, o: 0, n: 3 }, { x: 3, y: 4, o: 0, n: 2 }, { x: 2, y: 3, o: 0, n: 2 }, { x: 4, y: 3, o: 0, n: 2 }, { x: 5, y: 3, o: 1, n: 3 }], bridges: [{ x1: 1, y1: 4, x2: 2, y2: 4, o: 0 }, { x1: 2, y1: 3, x2: 2, y2: 4, o: 0 }] })}
+    <div style="text-align:left;max-width:230px;font-size:15.5px"><p><span class="dot" style="background:#d6f4e8;border:1px solid #34c98a"></span><b>Shaded</b> = green territory, even the empty squares.</p><p>The right province has both colours: nobody's.</p></div></div>`;
 
   if (/[?&]embed=1/.test(location.search)) document.body.classList.add('embed');
 })();

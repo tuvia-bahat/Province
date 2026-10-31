@@ -11,7 +11,7 @@ VPARAM = re.compile(rb'\?v=[0-9a-f]{12}')   # index.html carries the build id in
 
 
 def site_files():
-    out = [p for p in [ROOT / 'index.html', ROOT / 'style.css', ROOT / 'sw.js', ROOT / 'manifest.webmanifest', ROOT / 'admin.html', ROOT / 'manual.html', ROOT / 'Province-Guide.pdf'] if p.exists()]
+    out = [p for p in [ROOT / 'index.html', ROOT / 'style.css', ROOT / 'sw.js', ROOT / 'manifest.webmanifest', ROOT / 'admin.html', ROOT / 'manual.html', ROOT / 'Province-Booklet.pdf'] if p.exists()]
     for sub in ('src', 'icons'):
         out += [p for p in sorted((ROOT / sub).rglob('*')) if p.is_file()]
     return [p for p in out if p.relative_to(ROOT).as_posix() not in SKIP]
