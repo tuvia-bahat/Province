@@ -115,11 +115,11 @@
     <div class="act"><div class="ic">⚔</div><div><span class="t">Attack</span>Move onto a square held by the enemy. Each attacker kills one defender (see below).</div></div>
     <div class="act"><div class="ic">⬆</div><div><span class="t">Withdraw</span>Pull soldiers from a base back to your camp.</div></div>
     <div class="act"><div class="ic">⇢</div><div><span class="t">Transport</span>Send soldiers from a base in a <b>straight line</b> through your own territory to another of your bases, in one go.</div></div>
-    <div class="act"><div class="ic">⌒</div><div><span class="t">Build a bridge</span>Place a bridge across a river without moving anyone.</div></div>
+    <div class="act"><div class="ic">⌒</div><div><span class="t">Build a bridge</span>Place a bridge across a river. You can also move soldiers over it in the same move: building a bridge and moving is <b>one turn</b>, not two.</div></div>
     <h3>Which squares can you use?</h3>
     <ul>
       <li>A lit square <b>inside your territory</b> lets you play from <b>any</b> of your bases there: it does not have to be the base you move from.</li>
-      <li>A lit square that is <b>next to one of your bases</b> lets you move or attack onto it from that base, even across a river if there is a bridge.</li>
+      <li>A lit square that is <b>next to one of your bases</b> lets you move or attack onto it from that base.</li>
       <li>A lit square deep in enemy territory with none of your bases next to it: you cannot use it.</li>
     </ul>
     <h3>Territory</h3>
@@ -132,36 +132,20 @@
     <ul>
       <li>Each attacking soldier kills <b>one</b> defender.</li>
       <li>The defenders that die are <b>gone for good</b>.</li>
-      <li>The attackers that killed <b>return to your camp</b>.</li>
+      <li>The attackers that did the killing are <b>worn out</b>: they leave the board and go back to your camp to rest.</li>
       <li>Extra attackers (more than defenders) <b>stay</b> on the captured square. Equal numbers leave the square empty.</li>
     </ul>
     <div class="fig" id="fig-attack"></div>
     <h3>Rivers and bridges</h3>
     <ul>
       <li>You can only cross a river on a <b>bridge</b>. Moving across a river with no bridge <b>builds yours</b>, as part of the move.</li>
-      <li>A bridge belongs to the player who built it. Only they can cross it, and it can never be removed.</li>
+      <li>A bridge belongs to the player who built it. Only they can cross it.</li>
       <li>You <b>can replace an enemy bridge</b> with yours if you hold the squares at <b>both ends</b>.</li>
     </ul>
     <div class="fig" id="fig-bridge"></div>
   </section>
 
-  <section class="pb">
-    <h2><span class="n">6</span>Playing the game</h2>
-    <table>
-      <tr><td>Vs computer</td><td>Tap <b>+</b> in the lobby, then <b>Vs computer</b>, and pick 6×6 or 8×8. Every game is saved, and the finished ones appear in the lobby list where anyone can watch the replay.</td></tr>
-      <tr><td>Online</td><td>Tap <b>+</b> and <b>Online</b> to create a game, then use <b>Invite a friend</b> or wait for an opponent. Open games and live games are listed in the lobby: tap one to join or to watch.</td></tr>
-      <tr><td>Watching</td><td>Anyone can watch a live game. The players see a small eye with the number of viewers.</td></tr>
-      <tr><td>Tutorial</td><td>A short guided game that teaches every rule. Open it from the menu or from the <b>+</b> screen.</td></tr>
-      <tr><td>Replay</td><td>Finished games in the lobby can be replayed move by move.</td></tr>
-    </table>
-    <h3>Good to know</h3>
-    <ul>
-      <li>The dice decide <b>where</b> you can play, not <b>what</b> you do there. You choose the move, the number of soldiers, and when to re-roll.</li>
-      <li>Attackers come home and defenders die for good, so <b>striking first</b> matters.</li>
-      <li>Watch the meter next to the trophy: it counts only <b>connected</b> provinces.</li>
-      <li>Do not waste bridges. Every river crossing uses one of your few.</li>
-    </ul>
-  </section>
+  
 
   <div class="foot">Province · province-game.com · feedback and community: the Discord link and the Feedback button are in the lobby.</div>
 </div>
@@ -219,7 +203,7 @@
   const circ = (n, c) => `<svg width="50" height="50"><circle cx="25" cy="25" r="22" fill="${c}"/><text x="25" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#fff" font-family="Heebo, Arial">${n}</text></svg>`;
   el('fig-attack').innerHTML = `<div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;align-items:center;font-size:14.5px;color:#5d6471">
     <div>${circ(5, '#34c98a')}<div>attack</div></div><span style="font-size:26px">⚔</span><div>${circ(3, '#3a9cf5')}<div>defend</div></div><span style="font-size:28px;color:#a8aeb9">→</span>
-    <div>${circ(2, '#34c98a')}<div>stay on the square</div></div><div style="text-align:left;max-width:230px">3 attackers <b>return to camp</b>.<br>3 defenders are <b>dead for good</b>.</div></div>
+    <div>${circ(2, '#34c98a')}<div>stay on the square</div></div><div style="text-align:left;max-width:230px">3 worn-out attackers <b>go back to camp</b>.<br>3 defenders are <b>dead for good</b>.</div></div>
     <div class="cap">Example: 5 attackers against 3 defenders. Equal numbers would leave the square empty.</div>`;
 
   // bridge across a river
