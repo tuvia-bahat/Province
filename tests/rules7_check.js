@@ -68,7 +68,7 @@ const put = (s, o, list) => { for (const [x, y, n] of list) { s.cells[I(x, y)].o
 }
 // walls: neutral, cost a wall, never enclose part of the board
 {
-  let s = R.roll(R.newGame(), 1, 1);   // squares (0,0) (1,0) (0,1) (1,1)
+  let s = R.roll(put(R.newGame(), 0, [[0, 0, 1]]), 1, 1);   // squares (0,0) (1,0) (0,1) (1,1); Green has a base on (0,0)
   const a = R.apply(s, { type: 'wall', R: I(0, 0), a: I(0, 0), b: I(1, 0) });
   t('a wall is placed and counted', a.walls[R.wkey(I(0, 0), I(1, 0))] === 1 && a.wallsLeft[0] === 9 && a.turn === 1);
   const b = R.roll(Object.assign(R.clone(a), { turn: 0, rolls: 0, roll: null }), 1, 1);
@@ -76,8 +76,10 @@ const put = (s, o, list) => { for (const [x, y, n] of list) { s.cells[I(x, y)].o
   t('a harmless wall is fine', R.wallOk(b, I(1, 1), I(2, 1)));
   const none = R.clone(s); none.wallsLeft[0] = 0;
   t('no walls left, no wall', !R.wallOk(none, I(1, 1), I(2, 1)));
-  const sides = R.wallSides(R.roll(R.newGame(), 1, 1), I(0, 0));
+  const sides = R.wallSides(R.roll(put(R.newGame(), 0, [[0, 0, 1]]), 1, 1), I(0, 0));
   t('a corner square has only 2 sides that can take a wall', sides.length === 2);
+  const nob = R.roll(R.newGame(), 1, 1);
+  t('no wall from a square without your own base', R.wallSides(nob, I(0, 0)).length === 0 && throws(() => R.apply(nob, { type: 'wall', R: I(0, 0), a: I(0, 0), b: I(1, 0) })));
 }
 // win: one connected territory of 25 squares or more at the end of the turn
 {

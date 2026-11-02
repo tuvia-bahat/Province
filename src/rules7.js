@@ -8,7 +8,7 @@
  *   move      from ANY base of the territory the chosen square belongs to, to a neighbouring square (an enemy base = attack)
  *   transport from any base of that territory, in a straight line through the territory, to another square of it
  *   pass      only after the third roll
- *   wall      a wall on one side of the chosen square (blocks both players and territory; the board must stay in one piece)
+ *   wall      a wall on one side of the chosen square, only if it holds your own base (blocks both players and territory; the board must stay in one piece)
  * Territory: a base is its owner's. An empty square next to bases belongs to the player with MORE adjacent bases (tie = nobody's).
  * Walls cut adjacency. Win: a connected territory of at least 25 squares at the end of your turn.
  */
@@ -121,6 +121,7 @@
   // the 4 sides of R where a wall could go: [{ a: R, b: neighbour }]
   function wallSides(s, R) {
     const [x, y] = xy(R), out = [];
+    if (s.cells[R].o !== s.turn) return out;   // only from a square that holds your own base
     for (const [dx, dy] of DIRS) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
@@ -171,6 +172,7 @@
       if (src.n === 0) src.o = null;
     } else if (act.type === 'wall') {
       if (!(act.a === act.R || act.b === act.R)) throw new Error('a wall goes on a side of the chosen square');
+      if (s.cells[act.R].o !== p) throw new Error('a wall can only be built from a square with your own base');
       if (!wallOk(s, act.a, act.b)) throw new Error('cannot put a wall there');
       ns.walls[wkey(act.a, act.b)] = 1; ns.wallsLeft[p]--; ns.log.push(`${name}: built a wall`);
     } else throw new Error('unknown action');
