@@ -27,6 +27,7 @@
     const rolled = s.roll && s.winner === null ? s.roll.cells : [];
     const sh = ui.sheet, opts = ui.src !== null && !sh ? new Set([ui.src, ...targets(ui.src).map((t) => t.to)]) : null;
     const involved = opts || (sh ? new Set([sh.from, sh.cell, sh.to].filter((v) => v !== undefined)) : null);
+    if (sh && sh.kind === 'adjust') involved.add(sh.cell);
     let h = '';
     for (const i of rolled) {   // light fill under the squares of the rolled point where something can be played
       if ((!involved || involved.has(i)) && canPlay(i)) h += `<rect class="roll-fill" ${sq(i, 1)} fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
@@ -42,7 +43,7 @@
       h += `<rect class="cell sq${own[i] !== null ? ' c' + own[i] : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" ${sq(i, 0)}/>`;
       if (isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
       else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<rect class="ring-roll" style="animation:none" ${sq(i, 1)} stroke="${color}"/>`;
-      if (ui.R === i && !sh && !isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
+      if (sh && sh.kind === 'adjust' && sh.cell === i && !isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
       if (ui.src === i && c.o !== null) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${y}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${y + 1}">${c.n}</text>`;
     }
@@ -50,8 +51,8 @@
       const fx = s.roll.vx * S, fy = s.roll.vy * S;
       h += `<circle cx="${fx}" cy="${fy}" r="3.5" fill="${color}"/><g class="g7-flag" style="transform-origin:${fx}px ${fy}px"><line x1="${fx}" y1="${fy}" x2="${fx}" y2="${fy - 28}" stroke="${color}" stroke-width="3" stroke-linecap="round"/><path d="M${fx} ${fy - 28}l20 6.5l-20 7.5z" fill="${color}"/></g>`;
     }
-    if (ui.R !== null && !sh && s.winner === null) {   // + on each side of the chosen square: build a wall
-      for (const side of R.wallSides(s, ui.R)) {
+    if (sh && sh.mode === 'wall' && s.winner === null) {   // + on each side of the chosen square: build a wall
+      for (const side of R.wallSides(s, sh.cell)) {
         const mx = (cx(side.a) + cx(side.b)) / 2, my = (cy(side.a) + cy(side.b)) / 2;
         h += `<g data-w="${side.a}-${side.b}" class="g7-plus"><circle cx="${mx}" cy="${my}" r="11" fill="var(--ink)"/><path d="M${mx - 5} ${my}h10M${mx} ${my - 5}v10" stroke="var(--bg)" stroke-width="2.6" stroke-linecap="round"/></g>`;
       }
@@ -99,9 +100,19 @@
     if (!s.roll) { add(row(), 'Roll dice', 'wide', () => doRoll()); return; }
     const sh = ui.sheet;
     if (sh) {
-      sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
       const box = document.createElement('div'); box.className = 'sheet';
-      box.innerHTML = `<div class="cap">${sh.cap}</div>
+      const names = { add: R.canLand(s, sh.cell) && s.cells[sh.cell].o === p ? 'Reinforce' : 'Land', withdraw: 'Withdraw', wall: 'Wall' };
+      const toggle = sh.modes && sh.modes.length > 1 ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${names[m]}</button>`).join('')}</div>` : '';
+      const cap = !toggle ? `<div class="cap">${sh.cap}</div>` : '';
+      if (sh.mode === 'wall') {
+        box.innerHTML = `${toggle}${cap}<div class="srow" style="justify-content:center"><div class="note" style="min-height:0">Tap a + to build a wall</div><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
+        ctl.appendChild(box);
+        const sg = box.querySelector('#modeSeg'); if (sg) sg.onclick = (e) => { const bt = e.target.closest('button'); if (bt && bt.dataset.m !== sh.mode) { setMode(sh, bt.dataset.m); render(); } };
+        box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
+        return;
+      }
+      sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
+      box.innerHTML = `${toggle}${cap}
         <div class="srow"><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
       ctl.appendChild(box);
       const rng = box.querySelector('#rng');
@@ -114,6 +125,7 @@
       box.querySelector('#minus').onclick = () => set(sh.count - 1);
       box.querySelector('#plus').onclick = () => set(sh.count + 1);
       rng.oninput = (e) => set(+e.target.value);
+      const sg = box.querySelector('#modeSeg'); if (sg) sg.onclick = (e) => { const bt = e.target.closest('button'); if (bt && bt.dataset.m !== sh.mode) { setMode(sh, bt.dataset.m); render(); } };
       view();
       box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
       box.querySelector('#ok').onclick = () => commit(sh.build(sh.count));
@@ -121,10 +133,6 @@
     }
     const r = row();
     if (ui.src !== null) { add(r, 'Cancel', 'soft sm', () => { ui.src = null; render(); }); return; }
-    if (ui.R !== null) {
-      if (R.canLand(s, ui.R)) add(r, 'Land', 'soft', () => openSheet('Land', 1, R.camp(s, p), Math.min(R.camp(s, p), 4), { cell: ui.R }, (n) => ({ type: 'land', R: ui.R, count: n })));
-      if (R.canWithdraw(s, ui.R)) add(r, 'Withdraw', 'soft', () => openSheet('Withdraw', 1, s.cells[ui.R].n, s.cells[ui.R].n, { cell: ui.R }, (n) => ({ type: 'withdraw', R: ui.R, count: n })));
-    }
     if (s.rolls < R.MAX_ROLLS) add(r, 'Re-roll', 'soft', () => doRoll());
     else add(r, 'Pass', 'soft', () => commit({ type: 'pass' }));   // passing is possible only after the third roll
   }
@@ -153,27 +161,62 @@
     hist.push(s); s = ns; ui = fresh(); render();
   }
   function undo() { if (!hist.length) return; s = hist.pop(); ui = fresh(); render(); }
-  function openSheet(cap, min, max, def, extra, build) { ui.sheet = Object.assign({ cap, min, max, count: def, build }, extra); render(); }
-
-  function onBoardTap(e) {
-    if (!active || s.winner !== null || ui.sheet) return;
-    const wl = e.target.closest('[data-w]');
-    if (wl) { const [a, b] = wl.dataset.w.split('-').map(Number); commit({ type: 'wall', R: ui.R, a, b }); return; }
-    if (!s.roll) return;
+  function setMode(sh, m) {
+    const p = s.turn; sh.mode = m;
+    if (m === 'add') { sh.min = 1; sh.max = R.camp(s, p); sh.count = Math.min(sh.max, 4); sh.build = (n) => ({ type: 'land', R: sh.cell, count: n }); }
+    else if (m === 'withdraw') { sh.min = 1; sh.max = s.cells[sh.cell].n; sh.count = sh.max; sh.build = (n) => ({ type: 'withdraw', R: sh.cell, count: n }); }
+  }
+  function openAdjust(i) {   // a tap on a rolled square: the count slider opens at once (land / reinforce, withdraw, or a wall)
+    const modes = [];
+    if (R.canLand(s, i)) modes.push('add');
+    if (R.canWithdraw(s, i)) modes.push('withdraw');
+    if (R.wallSides(s, i).length) modes.push('wall');
+    if (!modes.length) return;
+    ui = fresh(); ui.sheet = { kind: 'adjust', cell: i, modes, cap: '' };
+    setMode(ui.sheet, modes[0]);
+    render();
+  }
+  function openMove(rc, from, t) {
+    const n = s.cells[from].n, enemy = s.cells[t.to].o === 1 - s.turn;
+    ui = fresh(); ui.sheet = { kind: 'move', from, to: t.to, cell: t.to, mode: 'move', min: 1, max: n, count: n, cap: enemy ? 'Attack' : t.type === 'transport' ? 'Transport' : 'Move', build: (c) => ({ type: t.type, R: rc, from, to: t.to, count: c }) };
+    render();
+  }
+  // a base that may move this turn: it belongs to the territory of one of the rolled squares; returns that square
+  function mandate(i) {
+    if (s.cells[i].o !== s.turn) return null;
+    for (const rc of s.roll.cells) if (R.sources(s, rc).includes(i)) return rc;
+    return null;
+  }
+  function cellAt(e) {
     const bb = $('board').getBoundingClientRect(), sc = W / bb.width;
     const x = Math.floor(((e.clientX - bb.left) * sc) / S), y = Math.floor(((e.clientY - bb.top) * sc) / S);
-    if (x < 0 || x >= R.N || y < 0 || y >= R.N) return;
-    const i = R.idx(x, y), rolled = s.roll.cells.includes(i);
-    if (ui.src !== null) {
-      const t = targets(ui.src).find((q) => q.to === i);
-      if (t) {   // move / attack / transport: ask how many
-        const from = ui.src, n = s.cells[from].n, enemy = s.cells[i].o === 1 - s.turn, rc = ui.R;
-        openSheet(enemy ? 'Attack' : t.type === 'transport' ? 'Transport' : 'Move', 1, n, n, { from, to: i, cell: i }, (c) => ({ type: t.type, R: rc, from, to: i, count: c }));
-        return;
-      }
+    return x < 0 || x >= R.N || y < 0 || y >= R.N ? null : R.idx(x, y);
+  }
+  let down = null;
+  function onDown(e) {
+    if (!active || s.winner !== null || !s.roll || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const wl = e.target.closest('[data-w]');
+    if (wl) { down = { wall: wl.dataset.w }; return; }
+    if (ui.sheet) { down = null; return; }
+    down = { i: cellAt(e), x: e.clientX, y: e.clientY };
+  }
+  function onUp(e) {
+    const d = down; down = null;
+    if (!active || !d || s.winner !== null || !s.roll) return;
+    if (d.wall) { const [a, b] = d.wall.split('-').map(Number); commit({ type: 'wall', R: ui.sheet.cell, a, b }); return; }
+    const j = cellAt(e), i = d.i;
+    if (i === null) return;
+    if (j !== null && j !== i && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) {   // drag a base to a square: move / attack / transport
+      const rc = mandate(i), t = rc !== null && targets(i).find((q) => q.to === j);
+      if (t) openMove(rc, i, t);
+      return;
     }
-    if (ui.R !== null && s.cells[i].o === s.turn && R.sources(s, ui.R).includes(i)) { ui.src = ui.src === i ? null : i; render(); return; }
-    if (rolled) { ui = Object.assign(fresh(), { R: ui.R === i ? null : i }); render(); return; }
+    if (ui.src !== null) {   // a base was picked by tap: tap a lit square to go there
+      const t = targets(ui.src).find((q) => q.to === i);
+      if (t) { openMove(mandate(ui.src), ui.src, t); return; }
+    }
+    if (s.roll.cells.includes(i)) { openAdjust(i); return; }
+    if (mandate(i) !== null) { ui = Object.assign(fresh(), { src: ui.src === i ? null : i }); render(); return; }
     ui.src = null; render();
   }
 
@@ -189,7 +232,8 @@
   function close() { active = false; $('overlay').hidden = true; $('speedBtn').hidden = true; }
   function init() {
     if (!R || !$('app')) return;
-    $('board').addEventListener('click', onBoardTap);
+    $('board').addEventListener('pointerdown', onDown);
+    $('board').addEventListener('pointerup', onUp);
     // the menu buttons of the normal screen: Undo steps back here, Lobby leaves; the rest of the real handlers must not run
     $('bar').addEventListener('click', (e) => {
       if (!active) return;
