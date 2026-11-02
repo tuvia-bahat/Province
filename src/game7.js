@@ -126,7 +126,8 @@
     }
     const r = row();
     if (ui.src !== null) { add(r, 'Cancel', 'soft sm', () => { ui.src = null; render(); }); return; }
-    add(r, 'Pass', 'soft', () => commit({ type: 'pass' }));   // one roll per turn, no re-roll
+    if (s.rolls < R.MAX_ROLLS) add(r, 'Re-roll', 'soft', () => doRoll());
+    else add(r, 'Pass', 'soft', () => commit({ type: 'pass' }));   // Pass only after the re-roll
   }
 
   function render() {

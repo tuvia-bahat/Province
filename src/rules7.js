@@ -1,13 +1,13 @@
 /* Province – new-rules prototype ("squares"): engine. Works in the browser (window.Rules7) and in Node (module.exports).
  *
  * Board: 6x6 squares, no rivers.
- * Each player has 30 soldiers; walls are unlimited and belong to nobody. A turn: roll the dice once (no re-rolls);
+ * Each player has 30 soldiers; walls are unlimited and belong to nobody. A turn: roll the dice, with one optional re-roll (the last roll counts);
  * the dice mark two opposite squares (as in the original game) and the player plays from one of them. One action per turn:
- *   land      new soldiers on the chosen square (empty or own base; never next to an enemy base, never in a province the enemy holds)
+ *   land      new soldiers on the chosen square (empty or own base; never in a province the enemy holds)
  *   withdraw  soldiers from the chosen square back to camp
  *   move      from a base of the chosen square's group (or province), to a neighbouring square; or from a base next to a rolled square, into that square (an enemy base = attack)
  *   transport from a base inside a province you hold, in a straight line through it, to another square of it
- *   pass      after the roll
+ *   pass      only after the re-roll
  *   wall      one wall on a side of the chosen square (which must hold your own base)
  * Provinces: walls (and the edge of the board) cut the board into parts; every part except the biggest is a closed province.
  * A province belongs to the player who has soldiers in it and the other has none; with soldiers of both, or none, it is neutral.
@@ -16,7 +16,7 @@
  */
 (function (root) {
   'use strict';
-  const N = 6, CELLS = N * N, SOLDIERS = 30, WIN = Math.floor(CELLS / 2) + 1, MAX_ROLLS = 1;   // 6x6; a majority of the board (19 squares) wins
+  const N = 6, CELLS = N * N, SOLDIERS = 30, WIN = Math.floor(CELLS / 2) + 1, MAX_ROLLS = 2;   // 6x6; a majority of the board (19 squares) wins
   const idx = (x, y) => y * N + x;
   const xy = (i) => [i % N, Math.floor(i / N)];
   const wkey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
@@ -77,8 +77,7 @@
     for (let h = 0; h < list.length; h++) for (const j of neighbors(s, list[h])) if (s.cells[j].o === p && !seen.has(j)) { seen.add(j); list.push(j); }
     return list;
   }
-  const enemyNext = (s, i, p) => neighbors(s, i).some((j) => s.cells[j].o === 1 - p);
-
+  
   // roll the dice (w and b in 1..6): like the original game, they mark two opposite squares; the player plays from either of them
   function roll(s, w, b) {
     if (s.winner !== null) throw new Error('game over');
@@ -91,7 +90,7 @@
   // ---------- what the player may do from chosen square R ----------
   function canLand(s, R) {
     const p = s.turn, c = s.cells[R], g = regions(s);
-    return camp(s, p) > 0 && (c.o === null || c.o === p) && !enemyNext(s, R, p) && g.owner[g.id[R]] !== 1 - p;
+    return camp(s, p) > 0 && (c.o === null || c.o === p) && g.owner[g.id[R]] !== 1 - p;
   }
   const canWithdraw = (s, R) => s.cells[R].o === s.turn;
   // bases that may move: the group of R (when R holds your base), and every base of a province you hold that contains R

@@ -13,7 +13,7 @@ function box(s, x0, y0, x1, y1) {
   for (let x = x0; x <= x1; x++) { if (y0 > 0) wall(s, I(x, y0 - 1), I(x, y0)); if (y1 < 5) wall(s, I(x, y1), I(x, y1 + 1)); }
 }
 const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; return s; };
-const three = (s) => R.roll(s, 1, 1);   // the one roll of the turn
+const three = (s) => R.roll(R.roll(s, 1, 1), 2, 2);   // roll and re-roll: now Pass is possible
 
 // dice -> two opposite squares, like the original game
 {
@@ -24,7 +24,8 @@ const three = (s) => R.roll(s, 1, 1);   // the one roll of the turn
   s = R.newGame(); s.turn = 1; s = R.roll(s, 2, 3);
   t('the same dice give the same squares for the other player', JSON.stringify(s.roll.cells) === JSON.stringify([I(1, 2), I(4, 3)]));
   s = R.roll(R.newGame(), 3, 3);
-  t('only one roll per turn: no re-roll', s.rolls === 1 && throws(() => R.roll(s, 1, 1)));
+  s = R.roll(s, 2, 2);
+  t('one re-roll is allowed (it replaces the roll), a third roll is not', s.rolls === 2 && s.roll.w === 2 && throws(() => R.roll(s, 1, 1)));
   t('the board is 6x6', R.N === 6 && R.CELLS === 36 && R.WIN === 19);
 }
 // no territory from adjacency alone; only a closed province with one player having soldiers in it
@@ -42,14 +43,12 @@ const three = (s) => R.roll(s, 1, 1);   // the one roll of the turn
   const d = put(R.newGame(), 0, [[5, 5, 2]]); box(d, 0, 0, 4, 4);
   t('...and it is yours when your soldiers are on that side', R.territorySize(d, 0) === 11);
 }
-// landing: not next to an enemy base, not in an enemy province, not on an enemy base
+// landing: anywhere empty or on your base, not in an enemy province, not on an enemy base
 {
   const s = put(R.newGame(), 1, [[3, 3, 2]]); s.turn = 0; rolled(s, [I(3, 2), I(2, 2)]);
-  t('cannot land next to an enemy base', !R.canLand(s, I(3, 2)) && !R.canLand(s, I(2, 3)));
+  t('landing next to an enemy base is allowed', R.canLand(s, I(3, 2)) && R.canLand(s, I(2, 3)));
   t('cannot land on an enemy base', !R.canLand(s, I(3, 3)));
   t('can land on a far empty square', R.canLand(s, I(1, 1)) === true);
-  wall(s, I(3, 2), I(3, 3));
-  t('a wall between them makes it fine', R.canLand(s, I(3, 2)) === true);
   const e = put(R.newGame(), 1, [[4, 4, 2]]); box(e, 3, 3, 5, 5); rolled(e, [I(3, 3), I(2, 2)]);
   t('cannot land in a province the enemy holds', !R.canLand(e, I(3, 3)));
 }
@@ -110,6 +109,6 @@ const three = (s) => R.roll(s, 1, 1);   // the one roll of the turn
   t('three 6-square provinces (18) are not enough', R.territorySize(mk(false), 0) === 18 && R.apply(three(mk(false)), { type: 'pass' }).winner === null);
   t('a fourth closed square makes 19 and wins at the end of the turn', R.territorySize(mk(true), 0) === 19 && R.apply(three(mk(true)), { type: 'pass' }).winner === 0);
 }
-t('pass needs the roll first, and is possible after it', throws(() => R.apply(R.newGame(), { type: 'pass' })) && R.apply(R.roll(R.newGame(), 1, 1), { type: 'pass' }).turn === 1);
+t('pass is refused before the re-roll, allowed after it', throws(() => R.apply(R.roll(R.newGame(), 1, 1), { type: 'pass' })) && R.apply(three(R.newGame()), { type: 'pass' }).turn === 1);
 console.log(bad ? bad + ' FAILURE(S)' : 'all checks pass');
 process.exit(bad ? 1 : 0);
