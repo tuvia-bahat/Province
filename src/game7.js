@@ -33,7 +33,9 @@
       if ((!involved || involved.has(i)) && canPlay(i)) h += `<rect class="roll-fill" ${sq(i, 1)} fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
     if (sh && sh.to !== undefined) h += `<line class="drag-line" x1="${cx(sh.from)}" y1="${cy(sh.from)}" x2="${cx(sh.to)}" y2="${cy(sh.to)}" stroke="${color}"/>`;
-    for (const k in s.walls) {   // walls: a bar across the gap between two neighbouring squares
+    const pend = sh && sh.mode === 'wall' ? sh.walls : [], allW = Object.assign({}, s.walls);
+    for (const e of pend) allW[R.wkey(e[0], e[1])] = 1;
+    for (const k in allW) {   // walls: a bar across the gap between two neighbouring squares
       const [a, b] = k.split('-').map(Number), [ax] = R.xy(a), [bx] = R.xy(b), mx = (cx(a) + cx(b)) / 2, my = (cy(a) + cy(b)) / 2;
       h += ax !== bx ? `<line class="wall" x1="${mx}" y1="${my - S * 0.42}" x2="${mx}" y2="${my + S * 0.42}"/>` : `<line class="wall" x1="${mx - S * 0.42}" y1="${my}" x2="${mx + S * 0.42}" y2="${my}"/>`;
     }
@@ -52,7 +54,7 @@
       h += `<circle cx="${fx}" cy="${fy}" r="3.5" fill="${color}"/><g class="g7-flag" style="transform-origin:${fx}px ${fy}px"><line x1="${fx}" y1="${fy}" x2="${fx}" y2="${fy - 28}" stroke="${color}" stroke-width="3" stroke-linecap="round"/><path d="M${fx} ${fy - 28}l20 6.5l-20 7.5z" fill="${color}"/></g>`;
     }
     if (sh && sh.mode === 'wall' && s.winner === null) {   // + on each side of the chosen square: build a wall
-      for (const side of R.wallSides(s, sh.cell)) {
+      for (const side of R.wallCandidates(s, sh.cell, sh.walls)) {
         const mx = (cx(side.a) + cx(side.b)) / 2, my = (cy(side.a) + cy(side.b)) / 2;
         h += `<g data-w="${side.a}-${side.b}" class="g7-plus"><circle cx="${mx}" cy="${my}" r="11" fill="var(--ink)"/><path d="M${mx - 5} ${my}h10M${mx} ${my - 5}v10" stroke="var(--bg)" stroke-width="2.6" stroke-linecap="round"/></g>`;
       }
@@ -78,13 +80,11 @@
       for (let k = 0; k < R.WIN / 5; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
       const tot = R.SOLDIERS, reserve = R.camp(s, p), lost = s.graveyard[p], onB = tot - reserve - lost;
       const w = (n) => (100 * n / tot).toFixed(2) + '%';
-      let ticks = '';
-      for (let i = 0; i < R.WALLS; i++) ticks += `<i class="${i < s.wallsLeft[p] ? 'on' : ''}"></i>`;
       const dice = s.roll && s.winner === null && s.turn === p ? `<span class="dice">${dieHtml(s.roll.w, ui.rolled)}${dieHtml(s.roll.b, ui.rolled)}</span>` : '';
       el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAMES[p]}</span><span class="tag"></span>${dice}</div>
         <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
         <div class="line provline">${IC.prov}<span class="num">${terr}</span><div class="prov">${prov}</div></div>
-        <div class="line brline">${IC.brid}<span class="num">${s.wallsLeft[p]}</span><div class="ticks">${ticks}</div></div>
+        <div class="line brline">${IC.brid}<span class="num">${R.wallCount(s)}</span><div class="ticks"></div></div>
         <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
     }
   }
@@ -105,10 +105,11 @@
       const toggle = sh.modes && sh.modes.length > 1 ? `<div class="seg mini" id="modeSeg">${sh.modes.map((m) => `<button data-m="${m}" class="${m === sh.mode ? 'on' : ''}">${names[m]}</button>`).join('')}</div>` : '';
       const cap = !toggle ? `<div class="cap">${sh.cap}</div>` : '';
       if (sh.mode === 'wall') {
-        box.innerHTML = `${toggle}${cap}<div class="srow" style="justify-content:center"><div class="note" style="min-height:0">Tap a + to build a wall</div><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
+        box.innerHTML = `${toggle}${cap}<div class="srow" style="justify-content:center;gap:14px"><div class="note" style="min-height:0">${sh.walls.length ? sh.walls.length + ' wall' + (sh.walls.length > 1 ? 's' : '') + ' · tap + to continue' : 'Tap a + to start a wall'}</div>${sh.walls.length ? '<button class="pm ok" id="ok" aria-label="Confirm">✓</button>' : ''}<button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
         ctl.appendChild(box);
         const sg = box.querySelector('#modeSeg'); if (sg) sg.onclick = (e) => { const bt = e.target.closest('button'); if (bt && bt.dataset.m !== sh.mode) { setMode(sh, bt.dataset.m); render(); } };
         box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
+        const okb = box.querySelector('#ok'); if (okb) okb.onclick = () => commit({ type: 'wall', R: sh.cell, walls: sh.walls });
         return;
       }
       sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
@@ -162,7 +163,7 @@
   }
   function undo() { if (!hist.length) return; s = hist.pop(); ui = fresh(); render(); }
   function setMode(sh, m) {
-    const p = s.turn; sh.mode = m;
+    const p = s.turn; sh.mode = m; if (m === 'wall') sh.walls = [];
     if (m === 'add') { sh.min = 1; sh.max = R.camp(s, p); sh.count = Math.min(sh.max, 4); sh.build = (n) => ({ type: 'land', R: sh.cell, count: n }); }
     else if (m === 'withdraw') { sh.min = 1; sh.max = s.cells[sh.cell].n; sh.count = sh.max; sh.build = (n) => ({ type: 'withdraw', R: sh.cell, count: n }); }
   }
@@ -203,7 +204,7 @@
   function onUp(e) {
     const d = down; down = null;
     if (!active || !d || s.winner !== null || !s.roll) return;
-    if (d.wall) { const [a, b] = d.wall.split('-').map(Number); commit({ type: 'wall', R: ui.sheet.cell, a, b }); return; }
+    if (d.wall) { const [a, b] = d.wall.split('-').map(Number); ui.sheet.walls.push([a, b]); render(); return; }
     const j = cellAt(e), i = d.i;
     if (i === null) return;
     if (j !== null && j !== i && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) {   // drag a base to a square: move / attack / transport
