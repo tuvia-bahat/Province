@@ -1,22 +1,22 @@
 /* Province – new-rules prototype ("squares"): engine. Works in the browser (window.Rules7) and in Node (module.exports).
  *
- * Board: 7x7 squares, no rivers. The 6x6 points where grid lines cross lie between the squares; every point touches 4 squares.
- * Each player has 30 soldiers; walls are unlimited and belong to nobody. A turn: roll the dice (up to 3 times, the last roll counts);
- * the roll marks ONE point (seen from the player's side) and the player plays from one of the 4 squares around it. One action per turn:
+ * Board: 6x6 squares, no rivers.
+ * Each player has 30 soldiers; walls are unlimited and belong to nobody. A turn: roll the dice once (no re-rolls);
+ * the dice mark two opposite squares (as in the original game) and the player plays from one of them. One action per turn:
  *   land      new soldiers on the chosen square (empty or own base; never next to an enemy base, never in a province the enemy holds)
  *   withdraw  soldiers from the chosen square back to camp
  *   move      from a base of the chosen square's group, to a neighbouring square (an enemy base = attack)
  *   transport from a base inside a province you hold, in a straight line through it, to another square of it
- *   pass      only after the third roll
+ *   pass      after the roll
  *   wall      one wall on a side of the chosen square (which must hold your own base)
  * Provinces: walls (and the edge of the board) cut the board into parts; every part except the biggest is a closed province.
  * A province belongs to the player who has soldiers in it and the other has none; with soldiers of both, or none, it is neutral.
  * Adjacent own bases are one group (they can act together) but are not a province by themselves.
- * Win: closed provinces you hold add up to at least 25 squares at the end of your turn.
+ * Win: closed provinces you hold add up to at least 19 squares (a majority of the board) at the end of your turn.
  */
 (function (root) {
   'use strict';
-  const N = 7, CELLS = N * N, SOLDIERS = 30, WIN = 25, MAX_ROLLS = 3, ROLL_MAX = 6;
+  const N = 6, CELLS = N * N, SOLDIERS = 30, WIN = Math.floor(CELLS / 2) + 1, MAX_ROLLS = 1;   // 6x6; a majority of the board (19 squares) wins
   const idx = (x, y) => y * N + x;
   const xy = (i) => [i % N, Math.floor(i / N)];
   const wkey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
@@ -79,15 +79,12 @@
   }
   const enemyNext = (s, i, p) => neighbors(s, i).some((j) => s.cells[j].o === 1 - p);
 
-  // the 4 squares around point (vx, vy), vx and vy in 1..6
-  const vertexCells = (vx, vy) => [idx(vx - 1, vy - 1), idx(vx, vy - 1), idx(vx - 1, vy), idx(vx, vy)];
-
-  // roll the dice (w and b in 1..6): the point is read from the side of the player to move
+  // roll the dice (w and b in 1..6): like the original game, they mark two opposite squares; the player plays from either of them
   function roll(s, w, b) {
     if (s.winner !== null) throw new Error('game over');
     if (s.rolls >= MAX_ROLLS) throw new Error('no rolls left');
-    const ns = clone(s), vx = ns.turn === 0 ? w : ROLL_MAX + 1 - w, vy = ns.turn === 0 ? b : ROLL_MAX + 1 - b;
-    ns.rolls++; ns.roll = { w, b, vx, vy, cells: vertexCells(vx, vy) };
+    const ns = clone(s);
+    ns.rolls++; ns.roll = { w, b, cells: [idx(w - 1, b - 1), idx(N - w, N - b)] };
     return ns;
   }
 
@@ -195,7 +192,7 @@
   }
 
   root.Rules7 = {
-    N, CELLS, SOLDIERS, WIN, MAX_ROLLS, idx, xy, wkey, newGame, neighbors, onBoard, camp, wallCount, regions, owners, group, territorySize, vertexCells, roll,
+    N, CELLS, SOLDIERS, WIN, MAX_ROLLS, idx, xy, wkey, newGame, neighbors, onBoard, camp, wallCount, regions, owners, group, territorySize, roll,
     canLand, canWithdraw, sources, moveTargets, transportTargets, wallCandidates, wallSides, apply, pass, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules7;

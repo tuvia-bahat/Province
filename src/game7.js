@@ -4,7 +4,7 @@
   'use strict';
   const R = root.Rules7;
   const $ = (id) => document.getElementById(id);
-  const S = 52, W = R.N * S, CR = 21, DOT_R = 7, FS = 18;   // lattice step, board size, base radius, empty-square dot, count font
+  const S = 60, W = R.N * S, CR = 21, DOT_R = 7, FS = 18;   // lattice step, board size, base radius, empty-square dot, count font
   const COLORS = ['#34c98a', '#3a9cf5'], NAMES = ['Green', 'Blue'];
   let active = false, s = null, hist = [], ui = { R: null, src: null, sheet: null, rolled: false };
 
@@ -24,10 +24,13 @@
   function renderBoard() {
     const svg = $('board'), own = R.owners(s), p = s.turn, color = COLORS[p];
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
-    const rolled = s.roll && s.winner === null ? s.roll.cells.filter(canPlay) : [];   // the flag marks only the squares you can actually play
+    const rolled = s.roll && s.winner === null ? s.roll.cells.filter(canPlay) : [];   // only the squares you can actually play are marked
     const sh = ui.sheet, opts = ui.src !== null && !(sh && sh.kind === 'move') ? new Set([ui.src, ...targets(ui.src).map((t) => t.to)]) : null;
     const involved = opts || (sh ? new Set([sh.from, sh.cell, sh.to].filter((v) => v !== undefined)) : null);
     if (sh && sh.kind === 'adjust') involved.add(sh.cell);
+    // a rolled square in your territory: every base that may act from it is marked too
+    const playSrc = new Set();
+    if (!opts && !sh) for (const rc of rolled) for (const i of R.sources(s, rc)) playSrc.add(i);
     let h = '';
     for (const i of rolled) {   // light fill under the squares of the rolled point where something can be played
       if (!involved || involved.has(i)) h += `<rect class="roll-fill" ${sq(i, 1)} fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
@@ -44,12 +47,9 @@
       if (isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
       else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<rect class="ring-roll" style="animation:none" ${sq(i, 1)} stroke="${color}"/>`;
       if (sh && sh.kind === 'adjust' && sh.cell === i && !isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
+      if (playSrc.has(i) && !rolled.includes(i)) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (ui.src === i && c.o !== null) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${y}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${y + 1}">${c.n}</text>`;
-    }
-    if (s.roll && s.winner === null) {   // the floating flag on the rolled point
-      const fx = s.roll.vx * S, fy = s.roll.vy * S;
-      h += `<circle cx="${fx}" cy="${fy}" r="3.5" fill="${color}"/><g class="g7-flag" style="transform-origin:${fx}px ${fy}px"><line x1="${fx}" y1="${fy}" x2="${fx}" y2="${fy - 28}" stroke="${color}" stroke-width="3" stroke-linecap="round"/><path d="M${fx} ${fy - 28}l20 6.5l-20 7.5z" fill="${color}"/></g>`;
     }
     if (sh && sh.mode === 'wall' && s.winner === null) {   // + on each side of the chosen square: build a wall
       for (const side of R.wallCandidates(s, sh.cell)) {
@@ -73,9 +73,9 @@
       const el = $('pl' + p);
       el.style.setProperty('--c', COLORS[p]);
       el.className = 'pl' + (s.turn === p && s.winner === null ? ' active' : '');
-      const terr = R.territorySize(s, p), held = Math.floor(terr / 5);   // five boxes of 5 squares: 25 connected squares win
+      const terr = R.territorySize(s, p), held = Math.floor(terr * 5 / R.WIN);   // five boxes: a majority of the board (19 squares) wins
       let prov = '';
-      for (let k = 0; k < R.WIN / 5; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
+      for (let k = 0; k < 5; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
       const tot = R.SOLDIERS, reserve = R.camp(s, p), lost = s.graveyard[p], onB = tot - reserve - lost;
       const w = (n) => (100 * n / tot).toFixed(2) + '%';
       const dice = s.roll && s.winner === null && s.turn === p ? `<span class="dice">${dieHtml(s.roll.w, ui.rolled)}${dieHtml(s.roll.b, ui.rolled)}</span>` : '';
@@ -131,8 +131,7 @@
     }
     const r = row();
     if (ui.src !== null) { add(r, 'Cancel', 'soft sm', () => { ui.src = null; render(); }); return; }
-    if (s.rolls < R.MAX_ROLLS) add(r, 'Re-roll', 'soft', () => doRoll());
-    else add(r, 'Pass', 'soft', () => commit({ type: 'pass' }));   // passing is possible only after the third roll
+    add(r, 'Pass', 'soft', () => commit({ type: 'pass' }));   // one roll per turn, no re-roll
   }
 
   function render() {
