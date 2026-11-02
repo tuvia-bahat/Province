@@ -7,6 +7,7 @@
  *   withdraw  soldiers from the chosen square back to camp
  *   move      from ANY base of the territory the chosen square belongs to, to a neighbouring square (an enemy base = attack)
  *   transport from any base of that territory, in a straight line through the territory, to another square of it
+ *   pass      only after the third roll
  *   wall      a wall on one side of the chosen square (blocks both players and territory; the board must stay in one piece)
  * Territory: a base is its owner's. An empty square next to bases belongs to the player with MORE adjacent bases (tie = nobody's).
  * Walls cut adjacency. Win: a connected territory of at least 25 squares at the end of your turn.
@@ -140,7 +141,7 @@
   // act: { type: land|withdraw|move|transport|wall|pass, R (chosen square), from, to, count, a, b }. Throws when illegal.
   function apply(s, act) {
     if (s.winner !== null) throw new Error('game over');
-    if (act.type === 'pass') { if (!s.roll) throw new Error('roll first'); return pass(s); }
+    if (act.type === 'pass') { if (!s.roll) throw new Error('roll first'); if (s.rolls < MAX_ROLLS) throw new Error('you can pass only after the third roll'); return pass(s); }
     if (!s.roll) throw new Error('roll first');
     if (!s.roll.cells.includes(act.R)) throw new Error('not a rolled square');
     const p = s.turn, q = 1 - p, ns = clone(s), cells = ns.cells, name = p === 0 ? 'Green' : 'Blue', count = act.count | 0;

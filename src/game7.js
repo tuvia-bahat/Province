@@ -86,7 +86,7 @@
       if (R.canWithdraw(s, ui.R)) btn('Withdraw', 'soft', () => openSheet('Withdraw soldiers', s.cells[ui.R].n, s.cells[ui.R].n, (n) => commit({ type: 'withdraw', R: ui.R, count: n })));
     }
     if (s.rolls < R.MAX_ROLLS) btn(`Re-roll (${R.MAX_ROLLS - s.rolls} left)`, 'soft', () => doRoll());
-    btn('Pass', 'soft', () => commit({ type: 'pass' }));
+    if (s.rolls >= R.MAX_ROLLS) btn('Pass', 'soft', () => commit({ type: 'pass' }));   // passing is possible only after the third roll
   }
 
   function render() {

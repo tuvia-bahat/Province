@@ -83,10 +83,11 @@ const put = (s, o, list) => { for (const [x, y, n] of list) { s.cells[I(x, y)].o
 {
   const s = put(R.newGame(), 0, [[1, 1, 3], [3, 1, 3], [5, 1, 3], [1, 3, 3], [3, 3, 3], [5, 3, 3], [1, 5, 3], [3, 5, 3], [5, 5, 3]]);
   t('9 bases in a grid make one territory of 33 squares', R.territorySize(s, 0) === 33, 'size ' + R.territorySize(s, 0));
-  const r = R.apply(R.roll(s, 1, 1), { type: 'pass' });
+  const r = R.apply(R.roll(R.roll(R.roll(s, 1, 1), 2, 2), 3, 3), { type: 'pass' });
   t('the win is checked at the end of the turn', r.winner === 0);
   const s2 = put(R.newGame(), 0, [[1, 1, 3], [5, 5, 3]]);
-  t('two separate pieces do not add up', R.territorySize(s2, 0) < 25 && R.apply(R.roll(s2, 1, 1), { type: 'pass' }).winner === null);
+  t('two separate pieces do not add up', R.territorySize(s2, 0) < 25 && R.apply(R.roll(R.roll(R.roll(s2, 1, 1), 2, 2), 3, 3), { type: 'pass' }).winner === null);
 }
+t('pass is refused before the third roll', throws(() => R.apply(R.roll(R.newGame(), 1, 1), { type: 'pass' })));
 console.log(bad ? bad + ' FAILURE(S)' : 'all checks pass');
 process.exit(bad ? 1 : 0);
