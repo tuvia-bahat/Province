@@ -1724,7 +1724,8 @@
   $('trainModal').addEventListener('click', (e) => { if (e.target === $('trainModal')) $('trainModal').hidden = true; });
   $('winTrain').onclick = () => { $('overlay').hidden = true; openTrainMenu(); };
   // beta: watch the computer play itself
-  if (BETA_FLAG) { $('lbWatch').hidden = false; $('lbTwo').hidden = false; }
+  if (BETA_FLAG) { $('lbWatch').hidden = false; $('lbTwo').hidden = false; $('lbSquares').hidden = false; }
+  $('lbSquares').onclick = () => { $('startModal').hidden = true; window.Game7.open(); };   // beta: the new-rules prototype (src/rules7.js, src/game7.js)
   const openWatch = (m) => { startMode = m; $('lbCont').hidden = true; $('startMain').hidden = true; $('startSize').hidden = false; };
   $('lbWatch').onclick = () => openWatch('watch');
   $('lbTwo').onclick = () => openWatch('two');   // beta: two people on one device
