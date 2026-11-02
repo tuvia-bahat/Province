@@ -12,6 +12,7 @@
   function reset() { s = R.newGame(); hist = []; ui = fresh(); $('overlay').hidden = true; render(); }
 
   // ---------- board ----------
+  const sq = (i, ring) => { const g = ring ? 2 : 5, x = (i % R.N) * S + g, y = Math.floor(i / R.N) * S + g; return `x="${x}" y="${y}" width="${S - 2 * g}" height="${S - 2 * g}" rx="${ring ? 11 : 9}"`; };
   const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => Math.floor(i / R.N) * S + S / 2;
   function targets(from) {   // where the chosen base can go: neighbours (move / attack) and straight lines through the territory (transport)
     const seen = new Map();
@@ -28,7 +29,7 @@
     const involved = opts || (sh ? new Set([sh.from, sh.cell, sh.to].filter((v) => v !== undefined)) : null);
     let h = '';
     for (const i of rolled) {   // light fill under the squares of the rolled point where something can be played
-      if ((!involved || involved.has(i)) && canPlay(i)) h += `<circle class="roll-fill" cx="${cx(i)}" cy="${cy(i)}" r="${CR + 4}" fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
+      if ((!involved || involved.has(i)) && canPlay(i)) h += `<rect class="roll-fill" ${sq(i, 1)} fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
     if (sh && sh.to !== undefined) h += `<line class="drag-line" x1="${cx(sh.from)}" y1="${cy(sh.from)}" x2="${cx(sh.to)}" y2="${cy(sh.to)}" stroke="${color}"/>`;
     for (const k in s.walls) {   // walls: a bar across the gap between two neighbouring squares
@@ -38,10 +39,10 @@
     for (let i = 0; i < R.CELLS; i++) {
       const c = s.cells[i], x = cx(i), y = cy(i), lit = opts ? opts.has(i) : sh ? involved.has(i) : false;
       const isDest = (opts && i !== ui.src && opts.has(i)) || (sh && sh.to !== undefined && i === sh.to);
-      h += `<circle class="cell${own[i] !== null ? ' c' + own[i] : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${DOT_R}"/>`;
-      if (isDest) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
-      else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
-      if (ui.R === i && !sh && !isDest) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
+      h += `<rect class="cell sq${own[i] !== null ? ' c' + own[i] : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" ${sq(i, 0)}/>`;
+      if (isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
+      else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<rect class="ring-roll" style="animation:none" ${sq(i, 1)} stroke="${color}"/>`;
+      if (ui.R === i && !sh && !isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
       if (ui.src === i && c.o !== null) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${y}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${y + 1}">${c.n}</text>`;
     }
@@ -63,7 +64,7 @@
   const IC = {
     prov: '<svg class="ic" viewBox="0 0 16 16"><path d="M4.5 1.5h7v4.2a3.5 3.5 0 0 1-7 0z" fill="currentColor"/><path d="M4.5 3H2.5c0 2.6 1 3.8 2.4 4M11.5 3h2c0 2.6-1 3.8-2.4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 9.2V12M5.2 14.5h5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
     sold: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 0.8l1.7 2.2v7H6.3V3z" fill="currentColor"/><rect x="3.8" y="10" width="8.4" height="1.7" rx=".8" fill="currentColor"/><rect x="7.1" y="11.7" width="1.8" height="2.4" fill="currentColor"/><circle cx="8" cy="14.7" r="1.1" fill="currentColor"/></svg>',
-    brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M2 13.5a6 6.5 0 0 1 12 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    brid: '<svg class="ic" viewBox="0 0 16 16"><rect x="1.5" y="3" width="13" height="10" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M1.5 6.3h13M1.5 9.7h13M8 3v3.3M5 6.3v3.4M11 6.3v3.4M8 9.7V13" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
     dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
   };
   function renderPanels() {

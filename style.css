@@ -415,3 +415,8 @@ button.lb-community { border: 0; cursor: pointer; font-family: inherit; }
 .g7-flag { animation: g7bob 1.3s ease-in-out infinite; pointer-events: none; }
 @keyframes g7bob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-5px) rotate(3deg); } }
 .g7-plus { cursor: pointer; }
+.cell.sq { fill: var(--dot); }
+.cell.sq.deep { fill: var(--press); }
+.cell.sq.c0 { fill: var(--p0-soft); }
+.cell.sq.c1 { fill: var(--p1-soft); }
+.cell.sq.c0.deep, .cell.sq.c1.deep { filter: brightness(.94); }
