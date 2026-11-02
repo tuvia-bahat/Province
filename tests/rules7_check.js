@@ -78,7 +78,7 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, vx: 3, vy: 3, cells }; s.r
   let s = R.roll(put(R.newGame(), 0, [[1, 1, 3], [2, 1, 3]]), 2, 2);   // flag on point (2,2): squares (1,1) (2,1) (1,2) (2,2)
   t('a square without your base cannot start a wall', R.wallCandidates(s, I(1, 2), []).length === 0);
   const c0 = R.wallCandidates(s, I(1, 1), []);
-  t('first wall: any side of a base of the group (8 sides)', c0.length === 8, 'got ' + c0.length);
+  t('first wall: only a side of the base you picked (4 sides)', c0.length === 4, 'got ' + c0.length);
   const chain = [[I(1, 1), I(1, 0)], [I(1, 0), I(2, 0)].map((x) => x)];   // second is not on a side of a base square
   t('a wall not next to a base of the group is refused', throws(() => R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)], [I(3, 3), I(3, 2)]] })));
   t('a wall that does not touch the first one is refused', throws(() => R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)], [I(2, 1), I(2, 2)]] })));

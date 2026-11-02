@@ -135,12 +135,12 @@
     return ax !== bx ? [[Math.max(ax, bx), ay], [Math.max(ax, bx), ay + 1]] : [[ax, Math.max(ay, by)], [ax + 1, Math.max(ay, by)]];
   }
   const touches = (e, f) => { const A = edgeEnds(e[0], e[1]), B = edgeEnds(f[0], f[1]); return A.some((u) => B.some((v) => u[0] === v[0] && u[1] === v[1])); };
-  // walls that may be added next to the chain 'chosen' ([[a,b],...]) from chosen square R: on a side of a square holding a base of R's group; connected to the chain
+  // walls that may be added next to the chain 'chosen' ([[a,b],...]) from chosen square R: the first on a side of R itself, the next ones on sides of squares holding a base of R's group and touching the chain
   function wallCandidates(s, R, chosen) {
     chosen = chosen || [];
     if (s.cells[R].o !== s.turn) return [];
     const have = new Set(chosen.map((e) => wkey(e[0], e[1]))), out = [];
-    for (const i of group(s, R)) {
+    for (const i of chosen.length ? group(s, R) : [R]) {   // the first wall goes on the base you picked; the chain may then run along its group
       const [x, y] = xy(i);
       for (const [dx, dy] of DIRS) {
         const nx = x + dx, ny = y + dy;
