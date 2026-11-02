@@ -1,150 +1,204 @@
-/* Province – new-rules prototype: two players on one device (beta). The rules are in rules7.js; this file draws the board and handles taps. */
+/* Province – new-rules prototype: two players on one device (beta). The rules are in rules7.js.
+ * It runs inside the normal game screen (#app): same player panels, dock, count slider and menu as the real game; only the board and the rules differ. */
 (function (root) {
   'use strict';
   const R = root.Rules7;
   const $ = (id) => document.getElementById(id);
-  const CELL = 52, W = R.N * CELL;
+  const S = 52, W = R.N * S, CR = 21, DOT_R = 7, FS = 18;   // lattice step, board size, base radius, empty-square dot, count font
   const COLORS = ['#34c98a', '#3a9cf5'], NAMES = ['Green', 'Blue'];
-  let s = null, ui = { R: null, src: null };
+  let active = false, s = null, hist = [], ui = { R: null, src: null, sheet: null, rolled: false };
 
-  function reset() { s = R.newGame(); ui = { R: null, src: null }; $('g7win').hidden = true; render(); }
+  const fresh = () => ({ R: null, src: null, sheet: null, rolled: false });
+  function reset() { s = R.newGame(); hist = []; ui = fresh(); $('overlay').hidden = true; render(); }
 
-  // ---------- drawing ----------
-  const cx = (i) => (i % R.N) * CELL + CELL / 2, cy = (i) => Math.floor(i / R.N) * CELL + CELL / 2;
-  function edgeMid(a, b) {   // midpoint of the side between neighbouring squares a and b
-    const [ax, ay] = R.xy(a), [bx, by] = R.xy(b);
-    return ax !== bx ? [Math.max(ax, bx) * CELL, ay * CELL + CELL / 2] : [ax * CELL + CELL / 2, Math.max(ay, by) * CELL];
-  }
-  function boardSvg() {
-    const own = R.owners(s), p = s.turn, rollCells = s.roll ? s.roll.cells : [];
-    let h = `<rect x="0" y="0" width="${W}" height="${W}" rx="14" fill="var(--surface)"/>`;
-    for (let i = 0; i < R.CELLS; i++) {
-      if (own[i] === null) continue;
-      const x = (i % R.N) * CELL, y = Math.floor(i / R.N) * CELL;
-      h += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" fill="${own[i] === 0 ? 'var(--p0-soft)' : 'var(--p1-soft)'}"/>`;
-    }
-    for (let k = 1; k < R.N; k++) h += `<line x1="${k * CELL}" y1="0" x2="${k * CELL}" y2="${W}" stroke="var(--line)" stroke-width="1.6"/><line x1="0" y1="${k * CELL}" x2="${W}" y2="${k * CELL}" stroke="var(--line)" stroke-width="1.6"/>`;
-    h += `<rect x="0.8" y="0.8" width="${W - 1.6}" height="${W - 1.6}" rx="14" fill="none" stroke="var(--line)" stroke-width="1.6"/>`;
-    for (const k in s.walls) {   // walls
-      const [a, b] = k.split('-').map(Number), [ax, ay] = R.xy(a), [bx, by] = R.xy(b);
-      if (ax !== bx) { const x = Math.max(ax, bx) * CELL; h += `<line x1="${x}" y1="${ay * CELL + 3}" x2="${x}" y2="${(ay + 1) * CELL - 3}" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>`; }
-      else { const y = Math.max(ay, by) * CELL; h += `<line x1="${ax * CELL + 3}" y1="${y}" x2="${(ax + 1) * CELL - 3}" y2="${y}" stroke="var(--ink)" stroke-width="7" stroke-linecap="round"/>`; }
-    }
-    for (const i of rollCells) {   // the 4 squares of the rolled point
-      const x = (i % R.N) * CELL, y = Math.floor(i / R.N) * CELL, chosen = ui.R === i;
-      h += `<rect x="${x + 3}" y="${y + 3}" width="${CELL - 6}" height="${CELL - 6}" rx="8" fill="${chosen ? 'rgba(27,30,36,.07)' : 'none'}" stroke="var(--ink)" stroke-width="${chosen ? 3 : 1.8}" ${chosen ? '' : 'stroke-dasharray="5 4"'}/>`;
-    }
-    for (let i = 0; i < R.CELLS; i++) {   // soldiers
-      const c = s.cells[i]; if (c.o === null) continue;
-      h += `<circle cx="${cx(i)}" cy="${cy(i)}" r="19" fill="${COLORS[c.o]}"/><text x="${cx(i)}" y="${cy(i) + 6}" text-anchor="middle" font-size="18" font-weight="700" fill="#fff">${c.n}</text>`;
-    }
-    if (ui.src !== null) {   // chosen base and where it can go
-      h += `<circle cx="${cx(ui.src)}" cy="${cy(ui.src)}" r="23" fill="none" stroke="var(--ink)" stroke-width="3"/>`;
-      for (const t of targets(ui.src)) {
-        const enemy = s.cells[t.to].o === 1 - p;
-        h += `<circle cx="${cx(t.to)}" cy="${cy(t.to)}" r="22" fill="none" stroke="${enemy ? '#e24646' : 'var(--ink)'}" stroke-width="2.6" ${enemy ? '' : 'stroke-dasharray="4 4"'}/>`;
-      }
-    }
-    if (s.roll) {   // the floating flag on the point
-      const fx = s.roll.vx * CELL, fy = s.roll.vy * CELL;
-      h += `<circle cx="${fx}" cy="${fy}" r="4" fill="var(--ink)"/><g class="g7-flag" style="transform-origin:${fx}px ${fy}px"><line x1="${fx}" y1="${fy}" x2="${fx}" y2="${fy - 30}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/><path d="M${fx} ${fy - 30}l22 7l-22 8z" fill="${COLORS[p]}" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/></g>`;
-    }
-    if (ui.R !== null && !s.winner) {   // + on each side of the chosen square: build a wall there
-      for (const side of R.wallSides(s, ui.R)) {
-        const [mx, my] = edgeMid(side.a, side.b);
-        h += `<g data-w="${side.a}-${side.b}" class="g7-plus"><circle cx="${mx}" cy="${my}" r="12" fill="var(--ink)"/><path d="M${mx - 5} ${my}h10M${mx} ${my - 5}v10" stroke="var(--bg)" stroke-width="2.6" stroke-linecap="round"/></g>`;
-      }
-    }
-    return h;
-  }
-  function targets(from) {   // squares the chosen base can go to: neighbours (move / attack) and straight lines through the territory (transport)
+  // ---------- board ----------
+  const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => Math.floor(i / R.N) * S + S / 2;
+  function targets(from) {   // where the chosen base can go: neighbours (move / attack) and straight lines through the territory (transport)
     const seen = new Map();
     for (const j of R.moveTargets(s, from)) seen.set(j, { to: j, type: 'move' });
     for (const t of R.transportTargets(s, from)) if (!seen.has(t.to)) seen.set(t.to, { to: t.to, type: 'transport' });
     return [...seen.values()];
   }
-
-  function panel(p) {
-    const el = $('g7p' + p), cur = s.turn === p && !s.winner, big = R.territorySize(s, p);
-    el.className = 'g7-pl' + (cur ? ' active' : '');
-    el.innerHTML = `<div class="g7-head"><i style="background:${COLORS[p]}"></i><b>${NAMES[p]}</b>${cur && s.roll ? `<span class="g7-dice">${s.roll.w}<u></u>${s.roll.b}</span><span class="g7-tag">roll ${s.rolls} of ${R.MAX_ROLLS}</span>` : cur ? '<span class="g7-tag">your turn</span>' : ''}</div>
-      <div class="g7-stats"><span>Camp <b>${R.camp(s, p)}</b></span><span>Walls <b>${s.wallsLeft[p]}</b></span><span>Territory <b>${big}</b>/${R.WIN}</span></div>
-      <div class="g7-prog"><i style="width:${Math.min(100, 100 * big / R.WIN)}%;background:${COLORS[p]}"></i></div>`;
+  function canPlay(i) { return R.canLand(s, i) || R.canWithdraw(s, i) || R.sources(s, i).length > 0 || R.wallSides(s, i).length > 0; }
+  function renderBoard() {
+    const svg = $('board'), own = R.owners(s), p = s.turn, color = COLORS[p];
+    svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
+    const rolled = s.roll && s.winner === null ? s.roll.cells : [];
+    const sh = ui.sheet, opts = ui.src !== null && !sh ? new Set([ui.src, ...targets(ui.src).map((t) => t.to)]) : null;
+    const involved = opts || (sh ? new Set([sh.from, sh.cell, sh.to].filter((v) => v !== undefined)) : null);
+    let h = '';
+    for (const i of rolled) {   // light fill under the squares of the rolled point where something can be played
+      if ((!involved || involved.has(i)) && canPlay(i)) h += `<circle class="roll-fill" cx="${cx(i)}" cy="${cy(i)}" r="${CR + 4}" fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
+    }
+    if (sh && sh.to !== undefined) h += `<line class="drag-line" x1="${cx(sh.from)}" y1="${cy(sh.from)}" x2="${cx(sh.to)}" y2="${cy(sh.to)}" stroke="${color}"/>`;
+    for (const k in s.walls) {   // walls: a bar across the gap between two neighbouring squares
+      const [a, b] = k.split('-').map(Number), [ax] = R.xy(a), [bx] = R.xy(b), mx = (cx(a) + cx(b)) / 2, my = (cy(a) + cy(b)) / 2;
+      h += ax !== bx ? `<line class="wall" x1="${mx}" y1="${my - S * 0.42}" x2="${mx}" y2="${my + S * 0.42}"/>` : `<line class="wall" x1="${mx - S * 0.42}" y1="${my}" x2="${mx + S * 0.42}" y2="${my}"/>`;
+    }
+    for (let i = 0; i < R.CELLS; i++) {
+      const c = s.cells[i], x = cx(i), y = cy(i), lit = opts ? opts.has(i) : sh ? involved.has(i) : false;
+      const isDest = (opts && i !== ui.src && opts.has(i)) || (sh && sh.to !== undefined && i === sh.to);
+      h += `<circle class="cell${own[i] !== null ? ' c' + own[i] : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${DOT_R}"/>`;
+      if (isDest) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
+      else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
+      if (ui.R === i && !sh && !isDest) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
+      if (ui.src === i && c.o !== null) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
+      if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${y}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${y + 1}">${c.n}</text>`;
+    }
+    if (s.roll && s.winner === null) {   // the floating flag on the rolled point
+      const fx = s.roll.vx * S, fy = s.roll.vy * S;
+      h += `<circle cx="${fx}" cy="${fy}" r="3.5" fill="${color}"/><g class="g7-flag" style="transform-origin:${fx}px ${fy}px"><line x1="${fx}" y1="${fy}" x2="${fx}" y2="${fy - 28}" stroke="${color}" stroke-width="3" stroke-linecap="round"/><path d="M${fx} ${fy - 28}l20 6.5l-20 7.5z" fill="${color}"/></g>`;
+    }
+    if (ui.R !== null && !sh && s.winner === null) {   // + on each side of the chosen square: build a wall
+      for (const side of R.wallSides(s, ui.R)) {
+        const mx = (cx(side.a) + cx(side.b)) / 2, my = (cy(side.a) + cy(side.b)) / 2;
+        h += `<g data-w="${side.a}-${side.b}" class="g7-plus"><circle cx="${mx}" cy="${my}" r="11" fill="var(--ink)"/><path d="M${mx - 5} ${my}h10M${mx} ${my - 5}v10" stroke="var(--bg)" stroke-width="2.6" stroke-linecap="round"/></g>`;
+      }
+    }
+    svg.innerHTML = h;
   }
 
-  function dock() {
-    const d = $('g7dock'), msg = $('g7msg'); d.innerHTML = '';
-    const btn = (text, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = text; b.onclick = fn; d.appendChild(b); };
-    if (s.winner !== null) { msg.textContent = ''; return; }
-    const name = NAMES[s.turn];
-    if (!s.roll) { msg.innerHTML = `<b style="color:${COLORS[s.turn]}">${name}</b>: roll the dice`; btn('Roll dice', 'wide', () => doRoll()); return; }
-    if (ui.R === null) msg.textContent = 'Tap one of the 4 squares around the flag';
-    else if (ui.src === null) msg.textContent = 'Land or withdraw below, tap one of your bases to move it, or tap + to build a wall';
-    else msg.textContent = 'Tap a highlighted square: move, attack or transport';
-    if (ui.R !== null) {
-      if (R.canLand(s, ui.R)) btn('Land', '', () => openSheet('Land soldiers', R.camp(s, s.turn), Math.min(R.camp(s, s.turn), 4), (n) => commit({ type: 'land', R: ui.R, count: n })));
-      if (R.canWithdraw(s, ui.R)) btn('Withdraw', 'soft', () => openSheet('Withdraw soldiers', s.cells[ui.R].n, s.cells[ui.R].n, (n) => commit({ type: 'withdraw', R: ui.R, count: n })));
+  // ---------- panels (same markup as the real game) ----------
+  const dieHtml = (n, roll) => `<span class="die${roll ? ' roll' : ''}">${n}</span>`;
+  const IC = {
+    prov: '<svg class="ic" viewBox="0 0 16 16"><path d="M4.5 1.5h7v4.2a3.5 3.5 0 0 1-7 0z" fill="currentColor"/><path d="M4.5 3H2.5c0 2.6 1 3.8 2.4 4M11.5 3h2c0 2.6-1 3.8-2.4 4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M8 9.2V12M5.2 14.5h5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>',
+    sold: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 0.8l1.7 2.2v7H6.3V3z" fill="currentColor"/><rect x="3.8" y="10" width="8.4" height="1.7" rx=".8" fill="currentColor"/><rect x="7.1" y="11.7" width="1.8" height="2.4" fill="currentColor"/><circle cx="8" cy="14.7" r="1.1" fill="currentColor"/></svg>',
+    brid: '<svg class="ic" viewBox="0 0 16 16"><path d="M2 13.5a6 6.5 0 0 1 12 0" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    dead: '<svg class="ic" viewBox="0 0 16 16"><path d="M8 1.2v11.6M4 5h8M2 14.6h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  };
+  function renderPanels() {
+    for (const p of [0, 1]) {
+      const el = $('pl' + p);
+      el.style.setProperty('--c', COLORS[p]);
+      el.className = 'pl' + (s.turn === p && s.winner === null ? ' active' : '');
+      const terr = R.territorySize(s, p), held = Math.floor(terr / 5);   // five boxes of 5 squares: 25 connected squares win
+      let prov = '';
+      for (let k = 0; k < R.WIN / 5; k++) prov += `<i class="${k < held ? 'on' : ''}"></i>`;
+      const tot = R.SOLDIERS, reserve = R.camp(s, p), lost = s.graveyard[p], onB = tot - reserve - lost;
+      const w = (n) => (100 * n / tot).toFixed(2) + '%';
+      let ticks = '';
+      for (let i = 0; i < R.WALLS; i++) ticks += `<i class="${i < s.wallsLeft[p] ? 'on' : ''}"></i>`;
+      const dice = s.roll && s.winner === null && s.turn === p ? `<span class="dice">${dieHtml(s.roll.w, ui.rolled)}${dieHtml(s.roll.b, ui.rolled)}</span>` : '';
+      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAMES[p]}</span><span class="tag"></span>${dice}</div>
+        <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
+        <div class="line provline">${IC.prov}<span class="num">${terr}</span><div class="prov">${prov}</div></div>
+        <div class="line brline">${IC.brid}<span class="num">${s.wallsLeft[p]}</span><div class="ticks">${ticks}</div></div>
+        <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
     }
-    if (s.rolls < R.MAX_ROLLS) btn(`Re-roll (${R.MAX_ROLLS - s.rolls} left)`, 'soft', () => doRoll());
-    if (s.rolls >= R.MAX_ROLLS) btn('Pass', 'soft', () => commit({ type: 'pass' }));   // passing is possible only after the third roll
+  }
+
+  // ---------- dock (same buttons and count slider as the real game) ----------
+  function renderDock() {
+    const msg = $('msg'), ctl = $('controls'), p = s.turn;
+    ctl.textContent = ''; msg.innerHTML = '';
+    $('dock').classList.toggle('sheeting', !!ui.sheet);
+    const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
+    const add = (parent, text, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = text; b.onclick = fn; parent.appendChild(b); return b; };
+    if (s.winner !== null) { msg.innerHTML = `<b style="color:${COLORS[s.winner]}">${NAMES[s.winner]}</b> wins`; add(row(), 'New game', 'wide', reset); return; }
+    if (!s.roll) { add(row(), 'Roll dice', 'wide', () => doRoll()); return; }
+    const sh = ui.sheet;
+    if (sh) {
+      sh.count = Math.max(sh.min, Math.min(sh.max, sh.count));
+      const box = document.createElement('div'); box.className = 'sheet';
+      box.innerHTML = `<div class="cap">${sh.cap}</div>
+        <div class="srow"><div class="num" id="shNum"></div><button class="pm" id="minus" aria-label="Less">−</button><input type="range" id="rng" min="${sh.min}" max="${sh.max}" step="1" aria-label="Soldiers"><button class="pm" id="plus" aria-label="More">+</button><button class="pm ok" id="ok" aria-label="Confirm">✓</button><button class="pm x" id="cancel" aria-label="Cancel">✕</button></div>`;
+      ctl.appendChild(box);
+      const rng = box.querySelector('#rng');
+      const view = () => {
+        box.querySelector('#shNum').innerHTML = `${sh.count}`;
+        rng.value = sh.count;
+        rng.style.setProperty('--p', (sh.max === sh.min ? 100 : ((sh.count - sh.min) / (sh.max - sh.min)) * 100) + '%');
+      };
+      const set = (v) => { sh.count = Math.max(sh.min, Math.min(sh.max, v)); view(); };
+      box.querySelector('#minus').onclick = () => set(sh.count - 1);
+      box.querySelector('#plus').onclick = () => set(sh.count + 1);
+      rng.oninput = (e) => set(+e.target.value);
+      view();
+      box.querySelector('#cancel').onclick = () => { ui.sheet = null; render(); };
+      box.querySelector('#ok').onclick = () => commit(sh.build(sh.count));
+      return;
+    }
+    const r = row();
+    if (ui.src !== null) { add(r, 'Cancel', 'soft sm', () => { ui.src = null; render(); }); return; }
+    if (ui.R !== null) {
+      if (R.canLand(s, ui.R)) add(r, 'Land', 'soft', () => openSheet('Land', 1, R.camp(s, p), Math.min(R.camp(s, p), 4), { cell: ui.R }, (n) => ({ type: 'land', R: ui.R, count: n })));
+      if (R.canWithdraw(s, ui.R)) add(r, 'Withdraw', 'soft', () => openSheet('Withdraw', 1, s.cells[ui.R].n, s.cells[ui.R].n, { cell: ui.R }, (n) => ({ type: 'withdraw', R: ui.R, count: n })));
+    }
+    if (s.rolls < R.MAX_ROLLS) add(r, 'Re-roll', 'soft', () => doRoll());
+    else add(r, 'Pass', 'soft', () => commit({ type: 'pass' }));   // passing is possible only after the third roll
   }
 
   function render() {
-    $('g7board').innerHTML = boardSvg();
-    panel(0); panel(1); dock();
-    if (s.winner !== null) { $('g7wintxt').innerHTML = `<span style="color:${COLORS[s.winner]}">${NAMES[s.winner]}</span> wins!`; $('g7win').hidden = false; }
+    renderPanels(); renderBoard(); ui.rolled = false; renderDock();
+    $('logBox').innerHTML = s.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>No moves yet</div>';
+    $('undoBtn').textContent = 'Undo'; $('undoBtn').hidden = false; $('undoBtn').disabled = hist.length === 0;
+    $('speedBtn').hidden = true; $('tutBtn').hidden = true;
+    const o = $('overlay');
+    if (s.winner !== null) {
+      $('winTitle').innerHTML = `<span style="color:${COLORS[s.winner]}">${NAMES[s.winner]}</span> wins`;
+      $('winText').hidden = true; $('winTrain').hidden = true; $('winCommunity').hidden = true; $('winNew').textContent = 'New game';
+      o.dataset.dismissed = ''; o.hidden = false;
+    } else o.hidden = true;
   }
 
   // ---------- actions ----------
   function doRoll() {
-    s = R.roll(s, 1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)); ui = { R: null, src: null }; render();
+    s = R.roll(s, 1 + Math.floor(Math.random() * 6), 1 + Math.floor(Math.random() * 6)); ui = fresh(); ui.rolled = true;
+    renderPanels(); renderBoard(); renderDock(); ui.rolled = false;
   }
   function commit(act) {
-    try { s = R.apply(s, act); } catch (e) { $('g7msg').textContent = 'Not allowed: ' + e.message; return; }
-    ui = { R: null, src: null }; render();
+    let ns;
+    try { ns = R.apply(s, act); } catch (e) { ui = fresh(); render(); return; }
+    hist.push(s); s = ns; ui = fresh(); render();
   }
-  function openSheet(title, max, def, ok) {
-    let n = Math.max(1, Math.min(max, def));
-    $('g7sheetTitle').textContent = title; const r = $('g7range'); r.min = 1; r.max = max; r.value = n; $('g7count').textContent = n;
-    r.oninput = () => { n = +r.value; $('g7count').textContent = n; };
-    $('g7sheetOk').onclick = () => { $('g7sheet').hidden = true; ok(n); };
-    $('g7sheetCancel').onclick = () => { $('g7sheet').hidden = true; };
-    $('g7sheet').hidden = false;
-  }
+  function undo() { if (!hist.length) return; s = hist.pop(); ui = fresh(); render(); }
+  function openSheet(cap, min, max, def, extra, build) { ui.sheet = Object.assign({ cap, min, max, count: def, build }, extra); render(); }
 
   function onBoardTap(e) {
-    if (s.winner !== null) return;
-    const w = e.target.closest('[data-w]');
-    if (w) { const [a, b] = w.dataset.w.split('-').map(Number); commit({ type: 'wall', R: ui.R, a, b }); return; }
+    if (!active || s.winner !== null || ui.sheet) return;
+    const wl = e.target.closest('[data-w]');
+    if (wl) { const [a, b] = wl.dataset.w.split('-').map(Number); commit({ type: 'wall', R: ui.R, a, b }); return; }
     if (!s.roll) return;
-    const bb = $('g7board').getBoundingClientRect(), sc = W / bb.width;
-    const x = Math.floor(((e.clientX - bb.left) * sc) / CELL), y = Math.floor(((e.clientY - bb.top) * sc) / CELL);
+    const bb = $('board').getBoundingClientRect(), sc = W / bb.width;
+    const x = Math.floor(((e.clientX - bb.left) * sc) / S), y = Math.floor(((e.clientY - bb.top) * sc) / S);
     if (x < 0 || x >= R.N || y < 0 || y >= R.N) return;
     const i = R.idx(x, y), rolled = s.roll.cells.includes(i);
     if (ui.src !== null) {
       const t = targets(ui.src).find((q) => q.to === i);
       if (t) {   // move / attack / transport: ask how many
-        const from = ui.src, n = s.cells[from].n, enemy = s.cells[i].o === 1 - s.turn;
-        openSheet(enemy ? 'Attack with' : t.type === 'transport' ? 'Transport' : 'Move', n, n, (c) => commit({ type: t.type, R: ui.R, from, to: i, count: c }));
+        const from = ui.src, n = s.cells[from].n, enemy = s.cells[i].o === 1 - s.turn, rc = ui.R;
+        openSheet(enemy ? 'Attack' : t.type === 'transport' ? 'Transport' : 'Move', 1, n, n, { from, to: i, cell: i }, (c) => ({ type: t.type, R: rc, from, to: i, count: c }));
         return;
       }
     }
     if (ui.R !== null && s.cells[i].o === s.turn && R.sources(s, ui.R).includes(i)) { ui.src = ui.src === i ? null : i; render(); return; }
-    if (rolled) { ui = { R: ui.R === i ? null : i, src: null }; render(); return; }
+    if (rolled) { ui = Object.assign(fresh(), { R: ui.R === i ? null : i }); render(); return; }
     ui.src = null; render();
   }
 
-  function init() {
-    if (!R || !$('g7')) return;
-    $('g7board').addEventListener('click', onBoardTap);
-    $('g7Exit').onclick = () => close();
-    $('g7New').onclick = () => { if (window.confirm('Start a new game?')) reset(); };
-    $('g7winNew').onclick = () => reset();
-    $('g7winExit').onclick = () => close();
+  // ---------- hooking into the normal screen ----------
+  function open() {
+    if (!R) return;
+    active = true;
+    for (const id of ['lobby', 'startModal', 'nameModal', 'overlay', 'coach']) { const el = $(id); if (el) el.hidden = true; }
+    $('app').classList.remove('flip'); $('logBox').hidden = true;
+    if (!s) { s = R.newGame(); hist = []; ui = fresh(); }
+    render();
   }
-  function open() { if (!s) reset(); $('g7').hidden = false; render(); }
-  function close() { $('g7').hidden = true; $('g7sheet').hidden = true; }
+  function close() { active = false; $('overlay').hidden = true; $('speedBtn').hidden = true; }
+  function init() {
+    if (!R || !$('app')) return;
+    $('board').addEventListener('click', onBoardTap);
+    // the menu buttons of the normal screen: Undo steps back here, Lobby leaves; the rest of the real handlers must not run
+    $('bar').addEventListener('click', (e) => {
+      if (!active) return;
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.id === 'undoBtn') { e.stopPropagation(); undo(); document.getElementById('bar').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', false); }
+      else if (b.id === 'newBtn') close();
+    }, true);
+    $('winNew').addEventListener('click', (e) => { if (!active) return; e.stopImmediatePropagation(); reset(); }, true);
+  }
 
-  root.Game7 = { open, close, reset, get state() { return s; }, get ui() { return ui; }, setState(ns) { s = ns; ui = { R: null, src: null }; render(); } };   // setState: test hook
+  root.Game7 = { open, close, reset, get active() { return active; }, get state() { return s; }, get ui() { return ui; }, setState(ns) { s = ns; ui = fresh(); render(); } };   // setState: test hook
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })(window);

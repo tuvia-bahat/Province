@@ -1271,6 +1271,7 @@
     if (settings.mode === 'ai' && aiEndSeq !== gameSeq) { aiEndSeq = gameSeq; O.track('ai_end', { board: settings.board, won: state.winner === settings.human }); sendAiLog('win'); }
   }
   function render() {
+    if (window.Game7 && window.Game7.active) return;   // beta new-rules prototype draws on this screen itself
     fxCancel();
     FLIP = !tut.active && (online ? online.seat === 1 : settings.mode === 'ai' && settings.human === 1);
     $('app').classList.toggle('flip', FLIP);
@@ -1344,6 +1345,7 @@
   // לחיצה על בסיס מודגש "מרימה" אותו ומדליקה את יעדי הגרירה. הזזה/התקפה/גשר/שינוע נעשים רק בגרירה.
   // לחיצה קצרה (בלי גרירה) פותחת הוספה או משיכה של חיילים.
   svg.addEventListener('pointerdown', (e) => {
+    if (window.Game7 && window.Game7.active) return;
     if ((!canAct() && !selMode()) || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const pos = toSvg(e), c = cellAt(pos, CR + 12);
     drag = { id: e.pointerId, start: c, x0: pos.x, y0: pos.y, moved: false, hover: null, prevSel: ui.sel };
