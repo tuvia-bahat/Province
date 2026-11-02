@@ -5,7 +5,7 @@
  * the dice mark two opposite squares (as in the original game) and the player plays from one of them. One action per turn:
  *   land      new soldiers on the chosen square (empty or own base; never next to an enemy base, never in a province the enemy holds)
  *   withdraw  soldiers from the chosen square back to camp
- *   move      from a base of the chosen square's group, to a neighbouring square (an enemy base = attack)
+ *   move      from a base of the chosen square's group (or province), to a neighbouring square; or from a base next to a rolled square, into that square (an enemy base = attack)
  *   transport from a base inside a province you hold, in a straight line through it, to another square of it
  *   pass      after the roll
  *   wall      one wall on a side of the chosen square (which must hold your own base)
@@ -120,6 +120,21 @@
     return out;
   }
 
+  // where the base 'from' may go this turn: [{ to, type: move|transport, R }]
+  //  - from a base the rolled square gives freedom to (its group, or its province): any neighbour, and transport lines inside a province you hold
+  //  - from a base standing next to a rolled square: move or attack into that rolled square only
+  function options(s, from) {
+    const p = s.turn, out = new Map();
+    if (!s.roll || s.cells[from].o !== p) return [];
+    for (const rc of s.roll.cells) {
+      if (sources(s, rc).includes(from)) {
+        for (const j of moveTargets(s, from)) if (!out.has(j)) out.set(j, { to: j, type: 'move', R: rc });
+        for (const tr of transportTargets(s, from)) if (!out.has(tr.to)) out.set(tr.to, { to: tr.to, type: 'transport', R: rc });
+      } else if (rc !== from && neighbors(s, from).includes(rc) && !out.has(rc)) out.set(rc, { to: rc, type: 'move', R: rc });
+    }
+    return [...out.values()];
+  }
+
   // ---------- walls ----------
   function edgeOk(a, b) {
     if (a === b || a < 0 || b < 0 || a >= CELLS || b >= CELLS) return false;
@@ -164,11 +179,9 @@
       if (count < 1 || count > cells[act.R].n) throw new Error('bad count');
       cells[act.R].n -= count; if (cells[act.R].n === 0) cells[act.R].o = null; ns.log.push(`${name}: withdrew ${count}`);
     } else if (act.type === 'move' || act.type === 'transport') {
-      if (!sources(s, act.R).includes(act.from)) throw new Error('not a base of that group');
       const src = cells[act.from];
-      if (count < 1 || count > src.n) throw new Error('bad count');
-      const ok = act.type === 'move' ? moveTargets(s, act.from).includes(act.to) : transportTargets(s, act.from).some((t) => t.to === act.to);
-      if (!ok) throw new Error('illegal target');
+      if (s.cells[act.from].o !== p || count < 1 || count > src.n) throw new Error('bad count');
+      if (!options(s, act.from).some((o) => o.to === act.to && o.type === act.type)) throw new Error('illegal target');
       const dst = cells[act.to];
       if (act.type === 'move' && dst.o === q) {   // attack: each attacker kills one defender; extra attackers stay; equal leaves the square empty
         const def = dst.n, killed = Math.min(count, def);
@@ -193,7 +206,7 @@
 
   root.Rules7 = {
     N, CELLS, SOLDIERS, WIN, MAX_ROLLS, idx, xy, wkey, newGame, neighbors, onBoard, camp, wallCount, regions, owners, group, territorySize, roll,
-    canLand, canWithdraw, sources, moveTargets, transportTargets, wallCandidates, wallSides, apply, pass, clone,
+    canLand, canWithdraw, sources, moveTargets, transportTargets, options, wallCandidates, wallSides, apply, pass, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules7;
 })(typeof window !== 'undefined' ? window : globalThis);

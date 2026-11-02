@@ -14,13 +14,8 @@
   // ---------- board ----------
   const sq = (i, ring) => { const g = ring ? 2 : 5, x = (i % R.N) * S + g, y = Math.floor(i / R.N) * S + g; return `x="${x}" y="${y}" width="${S - 2 * g}" height="${S - 2 * g}" rx="${ring ? 11 : 9}"`; };
   const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => Math.floor(i / R.N) * S + S / 2;
-  function targets(from) {   // where the chosen base can go: neighbours (move / attack) and straight lines through the territory (transport)
-    const seen = new Map();
-    for (const j of R.moveTargets(s, from)) seen.set(j, { to: j, type: 'move' });
-    for (const t of R.transportTargets(s, from)) if (!seen.has(t.to)) seen.set(t.to, { to: t.to, type: 'transport' });
-    return [...seen.values()];
-  }
-  function canPlay(i) { return R.canLand(s, i) || R.canWithdraw(s, i) || R.sources(s, i).length > 0 || R.wallSides(s, i).length > 0; }
+  const targets = (from) => R.options(s, from);   // where the chosen base can go
+  function canPlay(i) { return R.canLand(s, i) || R.canWithdraw(s, i) || R.sources(s, i).length > 0 || R.wallSides(s, i).length > 0 || R.neighbors(s, i).some((j) => s.cells[j].o === s.turn); }
   function renderBoard() {
     const svg = $('board'), own = R.owners(s), p = s.turn, color = COLORS[p];
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
@@ -30,7 +25,7 @@
     if (sh && sh.kind === 'adjust') involved.add(sh.cell);
     // a rolled square in your territory: every base that may act from it is marked too
     const playSrc = new Set();
-    if (!opts && !sh) for (const rc of rolled) for (const i of R.sources(s, rc)) playSrc.add(i);
+    if (!opts && !sh) for (let i = 0; i < R.CELLS; i++) if (R.options(s, i).length) playSrc.add(i);
     let h = '';
     for (const i of rolled) {   // light fill under the squares of the rolled point where something can be played
       if (!involved || involved.has(i)) h += `<rect class="roll-fill" ${sq(i, 1)} fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
@@ -174,17 +169,13 @@
     setMode(ui.sheet, modes[0]);
     render();
   }
-  function openMove(rc, from, t) {
+  function openMove(from, t) {
     const n = s.cells[from].n, enemy = s.cells[t.to].o === 1 - s.turn;
-    ui = fresh(); ui.sheet = { kind: 'move', from, to: t.to, cell: t.to, mode: 'move', min: 1, max: n, count: n, cap: enemy ? 'Attack' : t.type === 'transport' ? 'Transport' : 'Move', build: (c) => ({ type: t.type, R: rc, from, to: t.to, count: c }) };
+    ui = fresh(); ui.sheet = { kind: 'move', from, to: t.to, cell: t.to, mode: 'move', min: 1, max: n, count: n, cap: enemy ? 'Attack' : t.type === 'transport' ? 'Transport' : 'Move', build: (c) => ({ type: t.type, R: t.R, from, to: t.to, count: c }) };
     render();
   }
   // a base that may move this turn: it belongs to the territory of one of the rolled squares; returns that square
-  function mandate(i) {
-    if (s.cells[i].o !== s.turn) return null;
-    for (const rc of s.roll.cells) if (R.sources(s, rc).includes(i)) return rc;
-    return null;
-  }
+  function mandate(i) { return R.options(s, i).length ? i : null; }
   function cellAt(e) {
     const bb = $('board').getBoundingClientRect(), sc = W / bb.width;
     const x = Math.floor(((e.clientX - bb.left) * sc) / S), y = Math.floor(((e.clientY - bb.top) * sc) / S);
@@ -205,14 +196,14 @@
     const j = cellAt(e), i = d.i;
     if (i === null) return;
     if (j !== null && j !== i && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) {   // drag a base to a square: move / attack / transport
-      const rc = mandate(i), t = rc !== null && targets(i).find((q) => q.to === j);
-      if (t) openMove(rc, i, t);
+      const t = targets(i).find((q) => q.to === j);
+      if (t) openMove(i, t);
       return;
     }
     const prev = ui.src;
     if (prev !== null) {   // a base is picked: tap a lit square to go there
       const tg = targets(prev).find((q) => q.to === i);
-      if (tg) { openMove(mandate(prev), prev, tg); return; }
+      if (tg) { openMove(prev, tg); return; }
     }
     // like the real game: a tap on a base picks it (its targets light up) and opens the count slider for the square at the same time
     const mv = mandate(i) !== null;

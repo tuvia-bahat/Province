@@ -63,7 +63,11 @@ const three = (s) => R.roll(s, 1, 1);   // the one roll of the turn
   const a = R.apply(s, { type: 'move', R: I(1, 1), from: I(2, 1), to: I(3, 1), count: 2 });
   t('move from the group base that is not the chosen square', a.cells[I(3, 1)].n === 2 && a.cells[I(2, 1)].n === 2 && a.turn === 1);
   t('landing happens on the chosen square', R.apply(s, { type: 'land', R: I(1, 1), count: 2 }).cells[I(1, 1)].n === 7);
-  t('a far base cannot move', throws(() => R.apply(s, { type: 'move', R: I(1, 1), from: I(4, 4), to: I(4, 3), count: 1 })));
+  t('a far base cannot move elsewhere', throws(() => R.apply(s, { type: 'move', R: I(1, 1), from: I(4, 4), to: I(4, 5), count: 1 })));
+  const adj = R.apply(s, { type: 'move', R: I(4, 3), from: I(4, 4), to: I(4, 3), count: 1 });
+  t('a base next to a rolled square may move into it', adj.cells[I(4, 3)].n === 1 && adj.cells[I(4, 4)].n === 1);
+  const en = put(put(R.newGame(), 0, [[4, 4, 4]]), 1, [[4, 3, 2]]); rolled(en, [I(4, 3), I(1, 1)]);
+  t('...and may attack a base standing on it', R.apply(en, { type: 'move', R: I(4, 3), from: I(4, 4), to: I(4, 3), count: 4 }).cells[I(4, 3)].o === 0);
   const at = put(R.newGame(), 0, [[1, 1, 5]]); put(at, 1, [[2, 1, 3]]); rolled(at, [I(1, 1), I(4, 4)]);
   const r = R.apply(at, { type: 'move', R: I(1, 1), from: I(1, 1), to: I(2, 1), count: 5 });
   t('attack 5 vs 3: 3 die, 2 stay', r.cells[I(2, 1)].o === 0 && r.cells[I(2, 1)].n === 2 && r.graveyard[1] === 3 && r.cells[I(1, 1)].o === null);
