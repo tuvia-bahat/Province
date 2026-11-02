@@ -12,8 +12,8 @@
   function reset() { s = R.newGame(); hist = []; ui = fresh(); $('overlay').hidden = true; render(); }
 
   // ---------- board ----------
-  const sq = (i, ring) => { const g = ring ? 2 : 5, x = (i % R.N) * S + g, y = Math.floor(i / R.N) * S + g; return `x="${x}" y="${y}" width="${S - 2 * g}" height="${S - 2 * g}" rx="${ring ? 11 : 9}"`; };
-  const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => Math.floor(i / R.N) * S + S / 2;
+  const sq = (i, ring) => { const g = ring ? 2 : 5, x = (i % R.N) * S + g, y = (R.N - 1 - Math.floor(i / R.N)) * S + g; return `x="${x}" y="${y}" width="${S - 2 * g}" height="${S - 2 * g}" rx="${ring ? 11 : 9}"`; };
+  const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => (R.N - 1 - Math.floor(i / R.N)) * S + S / 2;   // row 1 is at the bottom, like the original game
   const targets = (from) => R.options(s, from);   // where the chosen base can go
   function canPlay(i) { return R.canLand(s, i) || R.canWithdraw(s, i) || R.sources(s, i).length > 0 || R.wallSides(s, i).length > 0 || R.neighbors(s, i).some((j) => s.cells[j].o === s.turn); }
   function renderBoard() {
@@ -178,7 +178,7 @@
   function mandate(i) { return R.options(s, i).length ? i : null; }
   function cellAt(e) {
     const bb = $('board').getBoundingClientRect(), sc = W / bb.width;
-    const x = Math.floor(((e.clientX - bb.left) * sc) / S), y = Math.floor(((e.clientY - bb.top) * sc) / S);
+    const x = Math.floor(((e.clientX - bb.left) * sc) / S), y = R.N - 1 - Math.floor(((e.clientY - bb.top) * sc) / S);
     return x < 0 || x >= R.N || y < 0 || y >= R.N ? null : R.idx(x, y);
   }
   let down = null;
