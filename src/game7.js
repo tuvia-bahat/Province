@@ -161,8 +161,9 @@
   }
   function openAdjust(i, src) {   // a tap on a rolled square: the count slider opens at once (land / reinforce, withdraw, or a wall)
     const modes = [];
-    if (R.canLand(s, i)) modes.push('add');
-    if (R.canWithdraw(s, i)) modes.push('withdraw');
+    const rolledSq = s.roll.cells.includes(i);   // land and withdraw only on a rolled square
+    if (rolledSq && R.canLand(s, i)) modes.push('add');
+    if (rolledSq && R.canWithdraw(s, i)) modes.push('withdraw');
     if (R.wallSides(s, i).length) modes.push('wall');
     ui = fresh(); ui.src = src === undefined ? null : src;
     if (!modes.length) { render(); return; }
@@ -193,7 +194,7 @@
   function onUp(e) {
     const d = down; down = null;
     if (!active || !d || s.winner !== null || !s.roll) return;
-    if (d.wall) { const [a, b] = d.wall.split('-').map(Number); commit({ type: 'wall', R: ui.sheet.cell, walls: [[a, b]] }); return; }
+    if (d.wall) { const [a, b] = d.wall.split('-').map(Number); const at = ui.sheet.cell, rc = s.roll.cells.find((c) => R.sources(s, c).includes(at)); commit({ type: 'wall', R: rc, at, walls: [[a, b]] }); return; }
     const j = cellAt(e), i = d.i;
     if (i === null) return;
     if (j !== null && j !== i && Math.hypot(e.clientX - d.x, e.clientY - d.y) > 12) {   // drag a base to a square: move / attack / transport
@@ -209,7 +210,7 @@
     // like the real game: a tap on a base picks it (its targets light up) and opens the count slider for the square at the same time
     const mv = mandate(i) !== null;
     if (s.roll.cells.includes(i)) { openAdjust(i, mv ? i : null); return; }
-    if (mv) { ui = Object.assign(fresh(), { src: prev === i ? null : i }); render(); return; }
+    if (mv) { openAdjust(i, i); return; }   // a base you may use: its targets light up, and it can take a wall
     ui.src = null; render();
   }
 
