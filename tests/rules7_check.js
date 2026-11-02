@@ -53,7 +53,7 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, vx: 3, vy: 3, cells }; s.r
 {
   let s = put(R.newGame(), 0, [[1, 1, 5], [2, 1, 4], [5, 5, 2]]);
   rolled(s, [I(1, 1), I(2, 1), I(1, 2), I(2, 2)]);
-  t('adjacent bases are one group', R.group(s, I(1, 1)).length === 2 && R.sources(s, I(1, 2)).length === 2);
+  t('adjacent bases are one group', R.group(s, I(1, 1)).length === 2 && R.sources(s, I(1, 1)).length === 2 && R.sources(s, I(1, 2)).length === 0, 'an empty square next to a base gives no freedom');
   t('a base of another group cannot move', R.sources(s, I(1, 1)).every((i) => i !== I(5, 5)));
   const a = R.apply(s, { type: 'move', R: I(1, 1), from: I(2, 1), to: I(3, 1), count: 2 });
   t('move from the group base that is not the chosen square', a.cells[I(3, 1)].n === 2 && a.cells[I(2, 1)].n === 2 && a.turn === 1);

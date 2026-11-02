@@ -97,11 +97,11 @@
     return camp(s, p) > 0 && (c.o === null || c.o === p) && !enemyNext(s, R, p) && g.owner[g.id[R]] !== 1 - p;
   }
   const canWithdraw = (s, R) => s.cells[R].o === s.turn;
-  // bases that may move: the group of R (or of an own base next to R), and every base of a province you hold that contains R
+  // bases that may move: the group of R (when R holds your base), and every base of a province you hold that contains R
   function sources(s, R) {
     const p = s.turn, g = regions(s), set = new Set();
     if (g.owner[g.id[R]] === p) for (const i of g.lists[g.id[R]]) if (s.cells[i].o === p) set.add(i);
-    for (const i of [R, ...neighbors(s, R)]) if (s.cells[i].o === p) for (const j of group(s, i)) set.add(j);
+    if (s.cells[R].o === p) for (const j of group(s, R)) set.add(j);   // a square merely next to your base gives no freedom of action
     return [...set];
   }
   const moveTargets = (s, from) => neighbors(s, from);
