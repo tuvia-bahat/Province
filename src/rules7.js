@@ -8,7 +8,7 @@
  *   move      from a base of the chosen square's group, to a neighbouring square (an enemy base = attack)
  *   transport from a base inside a province you hold, in a straight line through it, to another square of it
  *   pass      only after the third roll
- *   wall      a chain of connected walls, each on a side of a square that holds a base of the same group of adjacent bases
+ *   wall      one wall on a side of the chosen square (which must hold your own base)
  * Provinces: walls (and the edge of the board) cut the board into parts; every part except the biggest is a closed province.
  * A province belongs to the player who has soldiers in it and the other has none; with soldiers of both, or none, it is neutral.
  * Adjacent own bases are one group (they can act together) but are not a province by themselves.
@@ -129,31 +129,19 @@
     const [ax, ay] = xy(a), [bx, by] = xy(b);
     return Math.abs(ax - bx) + Math.abs(ay - by) === 1;
   }
-  // the two end points of the wall between neighbouring squares a and b
-  function edgeEnds(a, b) {
-    const [ax, ay] = xy(a), [bx, by] = xy(b);
-    return ax !== bx ? [[Math.max(ax, bx), ay], [Math.max(ax, bx), ay + 1]] : [[ax, Math.max(ay, by)], [ax + 1, Math.max(ay, by)]];
-  }
-  const touches = (e, f) => { const A = edgeEnds(e[0], e[1]), B = edgeEnds(f[0], f[1]); return A.some((u) => B.some((v) => u[0] === v[0] && u[1] === v[1])); };
-  // walls that may be added next to the chain 'chosen' ([[a,b],...]) from chosen square R: the first on a side of R itself, the next ones on sides of squares holding a base of R's group and touching the chain
-  function wallCandidates(s, R, chosen) {
-    chosen = chosen || [];
+  // the walls that can be built from chosen square R: on any of its sides (R must hold your base); one wall per turn
+  function wallCandidates(s, R) {
     if (s.cells[R].o !== s.turn) return [];
-    const have = new Set(chosen.map((e) => wkey(e[0], e[1]))), out = [];
-    for (const i of chosen.length ? group(s, R) : [R]) {   // the first wall goes on the base you picked; the chain may then run along its group
-      const [x, y] = xy(i);
-      for (const [dx, dy] of DIRS) {
-        const nx = x + dx, ny = y + dy;
-        if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
-        const j = idx(nx, ny), k = wkey(i, j);
-        if (s.walls[k] || have.has(k)) continue;
-        if (chosen.length && !chosen.some((e) => touches(e, [i, j]))) continue;
-        out.push({ a: i, b: j });
-      }
+    const [x, y] = xy(R), out = [];
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
+      const j = idx(nx, ny);
+      if (!s.walls[wkey(R, j)]) out.push({ a: R, b: j });
     }
     return out;
   }
-  const wallSides = (s, R) => wallCandidates(s, R, []);   // can the chosen square start a wall at all
+  const wallSides = wallCandidates;
 
   function endTurn(s) {
     const p = s.turn;
@@ -195,17 +183,12 @@
       }
       if (src.n === 0) src.o = null;
     } else if (act.type === 'wall') {
-      const list = act.walls || [];
-      if (!list.length) throw new Error('no walls');
+      const e = act.walls && act.walls[0];
+      if (!e || act.walls.length !== 1) throw new Error('one wall per turn');
       if (s.cells[act.R].o !== p) throw new Error('a wall can only be built from a square with your own base');
-      const chain = [];
-      for (const e of list) {
-        if (!edgeOk(e[0], e[1])) throw new Error('bad wall');
-        if (!wallCandidates(s, act.R, chain).some((c) => wkey(c.a, c.b) === wkey(e[0], e[1]))) throw new Error('cannot put a wall there');
-        chain.push(e);
-      }
-      for (const e of chain) ns.walls[wkey(e[0], e[1])] = 1;
-      ns.log.push(`${name}: built ${chain.length} wall${chain.length > 1 ? 's' : ''}`);
+      if (!edgeOk(e[0], e[1]) || !wallCandidates(s, act.R).some((c) => wkey(c.a, c.b) === wkey(e[0], e[1]))) throw new Error('cannot put a wall there');
+      ns.walls[wkey(e[0], e[1])] = 1;
+      ns.log.push(`${name}: built a wall`);
     } else throw new Error('unknown action');
     endTurn(ns);
     return ns;

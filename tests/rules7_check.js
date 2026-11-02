@@ -73,24 +73,15 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, vx: 3, vy: 3, cells }; s.r
   t('transport moves the chosen soldiers to one square', r.cells[I(2, 0)].n === 6 && r.cells[I(0, 0)].n === 1);
   t('no transport outside a province', R.transportTargets(put(R.newGame(), 0, [[0, 0, 5]]), I(0, 0)).length === 0);
 }
-// walls: unlimited, shared, a connected chain next to bases of one group
+// walls: unlimited, shared, one per turn, on a side of the chosen square that holds your base
 {
-  let s = R.roll(put(R.newGame(), 0, [[1, 1, 3], [2, 1, 3]]), 2, 2);   // flag on point (2,2): squares (1,1) (2,1) (1,2) (2,2)
-  t('a square without your base cannot start a wall', R.wallCandidates(s, I(1, 2), []).length === 0);
-  const c0 = R.wallCandidates(s, I(1, 1), []);
-  t('first wall: only a side of the base you picked (4 sides)', c0.length === 4, 'got ' + c0.length);
-  const chain = [[I(1, 1), I(1, 0)], [I(1, 0), I(2, 0)].map((x) => x)];   // second is not on a side of a base square
-  t('a wall not next to a base of the group is refused', throws(() => R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)], [I(3, 3), I(3, 2)]] })));
-  t('a wall that does not touch the first one is refused', throws(() => R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)], [I(2, 1), I(2, 2)]] })));
-  const ok = R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)], [I(2, 1), I(2, 0)]] });   // two top sides of the two bases: they touch at a point
-  t('a connected chain along both bases is built in one turn', R.wallCount(ok) === 2 && ok.turn === 1);
-  t('no wall from a square without your own base', throws(() => R.apply(s, { type: 'wall', R: I(1, 2), walls: [[I(1, 2), I(1, 3)]] })));
-  void chain;
-  // close a province with a chain along a row of bases and win it over turns
-  let w = put(R.newGame(), 0, [[0, 2, 1], [1, 2, 1], [2, 2, 1]]);
-  w = R.roll(w, 1, 3);   // point (1,3): squares (0,2) (1,2) (0,3) (1,3)
-  const r = R.apply(w, { type: 'wall', R: I(0, 2), walls: [[I(0, 2), I(0, 3)], [I(1, 2), I(1, 3)], [I(2, 2), I(2, 3)]] });
-  t('three connected walls under a row of bases', R.wallCount(r) === 3);
+  const s = R.roll(put(R.newGame(), 0, [[1, 1, 3], [2, 1, 3]]), 2, 2);   // squares (1,1) (2,1) (1,2) (2,2)
+  t('a square without your base cannot take a wall', R.wallCandidates(s, I(1, 2)).length === 0 && throws(() => R.apply(s, { type: 'wall', R: I(1, 2), walls: [[I(1, 2), I(1, 3)]] })));
+  t('the 4 sides of the chosen base are offered', R.wallCandidates(s, I(1, 1)).length === 4);
+  const ok = R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)]] });
+  t('a wall is built, costs nothing, and the turn passes', R.wallCount(ok) === 1 && ok.turn === 1);
+  t('two walls in one turn are refused', throws(() => R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(1, 1), I(1, 0)], [I(2, 1), I(2, 0)]] })));
+  t('a side of another square is refused', throws(() => R.apply(s, { type: 'wall', R: I(1, 1), walls: [[I(2, 1), I(2, 0)]] })));
 }
 // win: closed provinces you hold add up to 25 squares at the end of your turn
 {
