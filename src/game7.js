@@ -25,7 +25,7 @@
     const svg = $('board'), own = R.owners(s), p = s.turn, color = COLORS[p];
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
     const rolled = s.roll && s.winner === null ? s.roll.cells : [];
-    const sh = ui.sheet, opts = ui.src !== null && !sh ? new Set([ui.src, ...targets(ui.src).map((t) => t.to)]) : null;
+    const sh = ui.sheet, opts = ui.src !== null && !(sh && sh.kind === 'move') ? new Set([ui.src, ...targets(ui.src).map((t) => t.to)]) : null;
     const involved = opts || (sh ? new Set([sh.from, sh.cell, sh.to].filter((v) => v !== undefined)) : null);
     if (sh && sh.kind === 'adjust') involved.add(sh.cell);
     let h = '';
@@ -167,13 +167,14 @@
     if (m === 'add') { sh.min = 1; sh.max = R.camp(s, p); sh.count = Math.min(sh.max, 4); sh.build = (n) => ({ type: 'land', R: sh.cell, count: n }); }
     else if (m === 'withdraw') { sh.min = 1; sh.max = s.cells[sh.cell].n; sh.count = sh.max; sh.build = (n) => ({ type: 'withdraw', R: sh.cell, count: n }); }
   }
-  function openAdjust(i) {   // a tap on a rolled square: the count slider opens at once (land / reinforce, withdraw, or a wall)
+  function openAdjust(i, src) {   // a tap on a rolled square: the count slider opens at once (land / reinforce, withdraw, or a wall)
     const modes = [];
     if (R.canLand(s, i)) modes.push('add');
     if (R.canWithdraw(s, i)) modes.push('withdraw');
     if (R.wallSides(s, i).length) modes.push('wall');
-    if (!modes.length) return;
-    ui = fresh(); ui.sheet = { kind: 'adjust', cell: i, modes, cap: '' };
+    ui = fresh(); ui.src = src === undefined ? null : src;
+    if (!modes.length) { render(); return; }
+    ui.sheet = { kind: 'adjust', cell: i, modes, cap: '' };
     setMode(ui.sheet, modes[0]);
     render();
   }
@@ -198,7 +199,7 @@
     if (!active || s.winner !== null || !s.roll || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const wl = e.target.closest('[data-w]');
     if (wl) { down = { wall: wl.dataset.w }; return; }
-    if (ui.sheet) { down = null; return; }
+    if (ui.sheet && ui.sheet.kind === 'move') { down = null; return; }
     down = { i: cellAt(e), x: e.clientX, y: e.clientY };
   }
   function onUp(e) {
@@ -212,12 +213,15 @@
       if (t) openMove(rc, i, t);
       return;
     }
-    if (ui.src !== null) {   // a base was picked by tap: tap a lit square to go there
-      const t = targets(ui.src).find((q) => q.to === i);
-      if (t) { openMove(mandate(ui.src), ui.src, t); return; }
+    const prev = ui.src;
+    if (prev !== null) {   // a base is picked: tap a lit square to go there
+      const tg = targets(prev).find((q) => q.to === i);
+      if (tg) { openMove(mandate(prev), prev, tg); return; }
     }
-    if (s.roll.cells.includes(i)) { openAdjust(i); return; }
-    if (mandate(i) !== null) { ui = Object.assign(fresh(), { src: ui.src === i ? null : i }); render(); return; }
+    // like the real game: a tap on a base picks it (its targets light up) and opens the count slider for the square at the same time
+    const mv = mandate(i) !== null;
+    if (s.roll.cells.includes(i)) { openAdjust(i, mv ? i : null); return; }
+    if (mv) { ui = Object.assign(fresh(), { src: prev === i ? null : i }); render(); return; }
     ui.src = null; render();
   }
 
