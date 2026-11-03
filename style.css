@@ -422,3 +422,4 @@ button.lb-community { border: 0; cursor: pointer; font-family: inherit; }
 .cell.sq.c0.deep, .cell.sq.c1.deep { filter: brightness(.94); }
 .g7-grid { stroke: var(--dot); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
 .g7-terr { pointer-events: none; }
+body.g7on #tutPrompt { display: none !important; }
