@@ -74,17 +74,16 @@
   const canWithdraw = (s, R) => sources(s, R).length > 0;
   // a move may go to any of the 8 neighbouring points that holds no enemy base
   const moveTargets = (s, from) => around(from).filter((j) => s.cells[j].o !== 1 - s.turn);
-  // straight lines (8 directions) through your territory: [{ to, steps }]
+  // straight lines (8 directions) through your territory and your own bases: [{ to, steps }]
   function transportTargets(s, from) {
     const p = s.turn, out = [], [fx, fy] = xy(from);
-    if (s.own[from] !== p) return out;
     for (const [dx, dy] of DIRS8) {
       let cx = fx, cy = fy, steps = 0;
       for (;;) {
         const nx = cx + dx, ny = cy + dy;
         if (nx < 0 || nx >= N || ny < 0 || ny >= N) break;
         const b = idx(nx, ny);
-        if (s.own[b] !== p || s.cells[b].o === 1 - p) break;
+        if (s.cells[b].o === 1 - p || (s.own[b] !== p && s.cells[b].o !== p)) break;   // only through your territory and your own bases
         steps++; out.push({ to: b, steps });
         cx = nx; cy = ny;
       }

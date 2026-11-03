@@ -98,7 +98,9 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; retu
   t('transport along a row inside your territory', R.transportTargets(s, I(0, 0)).some((x) => x.to === I(3, 0)));
   const r = R.apply(s, { type: 'transport', R: I(0, 0), from: I(0, 0), to: I(3, 0), count: 4 });
   t('transport moves the chosen soldiers to one point', r.cells[I(3, 0)].n === 6 && r.cells[I(0, 0)].n === 1);
-  t('no transport outside your territory', R.transportTargets(put(R.newGame(), 0, [[0, 0, 5]]), I(0, 0)).length === 0);
+  const line = put(R.newGame(), 0, [[0, 0, 4], [1, 0, 1], [2, 0, 1]]); line.own[I(0, 0)] = 0; line.own[I(1, 0)] = 0; rolled(line, [I(0, 0), I(7, 7)]);
+  t('transport two points along a line of your bases, also when the far base is not in the closed territory', R.transportTargets(line, I(0, 0)).some((x) => x.to === I(2, 0) && x.steps === 2));
+  t('no transport through empty points that are not yours', R.transportTargets(put(R.newGame(), 0, [[0, 0, 5]]), I(0, 0)).length === 0);
   const all = claim(put(R.newGame(), 0, [[0, 0, 5], [3, 1, 2], [7, 7, 1]]), 0, 0, 0, 3, 1); rolled(all, [I(1, 0), I(6, 7)]);
   t('a rolled point inside your territory connects all its bases', R.sources(all, I(1, 0)).includes(I(0, 0)) && R.sources(all, I(1, 0)).includes(I(3, 1)) && !R.sources(all, I(1, 0)).includes(I(7, 7)));
 }
