@@ -9,7 +9,8 @@
  *   pass
  * Closing territory (like Go): your bases, connected side to side or diagonally, and the edge of the board enclose points that connect to each
  * other only side to side. Every enclosed part except the biggest is closed: its points - and the bases around them - become your territory.
- * Enemy bases inside are removed from the board, and enemy territory inside becomes yours. A diagonal gap between two of your bases is open:
+ * Enemy bases inside are removed from the board. A part that contains closed enemy territory can be closed only by penetrating it (one base of your wall stands
+ * on enemy territory); then the enemy territory inside becomes yours. A diagonal gap between two enemy bases is open:
  * bases can move through it, also into territory that looks closed.
  * Win: your territories (they need not touch) cover more than half of the board at the end of your turn.
  */
@@ -117,6 +118,8 @@
     let closed = 0, out = 0;
     for (const l of comps) {
       if (l.length === big) continue;
+      // closed enemy territory is not yours to enclose, unless you penetrated it: one of the bases of your wall stands on enemy territory
+      if (l.some((i) => s.own[i] === q) && !l.some((i) => around(i).some((b) => s.cells[b].o === p && s.own[b] === q))) continue;
       for (const i of l) {
         if (s.own[i] !== p) { s.own[i] = p; closed++; }
         if (s.cells[i].o === q) { out += s.cells[i].n; s.graveyard[q] += s.cells[i].n; s.cells[i].o = null; s.cells[i].n = 0; }

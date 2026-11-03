@@ -77,10 +77,20 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; retu
   t('a base can step diagonally into the closed corner', R.options(b, I(1, 1)).some((o) => o.to === I(0, 0)));
   const b2 = R.apply(b, { type: 'move', R: I(1, 1), from: I(1, 1), to: I(0, 0), count: 2 });
   t('...and stands inside enemy territory', b2.cells[I(0, 0)].o === 1 && b2.own[I(0, 0)] === 0);
-  // a column of bases closes the right side, which contains closed enemy territory: it is eaten
-  const col = put(R.newGame(), 0, [0, 1, 2, 3, 4, 5, 6].map((y) => [4, y, 1])); col.own[I(7, 7)] = 1; col.own[I(7, 6)] = 1;
-  const c = R.apply(rolled(col, [I(4, 7), I(3, 0)]), { type: 'land', R: I(4, 7), count: 1 });
-  t('closing over enemy territory takes it', c.own[I(7, 7)] === 0 && c.own[I(7, 6)] === 0 && R.territorySize(c, 1) === 0);
+  // a column of bases across the board closes the right side; if it contains closed enemy territory, only a base that penetrated it makes that possible
+  const mk = (invade) => {
+    const col = put(R.newGame(), 0, [0, 1, 2, 3, 4, 5, 6].map((y) => [4, y, 1]));
+    for (let y = 6; y <= 7; y++) for (let x = 5; x <= 7; x++) col.own[I(x, y)] = 1;
+    if (invade) col.own[I(4, 6)] = 1;   // one base of the chain stands on enemy territory
+    return col;
+  };
+  const c0 = R.apply(rolled(mk(false), [I(4, 7), I(3, 0)]), { type: 'land', R: I(4, 7), count: 1 });
+  t('closing around closed enemy territory without penetrating it closes nothing', R.territorySize(c0, 0) === 0 && c0.own[I(7, 7)] === 1);
+  const c1 = R.apply(rolled(mk(true), [I(4, 7), I(3, 0)]), { type: 'land', R: I(4, 7), count: 1 });
+  t('after penetrating it, the closed part takes the enemy territory inside', c1.own[I(7, 7)] === 0 && c1.own[I(5, 6)] === 0 && R.territorySize(c1, 1) === 0, 'enemy keeps ' + R.territorySize(c1, 1));
+  const eb = mk(true); put(eb, 1, [[6, 6, 3]]);
+  const c2 = R.apply(rolled(eb, [I(4, 7), I(3, 0)]), { type: 'land', R: I(4, 7), count: 1 });
+  t('an enemy base inside the closed part leaves the board', c2.cells[I(6, 6)].o === null && c2.graveyard[1] === 3);
 }
 // transport inside your territory
 {
