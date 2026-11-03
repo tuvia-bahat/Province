@@ -1,24 +1,25 @@
-/* Province – new-rules prototype ("squares", third game): engine. Works in the browser (window.Rules7) and in Node (module.exports).
+/* Province – new-rules prototype ("squares" -> points, Go-like, third game): engine. Works in the browser (window.Rules7) and in Node (module.exports).
  *
- * Board: 8x8 squares, no rivers, no walls, no attacks. 54 soldiers each. A turn: roll the dice once (two numbers, x and y);
- * they mark two opposite squares (as in the original game). One action per turn:
- *   land      new soldiers on a rolled square (empty or your base; next to an enemy base is fine; not in enemy territory)
- *   withdraw  soldiers from a base connected to the rolled square (see sources) back to camp
- *   move      from a base standing on or next to a rolled square, to any neighbouring square (never onto an enemy base or into enemy territory)
- *   transport from a base connected to the rolled square, in a straight line through your closed territory
+ * Board: 8x8 points (like Go), no rivers, no walls, no attacks. 32 soldiers each. Bases touch each other in 8 directions (a diagonal contact connects).
+ * A turn: roll the dice once (two numbers, x and y); they mark two opposite points (as in the original game). One action per turn:
+ *   land      new soldiers on a rolled point (empty or your base; next to an enemy base is fine; not in enemy territory)
+ *   withdraw  soldiers from a base connected to the rolled point (see sources) back to camp
+ *   move      from a base connected to the rolled point, to any of the 8 neighbouring points that holds no enemy base
+ *   transport from a base connected to the rolled point, in a straight line through your territory
  *   pass
- * Closing territory: when your bases (touching side to side - a diagonal touch leaves a gap) and the edge of the board enclose empty squares (the smaller side of the cut, never the biggest part),
- * those squares - and the bases around them - become your closed territory. Enemy bases inside are removed from the board.
- * Only your own bases and the board edge are walls; a part that contains closed enemy territory cannot be closed (build an inner chain next to it).
- * Closed territory is permanent and enemies cannot enter it.
- * Win: your closed territories (they need not touch) cover more than half of the board at the end of your turn.
+ * Closing territory (like Go): your bases, connected side to side or diagonally, and the edge of the board enclose points that connect to each
+ * other only side to side. Every enclosed part except the biggest is closed: its points - and the bases around them - become your territory.
+ * Enemy bases inside are removed from the board, and enemy territory inside becomes yours. A diagonal gap between two of your bases is open:
+ * bases can move through it, also into territory that looks closed.
+ * Win: your territories (they need not touch) cover more than half of the board at the end of your turn.
  */
 (function (root) {
   'use strict';
-  const N = 8, CELLS = N * N, SOLDIERS = 54, WIN = Math.floor(CELLS / 2) + 1, MAX_ROLLS = 1;   // more than half of the board: 33 squares
+  const N = 8, CELLS = N * N, SOLDIERS = 32, WIN = Math.floor(CELLS / 2) + 1, MAX_ROLLS = 1;   // more than half of the board: 33 squares
   const idx = (x, y) => y * N + x;
   const xy = (i) => [i % N, Math.floor(i / N)];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const DIRS8 = [...DIRS, [1, 1], [1, -1], [-1, 1], [-1, -1]];
   const clone = (s) => JSON.parse(JSON.stringify(s));
 
   function newGame() {
@@ -34,16 +35,16 @@
   const owners = (s) => s.own;
   const territorySize = (s, p) => s.own.reduce((a, o) => a + (o === p ? 1 : 0), 0);
 
-  const around = (i) => {   // the 8 squares around i
+  const around = (i) => {   // the 8 points around i
     const [x, y] = xy(i), out = [];
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if ((dx || dy) && nx >= 0 && nx < N && ny >= 0 && ny < N) out.push(idx(nx, ny)); }
+    for (const [dx, dy] of DIRS8) { const nx = x + dx, ny = y + dy; if (nx >= 0 && nx < N && ny >= 0 && ny < N) out.push(idx(nx, ny)); }
     return out;
   };
-  // own bases that touch each other: the chain containing base i
+  // own bases that touch each other (also diagonally): the chain containing base i
   function group(s, i) {
     const p = s.cells[i].o, seen = new Set([i]), list = [i];
     if (p === null) return [];
-    for (let h = 0; h < list.length; h++) for (const j of neighbors(list[h])) if (s.cells[j].o === p && !seen.has(j)) { seen.add(j); list.push(j); }
+    for (let h = 0; h < list.length; h++) for (const j of around(list[h])) if (s.cells[j].o === p && !seen.has(j)) { seen.add(j); list.push(j); }
     return list;
   }
 
@@ -58,27 +59,25 @@
 
   // ---------- what the player may do ----------
   const canLand = (s, R) => camp(s, s.turn) > 0 && (s.cells[R].o === null || s.cells[R].o === s.turn) && s.own[R] !== 1 - s.turn;
-  // bases that may move from rolled square R: standing on it or next to it
-  const movers = (s, R) => [R, ...neighbors(R)].filter((i) => s.cells[i].o === s.turn);
-  // bases connected to rolled square R: the chains of its movers, and every base in your closed territory that contains R
+  // bases connected to rolled point R: the chains of the bases on or next to it, and every base in your territory that contains R
   function sources(s, R) {
     const p = s.turn, set = new Set();
-    for (const i of movers(s, R)) for (const j of group(s, i)) set.add(j);
+    for (const i of [R, ...around(R)]) if (s.cells[i].o === p) for (const j of group(s, i)) set.add(j);
     if (s.own[R] === p) {
       const seen = new Set([R]), list = [R];
-      for (let h = 0; h < list.length; h++) for (const j of neighbors(list[h])) if (s.own[j] === p && !seen.has(j)) { seen.add(j); list.push(j); }
+      for (let h = 0; h < list.length; h++) for (const j of around(list[h])) if (s.own[j] === p && !seen.has(j)) { seen.add(j); list.push(j); }
       for (const i of list) if (s.cells[i].o === p) set.add(i);
     }
     return [...set];
   }
   const canWithdraw = (s, R) => sources(s, R).length > 0;
-  // a move may go to a neighbour that holds no enemy base and is not enemy territory
-  const moveTargets = (s, from) => neighbors(from).filter((j) => s.cells[j].o !== 1 - s.turn && s.own[j] !== 1 - s.turn);
-  // straight lines through your closed territory: [{ to, steps }]
+  // a move may go to any of the 8 neighbouring points that holds no enemy base
+  const moveTargets = (s, from) => around(from).filter((j) => s.cells[j].o !== 1 - s.turn);
+  // straight lines (8 directions) through your territory: [{ to, steps }]
   function transportTargets(s, from) {
     const p = s.turn, out = [], [fx, fy] = xy(from);
     if (s.own[from] !== p) return out;
-    for (const [dx, dy] of DIRS) {
+    for (const [dx, dy] of DIRS8) {
       let cx = fx, cy = fy, steps = 0;
       for (;;) {
         const nx = cx + dx, ny = cy + dy;
@@ -96,31 +95,32 @@
     const out = new Map();
     if (!s.roll || s.cells[from].o !== s.turn) return [];
     for (const rc of s.roll.cells) {
-      if (movers(s, rc).includes(from)) for (const j of moveTargets(s, from)) if (!out.has(j)) out.set(j, { to: j, type: 'move', R: rc });
-      if (sources(s, rc).includes(from)) for (const tr of transportTargets(s, from)) if (!out.has(tr.to)) out.set(tr.to, { to: tr.to, type: 'transport', R: rc });
+      if (!sources(s, rc).includes(from)) continue;
+      for (const j of moveTargets(s, from)) if (!out.has(j)) out.set(j, { to: j, type: 'move', R: rc });
+      for (const tr of transportTargets(s, from)) if (!out.has(tr.to)) out.set(tr.to, { to: tr.to, type: 'transport', R: rc });
     }
     return [...out.values()];
   }
 
   // ---------- closing territory ----------
-  // the parts of the board that player p's bases cut it into (bases themselves are the barrier); every part except the biggest is closed
+  // the parts of the board that player p's bases (connected also diagonally) cut it into; points of a part connect side to side only.
+  // every part except the biggest is closed: it becomes p's territory, enemy bases in it are removed
   function claim(s, p) {
     const q = 1 - p, seen = new Array(CELLS).fill(false), comps = [];
     for (let i = 0; i < CELLS; i++) {
       if (seen[i] || s.cells[i].o === p) continue;
       const list = [i]; seen[i] = true;
-      for (let h = 0; h < list.length; h++) for (const j of around(list[h])) if (!seen[j] && s.cells[j].o !== p) { seen[j] = true; list.push(j); }   // empty squares connect diagonally too: bases that only touch diagonally leave a gap
+      for (let h = 0; h < list.length; h++) for (const j of neighbors(list[h])) if (!seen[j] && s.cells[j].o !== p) { seen[j] = true; list.push(j); }
       comps.push(list);
     }
     const big = comps.reduce((m, l) => Math.max(m, l.length), 0);
     let closed = 0, out = 0;
     for (const l of comps) {
-      if (l.length === big || l.some((i) => s.own[i] === q)) continue;   // enemy bases and enemy territory are no wall: a part that includes closed enemy territory is not closed by you
+      if (l.length === big) continue;
       for (const i of l) {
-        if (s.own[i] !== null) continue;
-        s.own[i] = p; closed++;
+        if (s.own[i] !== p) { s.own[i] = p; closed++; }
         if (s.cells[i].o === q) { out += s.cells[i].n; s.graveyard[q] += s.cells[i].n; s.cells[i].o = null; s.cells[i].n = 0; }
-        for (const b of around(i)) if (s.cells[b].o === p && s.own[b] === null) { s.own[b] = p; closed++; }   // the bases around it belong to the territory too
+        for (const b of around(i)) if (s.cells[b].o === p && s.own[b] !== p) { s.own[b] = p; closed++; }   // the bases around it belong to the territory too
       }
     }
     return { closed, out };
@@ -166,7 +166,7 @@
 
   root.Rules7 = {
     N, CELLS, SOLDIERS, WIN, MAX_ROLLS, idx, xy, newGame, neighbors, onBoard, camp, owners, group, territorySize, roll,
-    canLand, canWithdraw, movers, sources, moveTargets, transportTargets, options, claim, apply, pass, clone,
+    canLand, canWithdraw, sources, moveTargets, transportTargets, options, claim, apply, pass, clone,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules7;
 })(typeof window !== 'undefined' ? window : globalThis);

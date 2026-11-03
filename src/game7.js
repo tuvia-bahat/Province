@@ -12,16 +12,15 @@
   function reset() { s = R.newGame(); hist = []; ui = fresh(); $('overlay').hidden = true; render(); }
 
   // ---------- board ----------
-  const sq = (i, ring) => { const g = ring ? 1.5 : 4, x = (i % R.N) * S + g, y = (R.N - 1 - Math.floor(i / R.N)) * S + g; return `x="${x}" y="${y}" width="${S - 2 * g}" height="${S - 2 * g}" rx="${ring ? 9 : 7}"`; };
   const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => (R.N - 1 - Math.floor(i / R.N)) * S + S / 2;   // row 1 is at the bottom, like the original game
   const targets = (from) => R.options(s, from);   // where the chosen base can go
   function canPlay(i) { return R.canLand(s, i) || R.sources(s, i).length > 0; }
-  // the rolled square that lets you use base i (to withdraw from it, or to move from it), or undefined
+  // the rolled point that lets you use base i (to withdraw from it, or to move from it), or undefined
   const authRc = (i) => s.roll && s.roll.cells.find((c) => R.sources(s, c).includes(i));
   function renderBoard() {
     const svg = $('board'), own = R.owners(s), p = s.turn, color = COLORS[p];
     svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
-    const rolled = s.roll && s.winner === null ? s.roll.cells.filter(canPlay) : [];   // only the squares you can actually play are marked
+    const rolled = s.roll && s.winner === null ? s.roll.cells : [];   // the rolled points are always marked, even when nothing can be played there
     const sh = ui.sheet, opts = ui.src !== null && !(sh && sh.kind === 'move') ? new Set([ui.src, ...targets(ui.src).map((t) => t.to)]) : null;
     const involved = opts || (sh ? new Set([sh.from, sh.cell, sh.to].filter((v) => v !== undefined)) : null);
     if (sh && sh.kind === 'adjust') involved.add(sh.cell);
@@ -29,17 +28,22 @@
     const playSrc = new Set();
     if (!opts && !sh) for (const rc of rolled) for (const i of R.sources(s, rc)) playSrc.add(i);
     let h = '';
-    for (const i of rolled) {   // light fill under the squares of the rolled point where something can be played
-      if (!involved || involved.has(i)) h += `<rect class="roll-fill" ${sq(i, 1)} fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
+    for (let k = 0; k < R.N; k++) {   // the lines of the board, like Go
+      h += `<line class="g7-grid" x1="${cx(R.idx(k, 0))}" y1="${cy(R.idx(k, 0))}" x2="${cx(R.idx(k, R.N - 1))}" y2="${cy(R.idx(k, R.N - 1))}"/>`;
+      h += `<line class="g7-grid" x1="${cx(R.idx(0, k))}" y1="${cy(R.idx(0, k))}" x2="${cx(R.idx(R.N - 1, k))}" y2="${cy(R.idx(R.N - 1, k))}"/>`;
+    }
+    for (let i = 0; i < R.CELLS; i++) if (own[i] !== null) h += `<circle class="g7-terr" cx="${cx(i)}" cy="${cy(i)}" r="${CR + 5}" fill="${own[i] ? 'var(--p1-soft)' : 'var(--p0-soft)'}"/>`;
+    for (const i of rolled) {   // light fill under a rolled point where something can be played
+      if (canPlay(i) && (!involved || involved.has(i))) h += `<circle class="roll-fill" cx="${cx(i)}" cy="${cy(i)}" r="${CR + 4}" fill="${p ? 'rgba(58,156,245,.16)' : 'rgba(52,201,138,.2)'}"/>`;
     }
     if (sh && sh.to !== undefined) h += `<line class="drag-line" x1="${cx(sh.from)}" y1="${cy(sh.from)}" x2="${cx(sh.to)}" y2="${cy(sh.to)}" stroke="${color}"/>`;
     for (let i = 0; i < R.CELLS; i++) {
       const c = s.cells[i], x = cx(i), y = cy(i), lit = opts ? opts.has(i) : sh ? involved.has(i) : false;
       const isDest = (opts && i !== ui.src && opts.has(i)) || (sh && sh.to !== undefined && i === sh.to);
-      h += `<rect class="cell sq${own[i] !== null ? ' c' + own[i] : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" ${sq(i, 0)}/>`;
-      if (isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
-      else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<rect class="ring-roll" style="animation:none" ${sq(i, 1)} stroke="${color}"/>`;
-      if (sh && sh.kind === 'adjust' && sh.cell === i && !isDest) h += `<rect class="ring-dest" ${sq(i, 1)} stroke="${color}"/>`;
+      h += `<circle class="cell${own[i] !== null ? ' c' + own[i] : ''}${lit && (c.o === null || isDest || rolled.includes(i)) ? ' deep' : ''}" cx="${x}" cy="${y}" r="${DOT_R}"/>`;
+      if (isDest) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
+      else if (rolled.includes(i) && (!involved || involved.has(i))) h += `<circle class="ring-roll" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
+      if (sh && sh.kind === 'adjust' && sh.cell === i && !isDest) h += `<circle class="ring-dest" cx="${x}" cy="${y}" r="${CR + 4}" stroke="${color}"/>`;
       if (playSrc.has(i) && !rolled.includes(i)) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (ui.src === i && c.o !== null) h += `<circle class="ring-float" cx="${x}" cy="${y}" r="${CR + 4}"/>`;
       if (c.o !== null) h += `<circle data-i="${i}" class="base p${c.o}${isDest ? ' dest' : ''}" cx="${x}" cy="${y}" r="${CR}"/><text data-i="${i}" class="cnt" style="font-size:${FS}px" x="${x}" y="${y + 1}">${c.n}</text>`;
