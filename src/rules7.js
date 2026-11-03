@@ -9,6 +9,7 @@
  *   pass
  * Closing territory: when your bases (touching side to side - a diagonal touch leaves a gap) and the edge of the board enclose empty squares (the smaller side of the cut, never the biggest part),
  * those squares - and the bases around them - become your closed territory. Enemy bases inside are removed from the board.
+ * Only your own bases and the board edge are walls; a part that contains closed enemy territory cannot be closed (build an inner chain next to it).
  * Closed territory is permanent and enemies cannot enter it.
  * Win: your closed territories (they need not touch) cover more than half of the board at the end of your turn.
  */
@@ -114,7 +115,7 @@
     const big = comps.reduce((m, l) => Math.max(m, l.length), 0);
     let closed = 0, out = 0;
     for (const l of comps) {
-      if (l.length === big) continue;
+      if (l.length === big || l.some((i) => s.own[i] === q)) continue;   // enemy bases and enemy territory are no wall: a part that includes closed enemy territory is not closed by you
       for (const i of l) {
         if (s.own[i] !== null) continue;
         s.own[i] = p; closed++;

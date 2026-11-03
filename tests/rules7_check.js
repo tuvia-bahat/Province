@@ -61,6 +61,14 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; retu
   const col = put(R.newGame(), 0, [[2, 0, 1], [2, 1, 1], [2, 2, 1], [2, 3, 1], [2, 4, 1], [2, 5, 1], [2, 6, 1]]);
   const c = R.apply(rolled(col, [I(2, 7), I(5, 0)]), { type: 'land', R: I(2, 7), count: 1 });
   t('a chain across the board closes the smaller side', c.own[I(0, 0)] === 0 && c.own[I(5, 3)] === null && R.territorySize(c, 0) === 24, 'size ' + R.territorySize(c, 0));
+  // enemy closed territory is no wall: a part that contains it cannot be closed
+  const col2 = (x) => put(R.newGame(), 0, [0, 1, 2, 3, 4, 5, 6].map((y) => [x, y, 1]));
+  const withEnemy = col2(4); withEnemy.own[I(7, 7)] = 1;
+  const c2 = R.apply(rolled(withEnemy, [I(4, 7), I(3, 0)]), { type: 'land', R: I(4, 7), count: 1 });
+  t('a chain around closed enemy territory closes nothing', R.territorySize(c2, 0) === 0 && c2.own[I(7, 7)] === 1);
+  const inner = col2(1); inner.own[I(7, 7)] = 1;
+  const c3 = R.apply(rolled(inner, [I(1, 7), I(6, 0)]), { type: 'land', R: I(1, 7), count: 1 });
+  t('an inner chain that keeps the enemy territory out closes the rest', R.territorySize(c3, 0) === 16 && c3.own[I(7, 7)] === 1, 'size ' + R.territorySize(c3, 0));
   // nothing is closed by a lone base
   const lone = R.apply(rolled(put(R.newGame(), 0, [[3, 3, 1]]), [I(4, 3), I(3, 4)]), { type: 'land', R: I(4, 3), count: 1 });
   t('two lone bases close nothing', R.territorySize(lone, 0) === 0);
