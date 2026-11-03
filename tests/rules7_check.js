@@ -49,10 +49,12 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; retu
 }
 // closing territory
 {
-  const s = put(put(R.newGame(), 0, [[0, 1, 2]]), 1, [[0, 0, 2]]);   // Green has (0,1); Blue sits in the corner (0,0)
-  const a = R.apply(rolled(s, [I(1, 0), I(6, 7)]), { type: 'land', R: I(1, 0), count: 1 });   // Green lands on (1,0): the corner is enclosed
-  t('bases and the edge of the board enclose the corner square', a.own[I(0, 0)] === 0);
-  t('the bases around it belong to the territory', a.own[I(1, 0)] === 0 && a.own[I(0, 1)] === 0 && R.territorySize(a, 0) === 3);
+  const s = put(put(R.newGame(), 0, [[0, 1, 2], [1, 1, 2]]), 1, [[0, 0, 2]]);   // Green has (0,1) and (1,1); Blue sits in the corner (0,0)
+  const gap = R.apply(rolled(put(put(R.newGame(), 0, [[0, 1, 2]]), 1, [[0, 0, 2]]), [I(1, 0), I(6, 7)]), { type: 'land', R: I(1, 0), count: 1 });
+  t('two bases touching only diagonally do not close the corner', R.territorySize(gap, 0) === 0 && gap.cells[I(0, 0)].o === 1);
+  const a = R.apply(rolled(s, [I(1, 0), I(6, 7)]), { type: 'land', R: I(1, 0), count: 1 });   // Green lands on (1,0): three touching bases close the corner
+  t('three touching bases and the edge of the board enclose the corner square', a.own[I(0, 0)] === 0);
+  t('the bases around it belong to the territory', a.own[I(1, 0)] === 0 && a.own[I(0, 1)] === 0 && a.own[I(1, 1)] === 0 && R.territorySize(a, 0) === 4);
   t('the enemy base inside is out and the square is empty', a.cells[I(0, 0)].o === null && a.graveyard[1] === 2);
   t('enemy cannot land in the closed territory', (() => { const b = R.roll(a, 1, 1); return !R.canLand(b, I(0, 0)); })());
   // a base chain from edge to edge: only the smaller side is closed (2 columns = 16 squares + the 8 bases)

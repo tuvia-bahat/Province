@@ -7,7 +7,7 @@
  *   move      from a base standing on or next to a rolled square, to any neighbouring square (never onto an enemy base or into enemy territory)
  *   transport from a base connected to the rolled square, in a straight line through your closed territory
  *   pass
- * Closing territory: when your bases and the edge of the board enclose empty squares (the smaller side of the cut, never the biggest part),
+ * Closing territory: when your bases (touching side to side - a diagonal touch leaves a gap) and the edge of the board enclose empty squares (the smaller side of the cut, never the biggest part),
  * those squares - and the bases around them - become your closed territory. Enemy bases inside are removed from the board.
  * Closed territory is permanent and enemies cannot enter it.
  * Win: your closed territories (they need not touch) cover more than half of the board at the end of your turn.
@@ -33,6 +33,11 @@
   const owners = (s) => s.own;
   const territorySize = (s, p) => s.own.reduce((a, o) => a + (o === p ? 1 : 0), 0);
 
+  const around = (i) => {   // the 8 squares around i
+    const [x, y] = xy(i), out = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const nx = x + dx, ny = y + dy; if ((dx || dy) && nx >= 0 && nx < N && ny >= 0 && ny < N) out.push(idx(nx, ny)); }
+    return out;
+  };
   // own bases that touch each other: the chain containing base i
   function group(s, i) {
     const p = s.cells[i].o, seen = new Set([i]), list = [i];
@@ -103,7 +108,7 @@
     for (let i = 0; i < CELLS; i++) {
       if (seen[i] || s.cells[i].o === p) continue;
       const list = [i]; seen[i] = true;
-      for (let h = 0; h < list.length; h++) for (const j of neighbors(list[h])) if (!seen[j] && s.cells[j].o !== p) { seen[j] = true; list.push(j); }
+      for (let h = 0; h < list.length; h++) for (const j of around(list[h])) if (!seen[j] && s.cells[j].o !== p) { seen[j] = true; list.push(j); }   // empty squares connect diagonally too: bases that only touch diagonally leave a gap
       comps.push(list);
     }
     const big = comps.reduce((m, l) => Math.max(m, l.length), 0);
@@ -114,12 +119,7 @@
         if (s.own[i] !== null) continue;
         s.own[i] = p; closed++;
         if (s.cells[i].o === q) { out += s.cells[i].n; s.graveyard[q] += s.cells[i].n; s.cells[i].o = null; s.cells[i].n = 0; }
-        for (const [dx, dy] of [...DIRS, [1, 1], [1, -1], [-1, 1], [-1, -1]]) {   // the bases around it belong to the territory too
-          const [x, y] = xy(i), nx = x + dx, ny = y + dy;
-          if (nx < 0 || nx >= N || ny < 0 || ny >= N) continue;
-          const b = idx(nx, ny);
-          if (s.cells[b].o === p && s.own[b] === null) { s.own[b] = p; closed++; }
-        }
+        for (const b of around(i)) if (s.cells[b].o === p && s.own[b] === null) { s.own[b] = p; closed++; }   // the bases around it belong to the territory too
       }
     }
     return { closed, out };
