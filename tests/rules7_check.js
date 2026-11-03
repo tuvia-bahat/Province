@@ -46,7 +46,7 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; retu
   t('an enemy base is not a target', !R.options(s, I(1, 1)).some((o) => o.to === I(2, 1)) && throws(() => R.apply(s, { type: 'move', R: I(1, 1), from: I(1, 1), to: I(2, 1), count: 5 })));
   t('other neighbours (also diagonal) are', R.options(s, I(1, 1)).some((o) => o.to === I(1, 2)) && R.options(s, I(1, 1)).some((o) => o.to === I(2, 2)));
   const e = claim(put(R.newGame(), 0, [[1, 1, 5]]), 1, 2, 0, 2, 2); rolled(e, [I(1, 1), I(6, 6)]);
-  t('a base may move into enemy territory (when it is not an enemy base)', R.options(e, I(1, 1)).some((o) => o.to === I(2, 1)));
+  t('a plain step into enemy territory is not offered (an invasion must close territory)', !R.options(e, I(1, 1)).some((o) => o.to === I(2, 1)));
 }
 // closing territory, Go style
 {
@@ -74,9 +74,12 @@ const rolled = (s, cells) => { s.roll = { w: 0, b: 0, cells }; s.rolls = 1; retu
 {
   const a = R.apply(rolled(put(put(R.newGame(), 0, [[0, 1, 2]]), 1, [[1, 1, 4]]), [I(1, 0), I(6, 7)]), { type: 'land', R: I(1, 0), count: 1 });   // Green closes the corner; Blue stands on (1,1)
   const b = Object.assign(R.clone(a), { turn: 1 }); rolled(b, [I(1, 1), I(6, 6)]);
-  t('a base can step diagonally into the closed corner', R.options(b, I(1, 1)).some((o) => o.to === I(0, 0)));
-  const b2 = R.apply(b, { type: 'move', R: I(1, 1), from: I(1, 1), to: I(0, 0), count: 2 });
-  t('...and stands inside enemy territory', b2.cells[I(0, 0)].o === 1 && b2.own[I(0, 0)] === 0);
+  t('a plain step into closed enemy territory is not offered and is illegal', !R.options(b, I(1, 1)).some((o) => o.to === I(0, 0)) && throws(() => R.apply(b, { type: 'move', R: I(1, 1), from: I(1, 1), to: I(0, 0), count: 2 })));
+  // an invasion that closes territory is legal: Blue steps into the corner and with two other bases encloses the green base on (1,0)
+  const inv = put(put(R.newGame(), 0, [[1, 0, 2], [0, 1, 2]]), 1, [[1, 1, 3], [2, 0, 1]]); inv.own[I(0, 0)] = 0; inv.own[I(1, 0)] = 0; inv.own[I(0, 1)] = 0; inv.turn = 1; rolled(inv, [I(1, 1), I(6, 6)]);
+  t('an invasion that closes territory is offered', R.options(inv, I(1, 1)).some((o) => o.to === I(0, 0)));
+  const iv = R.apply(inv, { type: 'move', R: I(1, 1), from: I(1, 1), to: I(0, 0), count: 1 });
+  t('...it removes the enemy base it encloses and the point becomes the invaders', iv.cells[I(1, 0)].o === null && iv.own[I(1, 0)] === 1 && iv.own[I(0, 0)] === 1 && iv.graveyard[0] === 2);
   // a column of bases across the board closes the right side; if it contains closed enemy territory, only a base that penetrated it makes that possible
   const mk = (invade) => {
     const col = put(R.newGame(), 0, [0, 1, 2, 3, 4, 5, 6].map((y) => [4, y, 1]));

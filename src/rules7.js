@@ -10,7 +10,9 @@
  * Closing territory (like Go): your bases, connected side to side or diagonally, and the edge of the board enclose points that connect to each
  * other only side to side. Every enclosed part except the biggest is closed: its points - and the bases around them - become your territory.
  * Enemy bases inside are removed from the board. A part that contains closed enemy territory can be closed only by penetrating it (one base of your wall stands
- * on enemy territory); then the enemy territory inside becomes yours. A diagonal gap between two enemy bases is open:
+ * on enemy territory); then the enemy territory inside becomes yours.
+ * An invasion is legal only when it closes territory: after the move no base of yours may stand on enemy territory (as in Go, an illegal position is not allowed).
+ * A diagonal gap between two bases is open:
  * bases can move through it, also into territory that looks closed.
  * Win: your territories (they need not touch) cover more than half of the board at the end of your turn.
  */
@@ -91,7 +93,7 @@
     return out;
   }
   // where the base 'from' may go this turn: [{ to, type: move|transport, R }]
-  function options(s, from) {
+  function optionsRaw(s, from) {
     const out = new Map();
     if (!s.roll || s.cells[from].o !== s.turn) return [];
     for (const rc of s.roll.cells) {
@@ -100,6 +102,16 @@
       for (const tr of transportTargets(s, from)) if (!out.has(tr.to)) out.set(tr.to, { to: tr.to, type: 'transport', R: rc });
     }
     return [...out.values()];
+  }
+
+  // the options a player really has: a move into enemy territory counts only if some number of soldiers makes it legal (see apply)
+  function options(s, from) {
+    const raw = optionsRaw(s, from), q = 1 - s.turn;
+    return raw.filter((o) => {
+      if (o.type !== 'move' || s.own[o.to] !== q) return true;
+      const n = s.cells[from].n;
+      return [1, n].some((count) => { try { apply(s, { type: 'move', R: o.R, from, to: o.to, count }); return true; } catch (e) { return false; } });
+    });
   }
 
   // ---------- closing territory ----------
@@ -155,12 +167,14 @@
     } else if (act.type === 'move' || act.type === 'transport') {
       const src = cells[act.from];
       if (s.cells[act.from].o !== p || count < 1 || count > src.n) throw new Error('bad count');
-      if (!options(s, act.from).some((o) => o.to === act.to && o.type === act.type)) throw new Error('illegal target');
+      if (!optionsRaw(s, act.from).some((o) => o.to === act.to && o.type === act.type)) throw new Error('illegal target');
       const dst = cells[act.to];
       src.n -= count; dst.o = p; dst.n += count; ns.log.push(`${name}: ${act.type === 'move' ? 'moved' : 'transported'} ${count}`);
       if (src.n === 0) src.o = null;
     } else throw new Error('unknown action');
     const c = claim(ns, p);
+    // like Go: a base may not stay inside enemy territory unless closing territory has just made that square yours
+    for (let i = 0; i < CELLS; i++) if (ns.cells[i].o === p && ns.own[i] === 1 - p) throw new Error('illegal: an invasion must close territory');
     if (c.closed) ns.log.push(`${name}: closed ${c.closed} square${c.closed > 1 ? 's' : ''}` + (c.out ? `, ${c.out} enemy soldier${c.out > 1 ? 's' : ''} out` : ''));
     endTurn(ns);
     return ns;
