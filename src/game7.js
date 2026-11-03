@@ -7,9 +7,28 @@
   const S = 45, W = R.N * S, CR = 17, DOT_R = 7, FS = 15;   // lattice step, board size, base radius, empty-square dot, count font
   const COLORS = ['#34c98a', '#3a9cf5'], NAMES = ['Green', 'Blue'];
   let active = false, s = null, hist = [], ui = { R: null, src: null, sheet: null, rolled: false };
+  let mode = 'two', paused = false, aiTimer = null;   // 'two' = two people on one device, 'ai' = you (Green) against the computer, 'watch' = computer against itself
+  const isAiTurn = () => s.winner === null && (mode === 'watch' || (mode === 'ai' && s.turn === 1));
+  const netOf = () => {   // the trained weights (src/net7.js) as typed arrays
+    if (!root.NET7) return null;
+    if (!root.NET7.f) root.NET7.f = { w1: Float32Array.from(root.NET7.w1), b1: Float32Array.from(root.NET7.b1), w2: Float32Array.from(root.NET7.w2), b2: root.NET7.b2 };
+    return root.NET7.f;
+  };
+  function schedule() {
+    clearTimeout(aiTimer); aiTimer = null;
+    if (!active || paused || !isAiTurn()) return;
+    aiTimer = setTimeout(aiStep, s.roll ? 800 : 550);
+  }
+  function aiStep() {
+    aiTimer = null;
+    if (!active || paused || !isAiTurn()) return;
+    if (!s.roll) { doRoll(); return; }
+    const net = netOf(), c = root.AI7 && net ? root.AI7.choose(s, net, 0, Math.random) : null;
+    commit(c ? c.act : { type: 'pass' });
+  }
 
   const fresh = () => ({ R: null, src: null, sheet: null, rolled: false });
-  function reset() { s = R.newGame(); hist = []; ui = fresh(); $('overlay').hidden = true; render(); }
+  function reset() { s = R.newGame(); hist = []; ui = fresh(); paused = false; $('overlay').hidden = true; render(); }
 
   // ---------- board ----------
   const cx = (i) => (i % R.N) * S + S / 2, cy = (i) => (R.N - 1 - Math.floor(i / R.N)) * S + S / 2;   // row 1 is at the bottom, like the original game
@@ -67,7 +86,7 @@
       const tot = R.SOLDIERS, reserve = R.camp(s, p), lost = s.graveyard[p], onB = tot - reserve - lost;
       const w = (n) => (100 * n / tot).toFixed(2) + '%';
       const dice = s.roll && s.winner === null && s.turn === p ? `<span class="dice">${dieHtml(s.roll.w, ui.rolled)}${dieHtml(s.roll.b, ui.rolled)}</span>` : '';
-      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAMES[p]}</span><span class="tag"></span>${dice}</div>
+      el.innerHTML = `<div class="head"><span class="swatch"></span><span class="nm">${NAMES[p]}</span><span class="tag">${mode === 'ai' ? (p === 0 ? 'You' : 'CPU') : mode === 'watch' ? 'AI' : ''}</span>${dice}</div>
         <div class="grid"><div class="line" title="On board ${onB} · Lost ${lost}">${IC.sold}<span class="num">${reserve}</span><div class="sbar"><i class="r" style="width:${w(reserve)}"></i><i class="b" style="width:${w(onB)}"></i></div></div>
         <div class="line provline" title="Closed territory ${terr} of ${R.WIN} needed">${IC.prov}<span class="num">${terr}</span><div class="sbar"><i class="r" style="width:${Math.min(100, 100 * terr / R.WIN).toFixed(2)}%"></i></div></div>
         <div class="line">${IC.dead}<span class="num">${lost}</span><div class="sbar"><i class="d" style="width:${w(lost)}"></i></div></div></div>`;
@@ -82,6 +101,7 @@
     const row = () => { const r = document.createElement('div'); r.className = 'row'; ctl.appendChild(r); return r; };
     const add = (parent, text, cls, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = text; b.onclick = fn; parent.appendChild(b); return b; };
     if (s.winner !== null) { msg.innerHTML = `<b style="color:${COLORS[s.winner]}">${NAMES[s.winner]}</b> wins`; add(row(), 'New game', 'wide', reset); return; }
+    if (isAiTurn()) { msg.innerHTML = `<b style="color:${COLORS[p]}">${NAMES[p]}</b> · ${paused ? 'Paused' : s.roll ? 'Thinking…' : 'Rolling…'}`; return; }
     if (!s.roll) { add(row(), 'Roll dice', 'wide', () => doRoll()); return; }
     const sh = ui.sheet;
     if (sh) {
@@ -117,27 +137,34 @@
   function render() {
     renderPanels(); renderBoard(); ui.rolled = false; renderDock();
     $('logBox').innerHTML = s.log.slice(-40).reverse().map((l) => `<div>${l}</div>`).join('') || '<div>No moves yet</div>';
-    $('undoBtn').textContent = 'Undo'; $('undoBtn').hidden = false; $('undoBtn').disabled = hist.length === 0;
+    $('undoBtn').textContent = mode === 'watch' ? (paused ? 'Resume' : 'Pause') : 'Undo'; $('undoBtn').hidden = false; $('undoBtn').disabled = mode === 'watch' ? s.winner !== null : hist.length === 0;
     $('speedBtn').hidden = true; $('tutBtn').hidden = true;
     const o = $('overlay');
     if (s.winner !== null) {
-      $('winTitle').innerHTML = `<span style="color:${COLORS[s.winner]}">${NAMES[s.winner]}</span> wins`;
+      $('winTitle').innerHTML = mode === 'ai' ? `<span style="color:${COLORS[s.winner]}">${s.winner === 0 ? 'You win' : 'Computer wins'}</span>` : `<span style="color:${COLORS[s.winner]}">${NAMES[s.winner]}</span> wins`;
       $('winText').hidden = true; $('winTrain').hidden = true; $('winCommunity').hidden = true; $('winNew').textContent = 'New game';
       o.dataset.dismissed = ''; o.hidden = false;
     } else o.hidden = true;
+    schedule();
   }
 
   // ---------- actions ----------
   function doRoll() {
     s = R.roll(s, 1 + Math.floor(Math.random() * R.N), 1 + Math.floor(Math.random() * R.N)); ui = fresh(); ui.rolled = true;
     renderPanels(); renderBoard(); renderDock(); ui.rolled = false;
+    schedule();
   }
   function commit(act) {
     let ns;
     try { ns = R.apply(s, act); } catch (e) { ui = fresh(); render(); return; }
     hist.push(s); s = ns; ui = fresh(); render();
   }
-  function undo() { if (!hist.length) return; s = hist.pop(); ui = fresh(); render(); }
+  function undo() {
+    if (!hist.length) return;
+    s = hist.pop();
+    if (mode === 'ai') while (s.turn !== 0 && hist.length) s = hist.pop();   // back to your own turn
+    ui = fresh(); render();
+  }
   function setMode(sh, m) {
     const p = s.turn; sh.mode = m;
     if (m === 'add') { sh.min = 1; sh.max = R.camp(s, p); sh.count = Math.min(sh.max, 4); sh.build = (n) => ({ type: 'land', R: sh.cell, count: n }); }
@@ -167,7 +194,7 @@
   }
   let down = null;
   function onDown(e) {
-    if (!active || s.winner !== null || !s.roll || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (!active || s.winner !== null || !s.roll || isAiTurn() || (e.pointerType === 'mouse' && e.button !== 0)) return;
     if (ui.sheet && ui.sheet.kind === 'move') { down = null; return; }
     down = { i: cellAt(e), x: e.clientX, y: e.clientY };
   }
@@ -194,15 +221,16 @@
   }
 
   // ---------- hooking into the normal screen ----------
-  function open() {
+  function open(m) {
     if (!R) return;
+    mode = m || 'two'; paused = false; s = null;
     active = true; document.body.classList.add('g7on');   // hides the tutorial offer while the prototype is on screen
     for (const id of ['lobby', 'startModal', 'nameModal', 'overlay', 'coach']) { const el = $(id); if (el) el.hidden = true; }
     $('app').classList.remove('flip'); $('logBox').hidden = true;
     if (!s) { s = R.newGame(); hist = []; ui = fresh(); }
     render();
   }
-  function close() { active = false; document.body.classList.remove('g7on'); $('overlay').hidden = true; $('speedBtn').hidden = true; }
+  function close() { active = false; clearTimeout(aiTimer); aiTimer = null; document.body.classList.remove('g7on'); $('overlay').hidden = true; $('speedBtn').hidden = true; }
   function init() {
     if (!R || !$('app')) return;
     $('board').addEventListener('pointerdown', onDown);
@@ -211,7 +239,7 @@
     $('bar').addEventListener('click', (e) => {
       if (!active) return;
       const b = e.target.closest('button'); if (!b) return;
-      if (b.id === 'undoBtn') { e.stopPropagation(); undo(); document.getElementById('bar').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', false); }
+      if (b.id === 'undoBtn') { e.stopPropagation(); if (mode === 'watch') { paused = !paused; render(); } else undo(); document.getElementById('bar').classList.remove('open'); $('menuBtn').setAttribute('aria-expanded', false); }
       else if (b.id === 'newBtn') close();
     }, true);
     $('winNew').addEventListener('click', (e) => { if (!active) return; e.stopImmediatePropagation(); reset(); }, true);

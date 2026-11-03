@@ -23,7 +23,9 @@
   const xy = (i) => [i % N, Math.floor(i / N)];
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
   const DIRS8 = [...DIRS, [1, 1], [1, -1], [-1, 1], [-1, -1]];
-  const clone = (s) => JSON.parse(JSON.stringify(s));
+  let QUIET = false;   // the trainer switches the game log off for speed
+  const log = (s, m) => { if (!QUIET) s.log.push(m); };
+  const clone = (s) => ({ size: s.size, cells: s.cells.map((c) => ({ o: c.o, n: c.n })), own: s.own.slice(), graveyard: s.graveyard.slice(), turn: s.turn, rolls: s.rolls, roll: s.roll ? { w: s.roll.w, b: s.roll.b, cells: s.roll.cells.slice() } : null, winner: s.winner, log: QUIET ? [] : s.log.slice() });
 
   function newGame() {
     return { size: N, cells: Array.from({ length: CELLS }, () => ({ o: null, n: 0 })), own: new Array(CELLS).fill(null), graveyard: [0, 0], turn: 0, rolls: 0, roll: null, winner: null, log: [] };
@@ -143,10 +145,10 @@
   function endTurn(s) {
     const p = s.turn;
     s.roll = null; s.rolls = 0;
-    if (territorySize(s, p) >= WIN) { s.winner = p; s.log.push(`${p === 0 ? 'Green' : 'Blue'} has ${territorySize(s, p)} squares of closed territory and wins!`); }
+    if (territorySize(s, p) >= WIN) { s.winner = p; log(s, `${p === 0 ? 'Green' : 'Blue'} has ${territorySize(s, p)} squares of closed territory and wins!`); }
     else s.turn = 1 - p;
   }
-  function pass(s) { const ns = clone(s); ns.log.push(`${ns.turn === 0 ? 'Green' : 'Blue'}: passed`); endTurn(ns); return ns; }
+  function pass(s) { const ns = clone(s); log(ns, `${ns.turn === 0 ? 'Green' : 'Blue'}: passed`); endTurn(ns); return ns; }
 
   // act: { type: land|withdraw|move|transport|pass, R (rolled square), from, to, count }. Throws when illegal.
   function apply(s, act) {
@@ -158,31 +160,31 @@
     if (act.type === 'land') {
       if (!canLand(s, act.R)) throw new Error('cannot land there');
       if (count < 1 || count > camp(s, p)) throw new Error('bad count');
-      cells[act.R].o = p; cells[act.R].n += count; ns.log.push(`${name}: landed ${count}`);
+      cells[act.R].o = p; cells[act.R].n += count; log(ns, `${name}: landed ${count}`);
     } else if (act.type === 'withdraw') {
       const from = act.from === undefined ? act.R : act.from;
       if (!sources(s, act.R).includes(from)) throw new Error('not a base connected to the rolled square');
       if (count < 1 || count > cells[from].n) throw new Error('bad count');
-      cells[from].n -= count; if (cells[from].n === 0) cells[from].o = null; ns.log.push(`${name}: withdrew ${count}`);
+      cells[from].n -= count; if (cells[from].n === 0) cells[from].o = null; log(ns, `${name}: withdrew ${count}`);
     } else if (act.type === 'move' || act.type === 'transport') {
       const src = cells[act.from];
       if (s.cells[act.from].o !== p || count < 1 || count > src.n) throw new Error('bad count');
       if (!optionsRaw(s, act.from).some((o) => o.to === act.to && o.type === act.type)) throw new Error('illegal target');
       const dst = cells[act.to];
-      src.n -= count; dst.o = p; dst.n += count; ns.log.push(`${name}: ${act.type === 'move' ? 'moved' : 'transported'} ${count}`);
+      src.n -= count; dst.o = p; dst.n += count; log(ns, `${name}: ${act.type === 'move' ? 'moved' : 'transported'} ${count}`);
       if (src.n === 0) src.o = null;
     } else throw new Error('unknown action');
     const c = claim(ns, p);
     // like Go: a base may not stay inside enemy territory unless closing territory has just made that square yours
     for (let i = 0; i < CELLS; i++) if (ns.cells[i].o === p && ns.own[i] === 1 - p) throw new Error('illegal: an invasion must close territory');
-    if (c.closed) ns.log.push(`${name}: closed ${c.closed} square${c.closed > 1 ? 's' : ''}` + (c.out ? `, ${c.out} enemy soldier${c.out > 1 ? 's' : ''} out` : ''));
+    if (c.closed) log(ns, `${name}: closed ${c.closed} square${c.closed > 1 ? 's' : ''}` + (c.out ? `, ${c.out} enemy soldier${c.out > 1 ? 's' : ''} out` : ''));
     endTurn(ns);
     return ns;
   }
 
   root.Rules7 = {
     N, CELLS, SOLDIERS, WIN, MAX_ROLLS, idx, xy, newGame, neighbors, onBoard, camp, owners, group, territorySize, roll,
-    canLand, canWithdraw, sources, moveTargets, transportTargets, options, claim, apply, pass, clone,
+    canLand, canWithdraw, sources, moveTargets, transportTargets, options, optionsRaw, claim, apply, pass, clone, setQuiet: (q) => { QUIET = !!q; },
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Rules7;
 })(typeof window !== 'undefined' ? window : globalThis);
